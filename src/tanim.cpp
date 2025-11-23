@@ -1,5 +1,5 @@
 #include "../include/tanim.hpp"
-#include "../include/imgui_neo_sequencer.h"
+// #include "../include/imgui_neo_sequencer.h"
 
 #include "imgui/ImSequencer.h"
 #include "imgui/ImCurveEdit.h"
@@ -201,7 +201,7 @@ void Tanim::Init()
     mySequence.myItems.push_back(MySequence::MySequenceItem{4, 90, 99, false});
 }
 
-#if 0
+#if 1
 void Tanim::Draw()
 {
     ImGui::Begin("Timeline");
@@ -234,7 +234,7 @@ void Tanim::Draw()
 }
 #endif
 
-#if 1
+#if 0
 void Tanim::Draw()
 {
     ImGui::Begin("Timeline");
