@@ -1,12 +1,23 @@
 #include "../include/tanim.hpp"
-// #include "../include/imgui_neo_sequencer.h"
 
+#define IM_SEQUENCER
+// #define IM_NEO_SEQUENCER
+
+#ifdef IM_NEO_SEQUENCER
+#include "tanim/include/im_neo_sequencer/imgui_neo_sequencer.h"
+#endif
+
+#ifdef IM_SEQUENCER
 #include "imgui/ImSequencer.h"
 #include "imgui/ImCurveEdit.h"
 #include "imgui/GraphEditor.h"
+#endif
+
+#include "include_imgui.hpp"
 #include <vector>
 #include <algorithm>
 
+#ifdef IM_SEQUENCER
 // REF: code from imguizmo example
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
@@ -201,7 +212,6 @@ void Tanim::Init()
     mySequence.myItems.push_back(MySequence::MySequenceItem{4, 90, 99, false});
 }
 
-#if 1
 void Tanim::Draw()
 {
     ImGui::Begin("Timeline");
@@ -234,7 +244,9 @@ void Tanim::Draw()
 }
 #endif
 
-#if 0
+#ifdef IM_NEO_SEQUENCER
+void Tanim::Init() {}
+
 void Tanim::Draw()
 {
     ImGui::Begin("Timeline");
