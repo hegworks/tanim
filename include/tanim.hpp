@@ -11,6 +11,7 @@ public:
 private:
     static inline int selectedEntry = -1;
     static inline int firstFrame = 0;
+    static inline int endFrame = 64;
+    static inline int currentFrame = 0;
     static inline bool expanded = true;
-    static inline int currentFrame = 100;
 };

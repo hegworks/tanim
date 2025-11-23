@@ -1,4 +1,5 @@
 #include "../include/tanim.hpp"
+#include "../include/imgui_neo_sequencer.h"
 
 #include "imgui/ImSequencer.h"
 #include "imgui/ImCurveEdit.h"
@@ -200,6 +201,7 @@ void Tanim::Init()
     mySequence.myItems.push_back(MySequence::MySequenceItem{4, 90, 99, false});
 }
 
+#if 0
 void Tanim::Draw()
 {
     ImGui::Begin("Timeline");
@@ -230,3 +232,54 @@ void Tanim::Draw()
 
     ImGui::End();
 }
+#endif
+
+#if 1
+void Tanim::Draw()
+{
+    ImGui::Begin("Timeline");
+
+    static bool transformOpen = false;
+    static std::vector<ImGui::FrameIndexType> keys = {0, 10, 24};
+    bool doDelete = false;
+
+    if (ImGui::BeginNeoSequencer("Sequencer",
+                                 &currentFrame,
+                                 &firstFrame,
+                                 &endFrame,
+                                 {0, 0},
+                                 ImGuiNeoSequencerFlags_EnableSelection | ImGuiNeoSequencerFlags_Selection_EnableDragging |
+                                     ImGuiNeoSequencerFlags_Selection_EnableDeletion |
+                                     ImGuiNeoSequencerFlags_AllowLengthChanging | ImGuiNeoSequencerFlags_AlwaysShowHeader))
+    {
+        if (ImGui::BeginNeoGroup("Transform", &transformOpen))
+        {
+            if (ImGui::BeginNeoTimelineEx("Position"))
+            {
+                for (auto&& v : keys)
+                {
+                    ImGui::NeoKeyframe(&v);
+                    // Per keyframe code here
+                }
+
+                if (doDelete)
+                {
+                    uint32_t count = ImGui::GetNeoKeyframeSelectionSize();
+
+                    ImGui::FrameIndexType* toRemove = new ImGui::FrameIndexType[count];
+
+                    ImGui::GetNeoKeyframeSelection(toRemove);
+
+                    // Delete keyframes from your structure
+                }
+                ImGui::EndNeoTimeLine();
+            }
+            ImGui::EndNeoGroup();
+        }
+
+        ImGui::EndNeoSequencer();
+    }
+
+    ImGui::End();
+}
+#endif
