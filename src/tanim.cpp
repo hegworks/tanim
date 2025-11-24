@@ -1,8 +1,8 @@
 #include "../include/tanim.hpp"
 
-#include "imgui/ImSequencer.h"
-#include "imgui/ImCurveEdit.h"
-#include "imgui/GraphEditor.h"
+#include "../include/tanimguizmo/ImSequencer.h"
+#include "../include/tanimguizmo/ImCurveEdit.h"
+#include "../include/tanimgui_includes.h"
 
 #include <vector>
 #include <algorithm>
@@ -221,12 +221,25 @@ void Tanim::Draw()
                            ImSequencer::SEQUENCER_EDIT_ALL | ImSequencer::SEQUENCER_ADD | ImSequencer::SEQUENCER_DEL |
                                ImSequencer::SEQUENCER_COPYPASTE | ImSequencer::SEQUENCER_CHANGE_FRAME);
 
+    ImGui::Text("mySequence.focused:   %d", mySequence.focused);
+    ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMin);
+    ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMax);
+    ImGui::Text("mySequence.myItems.size: %zu", mySequence.myItems.size());
+    // ImGui::Text("mySequence.myItems.size: %d", mySequence.rampEdit.mPointCount);
+
     // add a UI to edit that particular item
+    ImGui::Text("selected entry: %d", selectedEntry);
     if (selectedEntry != -1)
     {
         const MySequence::MySequenceItem& item = mySequence.myItems[selectedEntry];
+
         ImGui::Text("I am a %s, please edit me", SequencerItemTypeNames[item.mType]);
         // switch (type) ...
+
+        ImGui::Text("item.mType:       %d", item.mType);
+        ImGui::Text("item.mExpanded:   %i", item.mExpanded);
+        ImGui::Text("item.mFrameStart: %d", item.mFrameStart);
+        ImGui::Text("item.mFrameEnd:   %d", item.mFrameEnd);
     }
 
     ImGui::End();
