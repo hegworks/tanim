@@ -39,7 +39,7 @@
 #define _freea(x)
 #endif
 
-namespace ImCurveEdit
+namespace tanim_curve_edit
 {
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS

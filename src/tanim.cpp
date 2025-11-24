@@ -9,7 +9,10 @@
 // REF: code from imguizmo example
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
-struct RampEdit : public ImCurveEdit::Delegate
+namespace tanim
+{
+
+struct RampEdit : public tanim_curve_edit::Delegate
 {
     RampEdit()
     {
@@ -48,7 +51,10 @@ struct RampEdit : public ImCurveEdit::Delegate
         return cols[curveIndex];
     }
     ImVec2* GetPoints(size_t curveIndex) { return mPts[curveIndex]; }
-    ImCurveEdit::CurveType GetCurveType(size_t /*curveIndex*/) const override { return ImCurveEdit::CurveType::CurveLinear; }
+    tanim_curve_edit::CurveType GetCurveType(size_t /*curveIndex*/) const override
+    {
+        return tanim_curve_edit::CurveType::CurveLinear;
+    }
     virtual int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value)
     {
         mPts[curveIndex][pointIndex] = ImVec2(value.x, value.y);
@@ -85,7 +91,7 @@ private:
 
 static const char* SequencerItemTypeNames[] = {"Camera", "Music", "ScreenEffect", "FadeIn", "Animation"};
 
-struct MySequence : public ImSequencer::SequenceInterface
+struct MySequence : public tanim_sequencer::SequenceInterface
 {
     // interface with sequencer
 
@@ -163,7 +169,7 @@ struct MySequence : public ImSequencer::SequenceInterface
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        ImCurveEdit::Edit(rampEdit, rcSize, 137 + index, &clippingRect);
+        tanim_curve_edit::Edit(rampEdit, rcSize, 137 + index, &clippingRect);
     }
 
     virtual void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect)
@@ -212,13 +218,14 @@ void Tanim::Draw()
     ImGui::InputInt("Frame Max", &mySequence.mFrameMax);
     ImGui::PopItemWidth();
 
-    ImSequencer::Sequencer(&mySequence,
-                           &currentFrame,
-                           &expanded,
-                           &selectedEntry,
-                           &firstFrame,
-                           ImSequencer::SEQUENCER_EDIT_ALL | ImSequencer::SEQUENCER_ADD | ImSequencer::SEQUENCER_DEL |
-                               ImSequencer::SEQUENCER_COPYPASTE | ImSequencer::SEQUENCER_CHANGE_FRAME);
+    tanim_sequencer::Sequencer(&mySequence,
+                               &currentFrame,
+                               &expanded,
+                               &selectedEntry,
+                               &firstFrame,
+                               tanim_sequencer::SEQUENCER_EDIT_ALL | tanim_sequencer::SEQUENCER_ADD |
+                                   tanim_sequencer::SEQUENCER_DEL | tanim_sequencer::SEQUENCER_COPYPASTE |
+                                   tanim_sequencer::SEQUENCER_CHANGE_FRAME);
 
     ImGui::Text("mySequence.focused:   %d", mySequence.focused);
     ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMin);
@@ -243,3 +250,5 @@ void Tanim::Draw()
 
     ImGui::End();
 }
+
+}  // namespace tanim

@@ -1,5 +1,8 @@
 #pragma once
 
+namespace tanim
+{
+
 class Tanim
 {
 public:
@@ -15,3 +18,5 @@ private:
     static inline int currentFrame = 0;
     static inline bool expanded = true;
 };
+
+}  // namespace tanim
