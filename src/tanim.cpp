@@ -1,23 +1,12 @@
 #include "../include/tanim.hpp"
 
-#define IM_SEQUENCER
-// #define IM_NEO_SEQUENCER
-
-#ifdef IM_NEO_SEQUENCER
-#include "tanim/include/im_neo_sequencer/imgui_neo_sequencer.h"
-#endif
-
-#ifdef IM_SEQUENCER
 #include "imgui/ImSequencer.h"
 #include "imgui/ImCurveEdit.h"
 #include "imgui/GraphEditor.h"
-#endif
 
-#include "include_imgui.hpp"
 #include <vector>
 #include <algorithm>
 
-#ifdef IM_SEQUENCER
 // REF: code from imguizmo example
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
@@ -242,56 +231,3 @@ void Tanim::Draw()
 
     ImGui::End();
 }
-#endif
-
-#ifdef IM_NEO_SEQUENCER
-void Tanim::Init() {}
-
-void Tanim::Draw()
-{
-    ImGui::Begin("Timeline");
-
-    static bool transformOpen = false;
-    static std::vector<ImGui::FrameIndexType> keys = {0, 10, 24};
-    bool doDelete = false;
-
-    if (ImGui::BeginNeoSequencer("Sequencer",
-                                 &currentFrame,
-                                 &firstFrame,
-                                 &endFrame,
-                                 {0, 0},
-                                 ImGuiNeoSequencerFlags_EnableSelection | ImGuiNeoSequencerFlags_Selection_EnableDragging |
-                                     ImGuiNeoSequencerFlags_Selection_EnableDeletion |
-                                     ImGuiNeoSequencerFlags_AllowLengthChanging | ImGuiNeoSequencerFlags_AlwaysShowHeader))
-    {
-        if (ImGui::BeginNeoGroup("Transform", &transformOpen))
-        {
-            if (ImGui::BeginNeoTimelineEx("Position"))
-            {
-                for (auto&& v : keys)
-                {
-                    ImGui::NeoKeyframe(&v);
-                    // Per keyframe code here
-                }
-
-                if (doDelete)
-                {
-                    uint32_t count = ImGui::GetNeoKeyframeSelectionSize();
-
-                    ImGui::FrameIndexType* toRemove = new ImGui::FrameIndexType[count];
-
-                    ImGui::GetNeoKeyframeSelection(toRemove);
-
-                    // Delete keyframes from your structure
-                }
-                ImGui::EndNeoTimeLine();
-            }
-            ImGui::EndNeoGroup();
-        }
-
-        ImGui::EndNeoSequencer();
-    }
-
-    ImGui::End();
-}
-#endif
