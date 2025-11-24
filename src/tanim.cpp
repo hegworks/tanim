@@ -23,6 +23,9 @@ void Tanim::Init()
 
 void Tanim::Draw()
 {
+    mySequence.rampEdit.mMin.x = 0;
+    mySequence.rampEdit.mMax.x = (float)mySequence.mFrameMax;
+
     ImGui::Begin("tanim_timeline");
 
     ImGui::PushItemWidth(130);
@@ -50,7 +53,6 @@ void Tanim::Draw()
     ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMin);
     ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMax);
     ImGui::Text("mySequence.myItems.size: %zu", mySequence.myItems.size());
-    // ImGui::Text("mySequence.myItems.size: %d", mySequence.rampEdit.mPointCount);
 
     ImGui::End();
 
@@ -70,6 +72,13 @@ void Tanim::Draw()
         ImGui::Text("item.mFrameStart: %d", item.mFrameStart);
         ImGui::Text("item.mFrameEnd:   %d", item.mFrameEnd);
     }
+
+    ImGui::End();
+
+    ImGui::Begin("tanim_ramp_edit");
+
+    ImGui::DragFloat2("mMin", &mySequence.rampEdit.mMin.x);
+    ImGui::DragFloat2("mMax", &mySequence.rampEdit.mMax.x);
 
     ImGui::End();
 }

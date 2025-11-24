@@ -64,6 +64,8 @@ struct Delegate
     virtual CurveType GetCurveType(size_t /*curveIndex*/) const { return CurveLinear; }
     virtual ImVec2& GetMin() = 0;
     virtual ImVec2& GetMax() = 0;
+    virtual void SetMin(ImVec2 min) = 0;
+    virtual void SetMax(ImVec2 max) = 0;
     virtual size_t GetPointCount(size_t curveIndex) = 0;
     virtual uint32_t GetCurveColor(size_t curveIndex) = 0;
     virtual ImVec2* GetPoints(size_t curveIndex) = 0;

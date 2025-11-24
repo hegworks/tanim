@@ -171,6 +171,8 @@ int Edit(Delegate& delegate,
             };
             min.y = scaleValue(min.y);
             max.y = scaleValue(max.y);
+            delegate.SetMin(min);
+            delegate.SetMax(max);
         }
         if (!scrollingV && ImGui::IsMouseDown(2))
         {
@@ -450,4 +452,4 @@ int Edit(Delegate& delegate,
     _freea(curvesIndex);
     return ret;
 }
-}  // namespace tanim_curve_edit
+}  // namespace tanimguizmo_curve_edit

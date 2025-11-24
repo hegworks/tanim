@@ -82,8 +82,6 @@ struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
     {
         static const char* labels[] = {"Translation", "Rotation", "Scale"};
 
-        rampEdit.mMax = ImVec2(float(mFrameMax), 1.f);
-        rampEdit.mMin = ImVec2(float(mFrameMin), 0.f);
         draw_list->PushClipRect(legendClippingRect.Min, legendClippingRect.Max, true);
         for (int i = 0; i < 3; i++)
         {
@@ -102,8 +100,6 @@ struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
 
     void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
     {
-        rampEdit.mMax = ImVec2(float(mFrameMax), 1.f);
-        rampEdit.mMin = ImVec2(float(mFrameMin), 0.f);
         draw_list->PushClipRect(clippingRect.Min, clippingRect.Max, true);
         for (int i = 0; i < 3; i++)
         {

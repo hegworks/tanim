@@ -11,14 +11,14 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 {
     TanimRampEdit()
     {
-        mPts[0][0] = ImVec2(-10.f, 0);
+        mPts[0][0] = ImVec2(10.f, 0);
         mPts[0][1] = ImVec2(20.f, 0.6f);
         mPts[0][2] = ImVec2(25.f, 0.2f);
         mPts[0][3] = ImVec2(70.f, 0.4f);
         mPts[0][4] = ImVec2(120.f, 1.f);
         mPointCount[0] = 5;
 
-        mPts[1][0] = ImVec2(-50.f, 0.2f);
+        mPts[1][0] = ImVec2(15.f, 0.2f);
         mPts[1][1] = ImVec2(33.f, 0.7f);
         mPts[1][2] = ImVec2(80.f, 0.2f);
         mPts[1][3] = ImVec2(82.f, 0.8f);
@@ -32,8 +32,6 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
         mPts[2][5] = ImVec2(250.f, 0.12f);
         mPointCount[2] = 6;
         mbVisible[0] = mbVisible[1] = mbVisible[2] = true;
-        mMax = ImVec2(1.f, 1.f);
-        mMin = ImVec2(0.f, 0.f);
     }
 
     size_t GetCurveCount() override { return 3; }
@@ -77,13 +75,20 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 
     ImVec2& GetMin() override { return mMin; }
 
+    void SetMin(ImVec2 min) override { mMin = min; }
+
+    void SetMax(ImVec2 max) override { mMax = max; }
+
+    void BeginEdit(int) override { /*TODO(tanim)*/ }
+    void EndEdit() override { /*TODO(tanim)*/ }
+
     unsigned int GetBackgroundColor() override { return 0; }
 
     ImVec2 mPts[3][8];
     size_t mPointCount[3];
     bool mbVisible[3];
-    ImVec2 mMin;
-    ImVec2 mMax;
+    ImVec2 mMin{0, -1.5f};
+    ImVec2 mMax{500, 1.5f};
 
 private:
     void SortValues(size_t curveIndex)
