@@ -31,7 +31,7 @@
 
 struct ImRect;
 
-namespace tanim_curve_edit
+namespace tanimguizmo_curve_edit
 {
 enum CurveType
 {
@@ -82,4 +82,4 @@ int Edit(Delegate& delegate,
          unsigned int id,
          const ImRect* clippingRect = NULL,
          ImVector<EditPoint>* selectedPoints = NULL);
-}  // namespace tanim_curve_edit
+}  // namespace tanimguizmo_curve_edit

@@ -24,7 +24,7 @@
 // SOFTWARE.
 //
 
-#include "../../include/tanimguizmo/tanim_curve_edit.h"
+#include "../../include/tanimguizmo/tanimguizmo_curve_edit.h"
 #include "../../include/tanimgui_includes.h"
 
 #include <stdint.h>
@@ -39,7 +39,7 @@
 #define _freea(x)
 #endif
 
-namespace tanim_curve_edit
+namespace tanimguizmo_curve_edit
 {
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -450,4 +450,4 @@ int Edit(Delegate& delegate,
     _freea(curvesIndex);
     return ret;
 }
-}  // namespace ImCurveEdit
+}  // namespace tanim_curve_edit

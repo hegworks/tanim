@@ -24,12 +24,12 @@
 // SOFTWARE.
 //
 
-#include "../../include/tanimguizmo/tanim_sequencer.h"
+#include "../../include/tanimguizmo/tanimguizmo_sequencer.h"
 #include "../../include/tanimgui_includes.h"
 
 #include <cstdlib>
 
-namespace tanim_sequencer
+namespace tanimguizmo_sequencer
 {
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 static ImVec2 operator+(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x + b.x, a.y + b.y); }
