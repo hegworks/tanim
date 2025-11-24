@@ -24,7 +24,7 @@
 // SOFTWARE.
 //
 
-#include "../../include/tanimguizmo/ImSequencer.h"
+#include "../../include/tanimguizmo/tanim_sequencer.h"
 #include "../../include/tanimgui_includes.h"
 
 #include <cstdlib>

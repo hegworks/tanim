@@ -24,7 +24,7 @@
 // SOFTWARE.
 //
 
-#include "../../include/tanimguizmo/ImCurveEdit.h"
+#include "../../include/tanimguizmo/tanim_curve_edit.h"
 #include "../../include/tanimgui_includes.h"
 
 #include <stdint.h>
