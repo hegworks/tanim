@@ -115,6 +115,7 @@ static int DrawPoint(ImDrawList* draw_list, ImVec2 pos, const ImVec2 size, const
         ret = 1;
         if (io.MouseDown[0]) ret = 2;
     }
+
     if (edited)
         draw_list->AddPolyline(offsets, 4, 0xFFFFFFFF, true, 3.0f);
     else if (ret)
@@ -286,6 +287,13 @@ int Edit(Delegate& delegate,
                           viewSize,
                           offset,
                           (selection.find({int(c), int(p)}) != selection.end() && movingCurve == -1 && !scrollingV));
+
+            // display point value near point
+            char point_val_text[512];
+            const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
+            ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.2f,%.2f", pts[p].x, pts[p].y);
+            draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
+
             if (drawState && movingCurve == -1 && !selectingQuad)
             {
                 overCurveOrPoint = true;
@@ -362,7 +370,6 @@ int Edit(Delegate& delegate,
     }
 
     // move curve
-
     if (movingCurve != -1)
     {
         const size_t ptCount = delegate.GetPointCount(movingCurve);

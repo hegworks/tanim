@@ -13,12 +13,8 @@ void Tanim::Init()
 {
     // sequence with default values
     mySequence.mFrameMin = 0;
-    mySequence.mFrameMax = 1000;
-    mySequence.myItems.push_back(TanimSequence::MySequenceItem{0, 10, 30, false});
-    mySequence.myItems.push_back(TanimSequence::MySequenceItem{1, 20, 30, true});
-    mySequence.myItems.push_back(TanimSequence::MySequenceItem{3, 12, 60, false});
-    mySequence.myItems.push_back(TanimSequence::MySequenceItem{2, 61, 90, false});
-    mySequence.myItems.push_back(TanimSequence::MySequenceItem{4, 90, 99, false});
+    mySequence.mFrameMax = 500;
+    mySequence.myItems.push_back(TanimSequence::MySequenceItem{0, 0, 10, true});
 }
 
 void Tanim::Draw()
@@ -29,8 +25,6 @@ void Tanim::Draw()
     ImGui::Begin("tanim_timeline");
 
     ImGui::PushItemWidth(130);
-    ImGui::InputInt("Frame Min", &mySequence.mFrameMin);
-    ImGui::SameLine();
     ImGui::InputInt("Frame", &currentFrame);
     ImGui::SameLine();
     ImGui::InputInt("Frame Max", &mySequence.mFrameMax);
@@ -51,7 +45,7 @@ void Tanim::Draw()
 
     ImGui::Text("mySequence.focused:   %d", mySequence.focused);
     ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMin);
-    ImGui::Text("mySequence.mFrameMin: %d", mySequence.mFrameMax);
+    ImGui::Text("mySequence.mFrameMax: %d", mySequence.mFrameMax);
     ImGui::Text("mySequence.myItems.size: %zu", mySequence.myItems.size());
 
     ImGui::End();
@@ -64,7 +58,7 @@ void Tanim::Draw()
     {
         const TanimSequence::MySequenceItem& item = mySequence.myItems[selectedEntry];
 
-        ImGui::Text("I am a %s, please edit me", SequencerItemTypeNames[item.mType]);
+        ImGui::Text("SequencerItemTypeName: %s", SequencerItemTypeNames[item.mType]);
         // switch (type) ...
 
         ImGui::Text("item.mType:       %d", item.mType);

@@ -7,7 +7,7 @@
 namespace tanim
 {
 
-static const char* SequencerItemTypeNames[] = {"Camera", "Music", "ScreenEffect", "FadeIn", "Animation"};
+static const char* SequencerItemTypeNames[] = {"Position"};
 
 struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
 {
@@ -80,7 +80,7 @@ struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
                     const ImRect& clippingRect,
                     const ImRect& legendClippingRect) override
     {
-        static const char* labels[] = {"Translation", "Rotation", "Scale"};
+        static const char* labels[] = {"X", "Y", "Z"};
 
         draw_list->PushClipRect(legendClippingRect.Min, legendClippingRect.Max, true);
         for (int i = 0; i < 3; i++)
