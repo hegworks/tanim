@@ -1,8 +1,7 @@
 #include "../include/tanim.hpp"
 
-#include "../include/tanimguizmo/tanim_sequencer.h"
 #include "../include/tanimguizmo/tanim_curve_edit.h"
-#include "../include/tanimgui_includes.h"
+#include "../include/tanimguizmo/tanim_sequencer.h"
 
 #include <vector>
 #include <algorithm>
