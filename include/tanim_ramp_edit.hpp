@@ -46,6 +46,7 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 
     int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) override
     {
+        value.x = floorf(value.x);
         mPts[curveIndex][pointIndex] = ImVec2(value.x, value.y);
         SortValues(curveIndex);
         for (size_t i = 0; i < GetPointCount(curveIndex); i++)

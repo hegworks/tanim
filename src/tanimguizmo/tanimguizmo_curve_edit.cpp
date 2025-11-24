@@ -291,7 +291,7 @@ int Edit(Delegate& delegate,
             // display point value near point
             char point_val_text[512];
             const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
-            ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.2f,%.2f", pts[p].x, pts[p].y);
+            ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", pts[p].x, pts[p].y);
             draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
 
             if (drawState && movingCurve == -1 && !selectingQuad)
