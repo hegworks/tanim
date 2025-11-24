@@ -84,4 +84,16 @@ int Edit(Delegate& delegate,
          unsigned int id,
          const ImRect* clippingRect = NULL,
          ImVector<EditPoint>* selectedPoints = NULL);
+
+static ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max);
+
+ImVec2 SampleCurveForDrawing(const ImVec2* pts,
+                             size_t ptCount,
+                             float t,
+                             CurveType curveType,
+                             const ImVec2& min,
+                             const ImVec2& max);
+
+float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, int frame, CurveType curveType);
+
 }  // namespace tanimguizmo_curve_edit

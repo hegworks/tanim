@@ -65,6 +65,24 @@ void Tanim::Draw()
         ImGui::Text("item.mExpanded:   %i", item.mExpanded);
         ImGui::Text("item.mFrameStart: %d", item.mFrameStart);
         ImGui::Text("item.mFrameEnd:   %d", item.mFrameEnd);
+
+        float sampledX = tanimguizmo_curve_edit::SampleCurveForAnimation(mySequence.rampEdit.GetPoints(0),
+                                                                         mySequence.rampEdit.GetPointCount(0),
+                                                                         currentFrame,
+                                                                         mySequence.rampEdit.GetCurveType(0));
+
+        float sampledY = tanimguizmo_curve_edit::SampleCurveForAnimation(mySequence.rampEdit.GetPoints(1),
+                                                                         mySequence.rampEdit.GetPointCount(1),
+                                                                         currentFrame,
+                                                                         mySequence.rampEdit.GetCurveType(1));
+
+        float sampledZ = tanimguizmo_curve_edit::SampleCurveForAnimation(mySequence.rampEdit.GetPoints(2),
+                                                                         mySequence.rampEdit.GetPointCount(2),
+                                                                         currentFrame,
+                                                                         mySequence.rampEdit.GetCurveType(2));
+        ImGui::Text("X: %.4f", sampledX);
+        ImGui::Text("Y: %.4f", sampledY);
+        ImGui::Text("Z: %.4f", sampledZ);
     }
 
     ImGui::End();

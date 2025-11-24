@@ -235,20 +235,16 @@ int Edit(Delegate& delegate,
 
             if (curveType == CurveSmooth || curveType == CurveLinear)
             {
-                size_t subStepCount = (curveType == CurveSmooth) ? 20 : 2;
+                size_t subStepCount = (curveType == CurveSmooth) ? 20 : 2;  // TODO(tanim) hardcoded 20
                 float step = 1.f / float(subStepCount - 1);
+
                 for (size_t substep = 0; substep < subStepCount - 1; substep++)
                 {
-                    float t = float(substep) * step;
+                    float t1 = float(p + float(substep) * step) / float(ptCount - 1);
+                    float t2 = float(p + float(substep + 1) * step) / float(ptCount - 1);
 
-                    const ImVec2 sp1 = ImLerp(p1, p2, t);
-                    const ImVec2 sp2 = ImLerp(p1, p2, t + step);
-
-                    const float rt1 = smoothstep(p1.x, p2.x, sp1.x);
-                    const float rt2 = smoothstep(p1.x, p2.x, sp2.x);
-
-                    const ImVec2 pos1 = ImVec2(sp1.x, ImLerp(p1.y, p2.y, rt1)) * viewSize + offset;
-                    const ImVec2 pos2 = ImVec2(sp2.x, ImLerp(p1.y, p2.y, rt2)) * viewSize + offset;
+                    const ImVec2 pos1 = SampleCurveForDrawing(pts, ptCount, t1, curveType, min, max) * viewSize + offset;
+                    const ImVec2 pos2 = SampleCurveForDrawing(pts, ptCount, t2, curveType, min, max) * viewSize + offset;
 
                     if (distance(io.MousePos.x, io.MousePos.y, pos1.x, pos1.y, pos2.x, pos2.y) < 8.f && !scrollingV)
                     {
@@ -256,7 +252,6 @@ int Edit(Delegate& delegate,
                         overCurve = int(c);
                         overCurveOrPoint = true;
                     }
-
                     draw_list->AddLine(pos1, pos2, curveColor, 1.3f);
                 }  // substep
             }
@@ -288,11 +283,12 @@ int Edit(Delegate& delegate,
                           offset,
                           (selection.find({int(c), int(p)}) != selection.end() && movingCurve == -1 && !scrollingV));
 
-            // display point value near point
-            char point_val_text[512];
-            const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
-            ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", pts[p].x, pts[p].y);
-            draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
+            {  // display point value near point
+                char point_val_text[512];
+                const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
+                ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", pts[p].x, pts[p].y);
+                draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
+            }
 
             if (drawState && movingCurve == -1 && !selectingQuad)
             {
@@ -459,4 +455,69 @@ int Edit(Delegate& delegate,
     _freea(curvesIndex);
     return ret;
 }
+
+ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max) { return (point - min) / (max - min); }
+
+ImVec2 SampleCurveForDrawing(const ImVec2* pts,
+                             size_t ptCount,
+                             float t,
+                             CurveType curveType,
+                             const ImVec2& min,
+                             const ImVec2& max)
+{
+    t = ImClamp(t, 0.0f, 1.0f);
+    float segmentFloat = t * (ptCount - 1);
+    size_t segmentIndex = (size_t)segmentFloat;
+
+    if (segmentIndex >= ptCount - 1)
+    {
+        segmentIndex = ptCount - 2;
+        segmentFloat = (float)(ptCount - 1);
+    }
+
+    const ImVec2 p1 = PointToRange(pts[segmentIndex], min, max + ImVec2(1.f, 0.f));
+    const ImVec2 p2 = PointToRange(pts[segmentIndex + 1], min, max + ImVec2(1.f, 0.f));
+
+    float localT = segmentFloat - (float)segmentIndex;
+
+    if (curveType == CurveLinear)
+    {
+        return ImLerp(p1, p2, localT);
+    }
+    else if (curveType == CurveSmooth)
+    {
+        float smoothT = smoothstep(0.0f, 1.0f, localT);
+        return ImVec2(ImLerp(p1.x, p2.x, localT), ImLerp(p1.y, p2.y, smoothT));
+    }
+
+    return p1;
+}
+
+float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, int frame, CurveType curveType)
+{
+    const float frameF = static_cast<float>(frame);
+    for (size_t i = 0; i < ptCount - 1; i++)
+    {
+        if (frameF >= pts[i].x && frameF <= pts[i + 1].x)
+        {
+            const float segmentT = (frameF - pts[i].x) / (pts[i + 1].x - pts[i].x);
+
+            if (curveType == CurveLinear)
+            {
+                return ImLerp(pts[i].y, pts[i + 1].y, segmentT);
+            }
+            else if (curveType == CurveSmooth)
+            {
+                const float smoothT = smoothstep(0.0f, 1.0f, segmentT);
+                return ImLerp(pts[i].y, pts[i + 1].y, smoothT);
+            }
+        }
+    }
+
+    if (frameF <= pts[0].x) return pts[0].y;
+    if (frameF >= pts[ptCount - 1].x) return pts[ptCount - 1].y;
+
+    return pts[0].y;
+}
+
 }  // namespace tanimguizmo_curve_edit

@@ -39,9 +39,10 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 
     ImVec2* GetPoints(size_t curveIndex) override { return mPts[curveIndex]; }
 
-    tanimguizmo_curve_edit::CurveType GetCurveType(size_t /*curveIndex*/) const override
+    tanimguizmo_curve_edit::CurveType GetCurveType(size_t curveIndex) const override
     {
-        return tanimguizmo_curve_edit::CurveType::CurveLinear;
+        IM_UNUSED(curveIndex);  // TODO(tanim)
+        return tanimguizmo_curve_edit::CurveType::CurveSmooth;
     }
 
     int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) override
