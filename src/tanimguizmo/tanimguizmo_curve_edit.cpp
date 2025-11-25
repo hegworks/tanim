@@ -493,14 +493,14 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
     return p1;
 }
 
-float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, int frame, CurveType curveType)
+// TODO(tanim) this should not get the CurveType, it should detect the curve between segments itself
+float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, CurveType curveType)
 {
-    const float frameF = static_cast<float>(frame);
     for (size_t i = 0; i < ptCount - 1; i++)
     {
-        if (frameF >= pts[i].x && frameF <= pts[i + 1].x)
+        if (time >= pts[i].x && time <= pts[i + 1].x)
         {
-            const float segmentT = (frameF - pts[i].x) / (pts[i + 1].x - pts[i].x);
+            const float segmentT = (time - pts[i].x) / (pts[i + 1].x - pts[i].x);
 
             if (curveType == CurveLinear)
             {
@@ -514,8 +514,8 @@ float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, int frame, Curv
         }
     }
 
-    if (frameF <= pts[0].x) return pts[0].y;
-    if (frameF >= pts[ptCount - 1].x) return pts[ptCount - 1].y;
+    if (time <= pts[0].x) return pts[0].y;
+    if (time >= pts[ptCount - 1].x) return pts[ptCount - 1].y;
 
     return pts[0].y;
 }

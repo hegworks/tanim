@@ -94,6 +94,6 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
                              const ImVec2& min,
                              const ImVec2& max);
 
-float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, int frame, CurveType curveType);
+float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, CurveType curveType);
 
 }  // namespace tanimguizmo_curve_edit
