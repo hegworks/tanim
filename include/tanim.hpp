@@ -29,6 +29,10 @@ private:
 
     static void Play();
     static void Pause();
+
+    static float FrameToSeconds(int frame);
+    static int SecondsToFrame(float time);
+    static float SecondsToSampleTime(float time);
 };
 
 }  // namespace tanim

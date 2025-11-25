@@ -3,7 +3,7 @@
 #include "../include/tanimguizmo/tanimguizmo_curve_edit.h"
 #include "../include/tanim_sequence.hpp"
 
-// REF: initially based on imguizmo example
+// REF: initially based on the imguizmo example, but changed a lot over time
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 namespace tanim
@@ -20,6 +20,16 @@ void Tanim::Init()
 void Tanim::Play() { playerPlaying = true; }
 
 void Tanim::Pause() { playerPlaying = false; }
+
+int Tanim::SecondsToFrame(float time) { return (int)floorf(time * (float)samplesPS); }
+
+float Tanim::SecondsToSampleTime(float time) { return time * (float)samplesPS; }
+
+float Tanim::FrameToSeconds(int frame)
+{
+    float tickTime = 1.0f / (float)samplesPS;
+    return (float)frame * tickTime;
+}
 
 void Tanim::Update(float dt)
 {
@@ -78,6 +88,15 @@ void Tanim::Draw()
 
     ImGui::End();
 
+    if (playerPlaying)
+    {
+        currentFrame = SecondsToFrame(playerTime);
+    }
+    else
+    {
+        playerTime = FrameToSeconds(currentFrame);
+    }
+
     ImGui::Begin("tanim_sequence");
 
     ImGui::Text("mySequence.focused:   %d", mySequence.focused);
@@ -103,19 +122,21 @@ void Tanim::Draw()
         ImGui::Text("item.mFrameStart: %d", item.mFrameStart);
         ImGui::Text("item.mFrameEnd:   %d", item.mFrameEnd);
 
+        float sampleTime = playerPlaying ? SecondsToSampleTime(playerTime) : (float)currentFrame;
+
         float sampledX = tanimguizmo_curve_edit::SampleCurveForAnimation(mySequence.rampEdit.GetPoints(0),
                                                                          mySequence.rampEdit.GetPointCount(0),
-                                                                         (float)currentFrame,
+                                                                         sampleTime,
                                                                          mySequence.rampEdit.GetCurveType(0));
 
         float sampledY = tanimguizmo_curve_edit::SampleCurveForAnimation(mySequence.rampEdit.GetPoints(1),
                                                                          mySequence.rampEdit.GetPointCount(1),
-                                                                         (float)currentFrame,
+                                                                         sampleTime,
                                                                          mySequence.rampEdit.GetCurveType(1));
 
         float sampledZ = tanimguizmo_curve_edit::SampleCurveForAnimation(mySequence.rampEdit.GetPoints(2),
                                                                          mySequence.rampEdit.GetPointCount(2),
-                                                                         (float)currentFrame,
+                                                                         sampleTime,
                                                                          mySequence.rampEdit.GetCurveType(2));
         ImGui::Text("X: %.4f", sampledX);
         ImGui::Text("Y: %.4f", sampledY);
