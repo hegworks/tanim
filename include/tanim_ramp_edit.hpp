@@ -47,9 +47,26 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 
     int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) override
     {
+        // TanimAddition
         value.x = floorf(value.x);
+
+        // TanimAddition
+        // return early if the keyframes are in the same frame
+        if (pointIndex + 1 < (int)GetPointCount(curveIndex) && (int)mPts[curveIndex][pointIndex + 1].x == (int)value.x)
+        {
+            return pointIndex;
+        }
+        if (pointIndex - 1 > 0 && (int)mPts[curveIndex][pointIndex - 1].x == (int)value.x)
+        {
+            return pointIndex;
+        }
+
         mPts[curveIndex][pointIndex] = ImVec2(value.x, value.y);
         SortValues(curveIndex);
+
+        // TanimAddition
+        mPts[curveIndex][0].x = 0;
+
         for (size_t i = 0; i < GetPointCount(curveIndex); i++)
         {
             if (mPts[curveIndex][i].x == value.x) return (int)i;
