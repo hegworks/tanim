@@ -59,20 +59,9 @@ void Tanim::Draw()
 
     ImGui::Begin("controls");
 
-    ImGui::PushItemWidth(100);
-
-    ImGui::InputInt("Frame", &m_player_frame);
-    m_player_frame = ImMax(0, m_player_frame);
-    ImGui::SameLine();
-    ImGui::DragInt("MaxFrame", &m_timeline.m_last_frame, 0.1f, m_timeline.GetFirstFrame());
-    ImGui::SameLine();
-    ImGui::Text(" | ");
-    ImGui::SameLine();
-    ImGui::DragInt("Samples", &m_player_samples, 0.1f, m_timeline.GetFirstFrame());
-    ImGui::SameLine();
     if (!m_player_playing)
     {
-        if (ImGui::SmallButton("Play"))
+        if (ImGui::Button("Play", {50, 0}))
         {
             m_player_time = 0;
             Play();
@@ -80,13 +69,33 @@ void Tanim::Draw()
     }
     else
     {
-        if (ImGui::SmallButton("Pause"))
+        if (ImGui::Button("Pause", {50, 0}))
         {
             Pause();
         }
     }
+
     ImGui::SameLine();
-    ImGui::Text("Time %.2f", m_player_time);
+    ImGui::Text(" | ");
+    ImGui::SameLine();
+
+    ImGui::PushItemWidth(100);
+    ImGui::DragInt("Samples", &m_player_samples, 0.1f, m_timeline.GetFirstFrame());
+
+    ImGui::SameLine();
+    ImGui::Text(" | ");
+    ImGui::SameLine();
+
+    m_player_samples = ImMax(0, m_player_samples);
+    ImGui::InputInt("Frame", &m_player_frame);
+    m_player_frame = ImMax(0, m_player_frame);
+
+    ImGui::SameLine();
+    ImGui::Text(" | ");
+    ImGui::SameLine();
+
+    ImGui::DragInt("MaxFrame", &m_timeline.m_last_frame, 0.1f, m_timeline.GetFirstFrame());
+    m_timeline.m_last_frame = ImMax(1, m_timeline.m_last_frame);
 
     ImGui::PopItemWidth();
 
