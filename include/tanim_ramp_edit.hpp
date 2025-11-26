@@ -48,6 +48,7 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
     int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) override
     {
         // TanimAddition
+        // snap the time (x) of keyframes to integers
         value.x = floorf(value.x);
 
         // TanimAddition
@@ -65,7 +66,10 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
         SortValues(curveIndex);
 
         // TanimAddition
+        // force the first keyframe time (x) to 0
         mPts[curveIndex][0].x = 0;
+        // force the last keyframe time (x) to the sequence's last frame
+        mPts[curveIndex][GetPointCount(curveIndex) - 1].x = (float)mSequenceFrameEnd;
 
         for (size_t i = 0; i < GetPointCount(curveIndex); i++)
         {
@@ -94,11 +98,18 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 
     unsigned int GetBackgroundColor() override { return 0; }
 
+    void SequenceFrameEndEdit(int newFrameEnd)
+    {
+        mSequenceFrameEnd = newFrameEnd;
+        ClampLastPointsToFrameEnd();
+    }
+
     ImVec2 mPts[3][8];
     size_t mPointCount[3];
     bool mbVisible[3];
     ImVec2 mMin{0, -1.5f};
     ImVec2 mMax{500, 1.5f};
+    int mSequenceFrameEnd{1};
 
 private:
     void SortValues(size_t curveIndex)
@@ -106,6 +117,15 @@ private:
         auto b = std::begin(mPts[curveIndex]);
         auto e = std::begin(mPts[curveIndex]) + GetPointCount(curveIndex);
         std::sort(b, e, [](ImVec2 a, ImVec2 b) { return a.x < b.x; });
+    }
+
+    void ClampLastPointsToFrameEnd()
+    {
+        for (size_t i = 0; i < GetCurveCount(); i++)
+        {
+            mPts[i][GetPointCount(i) - 1].x = (float)mSequenceFrameEnd;
+            SortValues(i);
+        }
     }
 };
 

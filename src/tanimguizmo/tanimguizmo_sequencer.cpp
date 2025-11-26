@@ -451,6 +451,7 @@ bool Sequencer(SequenceInterface* sequence,
             {
                 int *start, *end;
                 sequence->Get(movingEntry, &start, &end, NULL, NULL);
+                int rOld = *end;
                 if (selectedEntry) *selectedEntry = movingEntry;
                 int& l = *start;
                 int& r = *end;
@@ -463,6 +464,16 @@ bool Sequencer(SequenceInterface* sequence,
                 }
                 if (movingPart & 1 && l > r) l = r;
                 if (movingPart & 2 && r < l) r = l;
+
+                // TanimAddition
+                // force the FrameStart to 0
+                l = 0;
+                // if FrameEnd has changed, report it to the sequence
+                if (rOld != r)
+                {
+                    sequence->EditFrameEnd(r);
+                }
+
                 movingPos += int(diffFrame * framePixelWidth);
             }
             if (!io.MouseDown[0])
@@ -715,4 +726,4 @@ bool Sequencer(SequenceInterface* sequence,
     }
     return ret;
 }
-}  // namespace tanim_sequencer
+}  // namespace tanimguizmo_sequencer

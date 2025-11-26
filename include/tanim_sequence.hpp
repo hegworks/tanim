@@ -114,6 +114,18 @@ struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
         }
         draw_list->PopClipRect();
     }
+
+    void BeginEdit(int) override { /*TODO(tanim)*/ }
+
+    void EndEdit() override { /*TODO(tanim)*/ }
+
+    void Copy() override { /*TODO(tanim)*/ }
+
+    void Paste() override { /*TODO(tanim)*/ }
+
+    void EditFrameStart(int /*newMin*/) override { /*TODO(tanim)*/ }
+
+    void EditFrameEnd(int newMax) override { rampEdit.SequenceFrameEndEdit(newMax); }
 };
 
 }  // namespace tanim

@@ -15,6 +15,7 @@ void Tanim::Init()
     mySequence.mFrameMin = 0;
     mySequence.mFrameMax = 500;
     mySequence.myItems.push_back(TanimSequence::MySequenceItem{0, 0, 10, true});
+    mySequence.rampEdit.SequenceFrameEndEdit(10);
 }
 
 void Tanim::Play() { playerPlaying = true; }
@@ -36,6 +37,10 @@ void Tanim::Update(float dt)
     if (playerPlaying)
     {
         playerTime += dt;
+        if (playerTime > FrameToSeconds(mySequence.rampEdit.mSequenceFrameEnd))
+        {
+            playerTime = 0;
+        }
     }
 }
 

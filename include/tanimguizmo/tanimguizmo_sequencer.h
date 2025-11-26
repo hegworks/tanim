@@ -63,6 +63,9 @@ struct SequenceInterface
     virtual void Del(int /*index*/) {}
     virtual void Duplicate(int /*index*/) {}
 
+    virtual void EditFrameStart(int newStart) = 0;
+    virtual void EditFrameEnd(int newEnd) = 0;
+
     virtual void Copy() {}
     virtual void Paste() {}
 
