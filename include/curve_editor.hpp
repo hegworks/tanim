@@ -34,13 +34,13 @@ struct ImRect;
 namespace tanim::curve_editor
 {
 
-enum CurveType
+enum class LerpType
 {
-    CurveNone,
-    CurveDiscrete,
-    CurveLinear,
-    CurveSmooth,
-    CurveBezier,
+    NONE,
+    DISCRETE,
+    LINEAR,
+    SMOOTH,
+    BEZIER,
 };
 
 struct EditPoint
@@ -61,15 +61,15 @@ struct Delegate
 {
     bool focused = false;
     virtual size_t GetCurveCount() = 0;
-    virtual bool IsVisible(size_t /*curveIndex*/) { return true; }
-    virtual CurveType GetCurveType(size_t /*curveIndex*/) const { return CurveLinear; }
-    virtual ImVec2& GetMin() = 0;
-    virtual ImVec2& GetMax() = 0;
-    virtual void SetMin(ImVec2 min) = 0;
-    virtual void SetMax(ImVec2 max) = 0;
-    virtual size_t GetPointCount(size_t curveIndex) = 0;
+    virtual bool IsCurveVisible(size_t /*curveIndex*/) { return true; }
+    virtual LerpType GetCurveLerpType(size_t /*curveIndex*/) const { return LerpType::LINEAR; }
+    virtual ImVec2& GetMinPointValue() = 0;
+    virtual ImVec2& GetMaxPointValue() = 0;
+    virtual void SetMinPointValue(ImVec2 min) = 0;
+    virtual void SetMaxPointValue(ImVec2 max) = 0;
+    virtual size_t GetCurvePointCount(size_t curveIndex) = 0;
     virtual uint32_t GetCurveColor(size_t curveIndex) = 0;
-    virtual ImVec2* GetPoints(size_t curveIndex) = 0;
+    virtual ImVec2* GetCurvePointsList(size_t curveIndex) = 0;
     virtual int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) = 0;
     virtual void AddPoint(size_t curveIndex, ImVec2 value) = 0;
     virtual unsigned int GetBackgroundColor() { return 0xFF202020; }
@@ -91,10 +91,10 @@ static ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2&
 ImVec2 SampleCurveForDrawing(const ImVec2* pts,
                              size_t ptCount,
                              float t,
-                             CurveType curveType,
+                             LerpType curveType,
                              const ImVec2& min,
                              const ImVec2& max);
 
-float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, CurveType curveType);
+float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, LerpType curveType);
 
 }  // namespace tanim::curve_editor

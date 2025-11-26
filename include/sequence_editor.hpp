@@ -47,24 +47,24 @@ enum SEQUENCER_OPTIONS
 struct SequenceInterface
 {
     bool focused = false;
-    virtual int GetFrameMin() const = 0;
-    virtual int GetFrameMax() const = 0;
-    virtual int GetItemCount() const = 0;
+    virtual int GetFirstFrame() const = 0;
+    virtual int GetLastFrame() const = 0;
+    virtual int GetSequenceCount() const = 0;
 
     virtual void BeginEdit(int /*index*/) {}
     virtual void EndEdit() {}
-    virtual int GetItemTypeCount() const { return 0; }
-    virtual const char* GetItemTypeName(int /*typeIndex*/) const { return ""; }
-    virtual const char* GetItemLabel(int /*index*/) const { return ""; }
+    virtual int GetSequenceTypeCount() const { return 0; }
+    virtual const char* GetSequenceTypeName(int /*typeIndex*/) const { return ""; }
+    virtual const char* GetSequenceLabel(int /*index*/) const { return ""; }
     virtual const char* GetCollapseFmt() const { return "%d Frames / %d entries"; }
 
-    virtual void Get(int index, int** start, int** end, int* type, unsigned int* color) = 0;
-    virtual void Add(int /*type*/) {}
-    virtual void Del(int /*index*/) {}
+    virtual void MultiGet(int index, int** start, int** end, int* type, unsigned int* color) = 0;
+    virtual void AddSequence(int /*type*/) {}
+    virtual void DeleteSequence(int /*index*/) {}
     virtual void Duplicate(int /*index*/) {}
 
-    virtual void EditFrameStart(int newStart) = 0;
-    virtual void EditFrameEnd(int newEnd) = 0;
+    virtual void EditFirstFrame(int newStart) = 0;
+    virtual void EditLastFrame(int newEnd) = 0;
 
     virtual void Copy() {}
     virtual void Paste() {}

@@ -153,8 +153,8 @@ int Edit(Delegate& delegate,
     const ImVec2 offset = ImGui::GetCursorScreenPos() + ImVec2(0.f, size.y);
     const ImVec2 ssize(size.x, -size.y);
     const ImRect container(offset + ImVec2(0.f, ssize.y), offset + ImVec2(ssize.x, 0.f));
-    ImVec2& min = delegate.GetMin();
-    ImVec2& max = delegate.GetMax();
+    ImVec2& min = delegate.GetMinPointValue();
+    ImVec2& max = delegate.GetMaxPointValue();
 
     // handle zoom and VScroll
     if (container.Contains(io.MousePos))
@@ -172,8 +172,8 @@ int Edit(Delegate& delegate,
             };
             min.y = scaleValue(min.y);
             max.y = scaleValue(max.y);
-            delegate.SetMin(min);
-            delegate.SetMax(max);
+            delegate.SetMinPointValue(min);
+            delegate.SetMaxPointValue(max);
         }
         if (!scrollingV && ImGui::IsMouseDown(2))
         {
@@ -219,12 +219,12 @@ int Edit(Delegate& delegate,
     for (size_t cur = 0; cur < curveCount; cur++)
     {
         int c = curvesIndex[cur];
-        if (!delegate.IsVisible(c)) continue;
-        const size_t ptCount = delegate.GetPointCount(c);
+        if (!delegate.IsCurveVisible(c)) continue;
+        const size_t ptCount = delegate.GetCurvePointCount(c);
         if (ptCount < 1) continue;
-        CurveType curveType = delegate.GetCurveType(c);
-        if (curveType == CurveNone) continue;
-        const ImVec2* pts = delegate.GetPoints(c);
+        LerpType curveType = delegate.GetCurveLerpType(c);
+        if (curveType == LerpType::NONE) continue;
+        const ImVec2* pts = delegate.GetCurvePointsList(c);
         uint32_t curveColor = delegate.GetCurveColor(c);
         if ((c == highLightedCurveIndex && selection.empty() && !selectingQuad) || movingCurve == c) curveColor = 0xFFFFFFFF;
 
@@ -233,9 +233,9 @@ int Edit(Delegate& delegate,
             const ImVec2 p1 = pointToRange(pts[p]);
             const ImVec2 p2 = pointToRange(pts[p + 1]);
 
-            if (curveType == CurveSmooth || curveType == CurveLinear)
+            if (curveType == LerpType::SMOOTH || curveType == LerpType::LINEAR)
             {
-                size_t subStepCount = (curveType == CurveSmooth) ? 20 : 2;  // TODO(tanim) hardcoded 20
+                size_t subStepCount = (curveType == LerpType::SMOOTH) ? 20 : 2;  // TODO(tanim) hardcoded 20
                 float step = 1.f / float(subStepCount - 1);
 
                 for (size_t substep = 0; substep < subStepCount - 1; substep++)
@@ -255,7 +255,7 @@ int Edit(Delegate& delegate,
                     draw_list->AddLine(pos1, pos2, curveColor, 1.3f);
                 }  // substep
             }
-            else if (curveType == CurveDiscrete)
+            else if (curveType == LerpType::DISCRETE)
             {
                 ImVec2 dp1 = p1 * viewSize + offset;
                 ImVec2 dp2 = ImVec2(p2.x, p1.y) * viewSize + offset;
@@ -322,7 +322,7 @@ int Edit(Delegate& delegate,
                 int index = 0;
                 for (auto& sel : selection)
                 {
-                    const ImVec2* pts = delegate.GetPoints(sel.curveIndex);
+                    const ImVec2* pts = delegate.GetCurvePointsList(sel.curveIndex);
                     originalPoints[index++] = pts[sel.pointIndex];
                 }
             }
@@ -368,8 +368,8 @@ int Edit(Delegate& delegate,
     // move curve
     if (movingCurve != -1)
     {
-        const size_t ptCount = delegate.GetPointCount(movingCurve);
-        const ImVec2* pts = delegate.GetPoints(movingCurve);
+        const size_t ptCount = delegate.GetCurvePointCount(movingCurve);
+        const ImVec2* pts = delegate.GetCurvePointsList(movingCurve);
         if (!pointsMoved)
         {
             mousePosOrigin = io.MousePos;
@@ -418,12 +418,12 @@ int Edit(Delegate& delegate,
             // select everythnig is quad
             for (size_t c = 0; c < curveCount; c++)
             {
-                if (!delegate.IsVisible(c)) continue;
+                if (!delegate.IsCurveVisible(c)) continue;
 
-                const size_t ptCount = delegate.GetPointCount(c);
+                const size_t ptCount = delegate.GetCurvePointCount(c);
                 if (ptCount < 1) continue;
 
-                const ImVec2* pts = delegate.GetPoints(c);
+                const ImVec2* pts = delegate.GetCurvePointsList(c);
                 for (size_t p = 0; p < ptCount; p++)
                 {
                     const ImVec2 center = pointToRange(pts[p]) * viewSize + offset;
@@ -461,7 +461,7 @@ ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max) {
 ImVec2 SampleCurveForDrawing(const ImVec2* pts,
                              size_t ptCount,
                              float t,
-                             CurveType curveType,
+                             LerpType curveType,
                              const ImVec2& min,
                              const ImVec2& max)
 {
@@ -480,11 +480,11 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
 
     float localT = segmentFloat - (float)segmentIndex;
 
-    if (curveType == CurveLinear)
+    if (curveType == LerpType::LINEAR)
     {
         return ImLerp(p1, p2, localT);
     }
-    else if (curveType == CurveSmooth)
+    else if (curveType == LerpType::SMOOTH)
     {
         float smoothT = smoothstep(0.0f, 1.0f, localT);
         return ImVec2(ImLerp(p1.x, p2.x, localT), ImLerp(p1.y, p2.y, smoothT));
@@ -494,7 +494,7 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
 }
 
 // TODO(tanim) this should not get the CurveType, it should detect the curve between segments itself
-float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, CurveType curveType)
+float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, LerpType curveType)
 {
     for (size_t i = 0; i < ptCount - 1; i++)
     {
@@ -502,11 +502,11 @@ float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, Cur
         {
             const float segmentT = (time - pts[i].x) / (pts[i + 1].x - pts[i].x);
 
-            if (curveType == CurveLinear)
+            if (curveType == LerpType::LINEAR)
             {
                 return ImLerp(pts[i].y, pts[i + 1].y, segmentT);
             }
-            else if (curveType == CurveSmooth)
+            else if (curveType == LerpType::SMOOTH)
             {
                 const float smoothT = smoothstep(0.0f, 1.0f, segmentT);
                 return ImLerp(pts[i].y, pts[i + 1].y, smoothT);

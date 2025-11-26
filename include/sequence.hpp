@@ -7,70 +7,71 @@
 namespace tanim
 {
 
-static const char* SequencerItemTypeNames[] = {"Position"};
+static const char* SequenceTypeNames[] = {"Position"};
 
-struct TanimSequence : public sequence_editor::SequenceInterface
+struct Timeline : public sequence_editor::SequenceInterface
 {
-    // interface with sequencer
-
-    // my datas
-    TanimSequence() : mFrameMin(0), mFrameMax(0) {}
-    int mFrameMin, mFrameMax;
-
-    struct MySequenceItem
+    struct SequenceData
     {
-        int mType;
-        int mFrameStart, mFrameEnd;
-        bool mExpanded;
+        int m_type{0};
+        int m_first_frame{0};
+        int m_last_frame{60};
+        bool m_expanded{true};
     };
 
-    std::vector<MySequenceItem> myItems;
+    int m_first_frame{0};
+    int m_last_frame{500};
 
-    TanimRampEdit rampEdit;
+    std::vector<SequenceData> m_sequence_datas;
 
-    int GetFrameMin() const override { return mFrameMin; }
+    Sequence m_sequence;
 
-    int GetFrameMax() const override { return mFrameMax; }
+    int GetFirstFrame() const override { return 0; }
 
-    int GetItemCount() const override { return (int)myItems.size(); }
+    int GetLastFrame() const override { return m_last_frame; }
 
-    int GetItemTypeCount() const override { return sizeof(SequencerItemTypeNames) / sizeof(char*); }
+    int GetSequenceCount() const override { return (int)m_sequence_datas.size(); }
 
-    const char* GetItemTypeName(int typeIndex) const override { return SequencerItemTypeNames[typeIndex]; }
+    int GetSequenceTypeCount() const override { return sizeof(SequenceTypeNames) / sizeof(char*); }
 
-    const char* GetItemLabel(int index) const override
+    const char* GetSequenceTypeName(int typeIndex) const override { return SequenceTypeNames[typeIndex]; }
+
+    const char* GetSequenceLabel(int index) const override
     {
         static char tmps[512];
-        snprintf(tmps, 512, "[%02d] %s", index, SequencerItemTypeNames[myItems[index].mType]);
+        snprintf(tmps, 512, "[%02d] %s", index, SequenceTypeNames[m_sequence_datas[index].m_type]);
         return tmps;
     }
 
-    void Get(int index, int** start, int** end, int* type, unsigned int* color) override
+    // TODO(tanim) replace this abomination with separate getters & setters
+    void MultiGet(int index, int** start, int** end, int* type, unsigned int* color) override
     {
-        MySequenceItem& item = myItems[index];
+        SequenceData& item = m_sequence_datas[index];
         if (color) *color = 0xFFAA8080;  // same color for everyone, return color based on type
-        if (start) *start = &item.mFrameStart;
-        if (end) *end = &item.mFrameEnd;
-        if (type) *type = item.mType;
+        if (start) *start = &item.m_first_frame;
+        if (end) *end = &item.m_last_frame;
+        if (type) *type = item.m_type;
     }
 
-    void Add(int type) override { myItems.push_back(MySequenceItem{type, 0, 10, false}); }
+    void AddSequence(int type) override { m_sequence_datas.push_back({type}); }
 
-    void Del(int index) override { myItems.erase(myItems.begin() + index); }
+    void DeleteSequence(int index) override { m_sequence_datas.erase(m_sequence_datas.begin() + index); }
 
-    void Duplicate(int index) override { myItems.push_back(myItems[index]); }
+    // TanimAddition
+    // duplicate didn't make sense in my case, so I removed the functionality
+    void Duplicate(int /*index*/) override { /*m_sequence_datas.push_back(m_sequence_datas[index]);*/ }
 
-    size_t GetCustomHeight(int index) override { return myItems[index].mExpanded ? 300 : 0; }
+    size_t GetCustomHeight(int index) override { return m_sequence_datas[index].m_expanded ? 300 : 0; }
 
     void DoubleClick(int index) override
     {
-        if (myItems[index].mExpanded)
+        if (m_sequence_datas[index].m_expanded)
         {
-            myItems[index].mExpanded = false;
+            m_sequence_datas[index].m_expanded = false;
             return;
         }
-        for (auto& item : myItems) item.mExpanded = false;
-        myItems[index].mExpanded = !myItems[index].mExpanded;
+        for (auto& item : m_sequence_datas) item.m_expanded = false;
+        m_sequence_datas[index].m_expanded = !m_sequence_datas[index].m_expanded;
     }
 
     void CustomDraw(int index,
@@ -87,15 +88,15 @@ struct TanimSequence : public sequence_editor::SequenceInterface
         {
             ImVec2 pta(legendRect.Min.x + 30, legendRect.Min.y + i * 14.f);
             ImVec2 ptb(legendRect.Max.x, legendRect.Min.y + (i + 1) * 14.f);
-            draw_list->AddText(pta, rampEdit.mbVisible[i] ? 0xFFFFFFFF : 0x80FFFFFF, labels[i]);
+            draw_list->AddText(pta, m_sequence.m_curve_visibility[i] ? 0xFFFFFFFF : 0x80FFFFFF, labels[i]);
             if (ImRect(pta, ptb).Contains(ImGui::GetMousePos()) && ImGui::IsMouseClicked(0))
-                rampEdit.mbVisible[i] = !rampEdit.mbVisible[i];
+                m_sequence.m_curve_visibility[i] = !m_sequence.m_curve_visibility[i];
         }
         draw_list->PopClipRect();
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        curve_editor::Edit(rampEdit, rcSize, 137 + index, &clippingRect);
+        curve_editor::Edit(m_sequence, rcSize, 137 + index, &clippingRect);
     }
 
     void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
@@ -103,11 +104,11 @@ struct TanimSequence : public sequence_editor::SequenceInterface
         draw_list->PushClipRect(clippingRect.Min, clippingRect.Max, true);
         for (int i = 0; i < 3; i++)
         {
-            for (unsigned int j = 0; j < rampEdit.mPointCount[i]; j++)
+            for (unsigned int j = 0; j < m_sequence.m_curve_point_count[i]; j++)
             {
-                float p = rampEdit.mPts[i][j].x;
-                if (p < myItems[index].mFrameStart || p > myItems[index].mFrameEnd) continue;
-                float r = (p - mFrameMin) / float(mFrameMax - mFrameMin);
+                float p = m_sequence.m_curves_points[i][j].x;
+                if (p < m_sequence_datas[index].m_first_frame || p > m_sequence_datas[index].m_last_frame) continue;
+                float r = (p - m_first_frame) / float(m_last_frame - m_first_frame);
                 float x = ImLerp(rc.Min.x, rc.Max.x, r);
                 draw_list->AddLine(ImVec2(x, rc.Min.y + 6), ImVec2(x, rc.Max.y - 4), 0xAA000000, 4.f);
             }
@@ -115,7 +116,7 @@ struct TanimSequence : public sequence_editor::SequenceInterface
         draw_list->PopClipRect();
     }
 
-    void BeginEdit(int) override { /*TODO(tanim)*/ }
+    void BeginEdit(int /* sequence_idx */) override { /*TODO(tanim)*/ }
 
     void EndEdit() override { /*TODO(tanim)*/ }
 
@@ -123,9 +124,9 @@ struct TanimSequence : public sequence_editor::SequenceInterface
 
     void Paste() override { /*TODO(tanim)*/ }
 
-    void EditFrameStart(int /*newMin*/) override { /*TODO(tanim)*/ }
+    void EditFirstFrame(int /* new_first_frame */) override { /*TODO(tanim)*/ }
 
-    void EditFrameEnd(int newMax) override { rampEdit.SequenceFrameEndEdit(newMax); }
+    void EditLastFrame(int new_last_frame) override { m_sequence.TimelineLastFrameEdit(new_last_frame); }
 };
 
 }  // namespace tanim
