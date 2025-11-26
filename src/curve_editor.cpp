@@ -1,3 +1,6 @@
+// REF (tanim): originally based on the imguizmo's ImCurveEdit.cpp:
+// https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/ImCurveEdit.cpp
+
 // https://github.com/CedricGuillemet/ImGuizmo
 // v1.92.5 WIP
 //
@@ -22,7 +25,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
 #include "tanim/include/curve_editor.hpp"
 #include "tanim/include/includes.hpp"

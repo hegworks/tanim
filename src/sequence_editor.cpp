@@ -1,3 +1,6 @@
+// REF (tanim): originally based on the imguizmo's ImSequencer.cpp:
+// https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/ImSequencer.cpp
+
 // https://github.com/CedricGuillemet/ImGuizmo
 // v1.92.5 WIP
 //
@@ -22,7 +25,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//
 
 #include "tanim/include/sequence_editor.hpp"
 #include "tanim/include/includes.hpp"
@@ -430,7 +432,8 @@ bool Sequencer(SequenceInterface* sequence,
             {
                 ImVec2 rp(canvas_pos.x, contentMin.y + ItemHeight * i + customHeight);
                 ImRect customRect(
-                    rp + ImVec2(legendWidth - (firstFrameUsed - sequence->GetFirstFrame() - 0.5f) * framePixelWidth, float(0.f)),
+                    rp +
+                        ImVec2(legendWidth - (firstFrameUsed - sequence->GetFirstFrame() - 0.5f) * framePixelWidth, float(0.f)),
                     rp + ImVec2(legendWidth + (sequence->GetLastFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
                                 float(ItemHeight)));
                 ImRect clippingRect(rp + ImVec2(float(legendWidth), float(0.f)), rp + ImVec2(canvas_size.x, float(ItemHeight)));
@@ -719,7 +722,8 @@ bool Sequencer(SequenceInterface* sequence,
     if (delEntry != -1)
     {
         sequence->DeleteSequence(delEntry);
-        if (selectedEntry && (*selectedEntry == delEntry || *selectedEntry >= sequence->GetSequenceCount())) *selectedEntry = -1;
+        if (selectedEntry && (*selectedEntry == delEntry || *selectedEntry >= sequence->GetSequenceCount()))
+            *selectedEntry = -1;
     }
 
     if (dupEntry != -1)

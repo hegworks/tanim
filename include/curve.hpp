@@ -1,3 +1,6 @@
+// REF: originally based on the imguizmo's example main.cpp:
+// https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
+
 #pragma once
 #include "tanim/include/curve_editor.hpp"
 

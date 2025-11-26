@@ -1,10 +1,10 @@
+// REF: originally based on the imguizmo's example main.cpp:
+// https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
+
 #include "tanim/include/tanim.hpp"
 
 #include "tanim/include/curve_editor.hpp"
 #include "tanim/include/sequence.hpp"
-
-// REF: initially based on the imguizmo example, but changed a lot over time
-// https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 namespace tanim
 {
