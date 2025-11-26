@@ -6,7 +6,7 @@ Timeline Animation Library based on ImGui & ImGuizmo's ImSequencer.
 
 ## Dependencies
 
-- Dear ImGui
+- Dear ImGui (TODO: specify version)
 
 ## Adding the library
 
