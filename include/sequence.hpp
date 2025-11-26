@@ -1,6 +1,6 @@
 #pragma once
-#include "tanim_ramp_edit.hpp"
-#include "tanimguizmo/tanimguizmo_sequencer.h"
+#include "tanim/include/curve.hpp"
+#include "tanim/include/sequence_editor.hpp"
 
 #include <vector>
 
@@ -9,7 +9,7 @@ namespace tanim
 
 static const char* SequencerItemTypeNames[] = {"Position"};
 
-struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
+struct TanimSequence : public sequence_editor::SequenceInterface
 {
     // interface with sequencer
 
@@ -95,7 +95,7 @@ struct TanimSequence : public tanimguizmo_sequencer::SequenceInterface
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        tanimguizmo_curve_edit::Edit(rampEdit, rcSize, 137 + index, &clippingRect);
+        curve_editor::Edit(rampEdit, rcSize, 137 + index, &clippingRect);
     }
 
     void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override

@@ -24,16 +24,18 @@
 // SOFTWARE.
 //
 
-#include "../../include/tanimguizmo/tanimguizmo_sequencer.h"
-#include "../../include/tanimgui_includes.h"
+#include "tanim/include/sequence_editor.hpp"
+#include "tanim/include/includes.hpp"
 
 #include <cstdlib>
 
-namespace tanimguizmo_sequencer
+namespace tanim::sequence_editor
 {
+
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 static ImVec2 operator+(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x + b.x, a.y + b.y); }
 #endif
+
 static bool SequencerAddDelButton(ImDrawList* draw_list, ImVec2 pos, bool add = true)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -726,4 +728,4 @@ bool Sequencer(SequenceInterface* sequence,
     }
     return ret;
 }
-}  // namespace tanimguizmo_sequencer
+}  // namespace tanim::sequence_editor

@@ -25,14 +25,15 @@
 //
 
 #pragma once
-#include "../tanimgui_includes.h"
+#include "tanim/include/includes.hpp"
 
 #include <stdint.h>
 
 struct ImRect;
 
-namespace tanimguizmo_curve_edit
+namespace tanim::curve_editor
 {
+
 enum CurveType
 {
     CurveNone,
@@ -96,4 +97,4 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
 
 float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, CurveType curveType);
 
-}  // namespace tanimguizmo_curve_edit
+}  // namespace tanim::curve_editor

@@ -1,5 +1,5 @@
 #pragma once
-#include "tanim_sequence.hpp"
+#include "tanim/include/sequence.hpp"
 
 namespace tanim
 {

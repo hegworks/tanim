@@ -30,7 +30,7 @@
 struct ImDrawList;
 struct ImRect;
 
-namespace tanimguizmo_sequencer
+namespace tanim::sequence_editor
 {
 
 enum SEQUENCER_OPTIONS
@@ -97,4 +97,4 @@ bool Sequencer(SequenceInterface* sequence,
                int* firstFrame,
                int sequenceOptions);
 
-}  // namespace tanimguizmo_sequencer
+}  // namespace tanim::sequence_editor

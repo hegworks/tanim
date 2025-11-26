@@ -24,8 +24,8 @@
 // SOFTWARE.
 //
 
-#include "../../include/tanimguizmo/tanimguizmo_curve_edit.h"
-#include "../../include/tanimgui_includes.h"
+#include "tanim/include/curve_editor.hpp"
+#include "tanim/include/includes.hpp"
 
 #include <stdint.h>
 #include <set>
@@ -39,7 +39,7 @@
 #define _freea(x)
 #endif
 
-namespace tanimguizmo_curve_edit
+namespace tanim::curve_editor
 {
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -520,4 +520,4 @@ float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, Cur
     return pts[0].y;
 }
 
-}  // namespace tanimguizmo_curve_edit
+}  // namespace tanim::curve_editor

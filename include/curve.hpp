@@ -1,5 +1,5 @@
 #pragma once
-#include "tanimguizmo/tanimguizmo_curve_edit.h"
+#include "tanim/include/curve_editor.hpp"
 
 #include <algorithm>
 #include <iterator>
@@ -7,7 +7,7 @@
 namespace tanim
 {
 
-struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
+struct TanimRampEdit : public curve_editor::Delegate
 {
     TanimRampEdit()
     {
@@ -39,10 +39,10 @@ struct TanimRampEdit : public tanimguizmo_curve_edit::Delegate
 
     ImVec2* GetPoints(size_t curveIndex) override { return mPts[curveIndex]; }
 
-    tanimguizmo_curve_edit::CurveType GetCurveType(size_t curveIndex) const override
+    curve_editor::CurveType GetCurveType(size_t curveIndex) const override
     {
         IM_UNUSED(curveIndex);  // TODO(tanim)
-        return tanimguizmo_curve_edit::CurveType::CurveSmooth;
+        return curve_editor::CurveType::CurveSmooth;
     }
 
     int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) override
