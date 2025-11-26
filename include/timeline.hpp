@@ -95,9 +95,9 @@ struct Timeline : public timeliner::TimelineInterface
         {
             ImVec2 pta(legendRect.Min.x + 30, legendRect.Min.y + i * 14.f);
             ImVec2 ptb(legendRect.Max.x, legendRect.Min.y + (i + 1) * 14.f);
-            draw_list->AddText(pta, m_sequence.m_curve_visibility[i] ? 0xFFFFFFFF : 0x80FFFFFF, labels[i]);
+            draw_list->AddText(pta, m_sequence.GetCurveVisibility(i) ? 0xFFFFFFFF : 0x80FFFFFF, labels[i]);
             if (ImRect(pta, ptb).Contains(ImGui::GetMousePos()) && ImGui::IsMouseClicked(0))
-                m_sequence.m_curve_visibility[i] = !m_sequence.m_curve_visibility[i];
+                m_sequence.SetCurveVisibility(i, !m_sequence.GetCurveVisibility(i));
         }
         draw_list->PopClipRect();
 
@@ -109,11 +109,11 @@ struct Timeline : public timeliner::TimelineInterface
     void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
     {
         draw_list->PushClipRect(clippingRect.Min, clippingRect.Max, true);
-        for (int i = 0; i < 3; i++)
+        for (int curve_index = 0; curve_index < m_sequence.CurveCount(); curve_index++)
         {
-            for (unsigned int j = 0; j < m_sequence.m_curve_point_count[i]; j++)
+            for (int point_idx = 0; point_idx < m_sequence.GetCurvePointCount(curve_index); point_idx++)
             {
-                float p = m_sequence.m_curves_points[i][j].x;
+                float p = m_sequence.m_curves.at(curve_index).m_points.at(point_idx).x;
                 if (p < m_sequence_datas[index].m_first_frame || p > m_sequence_datas[index].m_last_frame) continue;
                 float r = (p - m_first_frame) / float(m_last_frame - m_first_frame);
                 float x = ImLerp(rc.Min.x, rc.Max.x, r);

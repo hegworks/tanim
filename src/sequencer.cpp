@@ -148,15 +148,15 @@ int Edit(SequenceInterface& delegate,
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_Border, 0);
     ImGui::BeginChild(id, size, ImGuiChildFlags_FrameStyle);
-    delegate.focused = ImGui::IsWindowFocused();
+    delegate.m_focused = ImGui::IsWindowFocused();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     if (clippingRect) draw_list->PushClipRect(clippingRect->Min, clippingRect->Max, true);
 
     const ImVec2 offset = ImGui::GetCursorScreenPos() + ImVec2(0.f, size.y);
     const ImVec2 ssize(size.x, -size.y);
     const ImRect container(offset + ImVec2(0.f, ssize.y), offset + ImVec2(ssize.x, 0.f));
-    ImVec2& min = delegate.GetMinPointValue();
-    ImVec2& max = delegate.GetMaxPointValue();
+    ImVec2 min = delegate.GetMinPointValue();
+    ImVec2 max = delegate.GetMaxPointValue();
 
     // handle zoom and VScroll
     if (container.Contains(io.MousePos))
@@ -186,13 +186,15 @@ int Edit(SequenceInterface& delegate,
 
     const ImVec2 viewSize(size.x, -size.y);
     const ImVec2 sizeOfPixel = ImVec2(1.f, 1.f) / viewSize;
-    const size_t curveCount = delegate.GetCurveCount();
+    const int curveCount = delegate.CurveCount();
 
     if (scrollingV)
     {
         float deltaH = io.MouseDelta.y * range.y * sizeOfPixel.y;
         min.y -= deltaH;
         max.y -= deltaH;
+        delegate.SetMinPointValue(min);
+        delegate.SetMaxPointValue(max);
         if (!ImGui::IsMouseDown(2)) scrollingV = false;
     }
 
@@ -221,12 +223,12 @@ int Edit(SequenceInterface& delegate,
     for (size_t cur = 0; cur < curveCount; cur++)
     {
         int c = curvesIndex[cur];
-        if (!delegate.IsCurveVisible(c)) continue;
+        if (!delegate.GetCurveVisibility(c)) continue;
         const size_t ptCount = delegate.GetCurvePointCount(c);
         if (ptCount < 1) continue;
         LerpType curveType = delegate.GetCurveLerpType(c);
         if (curveType == LerpType::NONE) continue;
-        const ImVec2* pts = delegate.GetCurvePointsList(c);
+        const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(c);
         uint32_t curveColor = delegate.GetCurveColor(c);
         if ((c == highLightedCurveIndex && selection.empty() && !selectingQuad) || movingCurve == c) curveColor = 0xFFFFFFFF;
 
@@ -324,7 +326,7 @@ int Edit(SequenceInterface& delegate,
                 int index = 0;
                 for (auto& sel : selection)
                 {
-                    const ImVec2* pts = delegate.GetCurvePointsList(sel.curveIndex);
+                    const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(sel.curveIndex);
                     originalPoints[index++] = pts[sel.pointIndex];
                 }
             }
@@ -371,7 +373,7 @@ int Edit(SequenceInterface& delegate,
     if (movingCurve != -1)
     {
         const size_t ptCount = delegate.GetCurvePointCount(movingCurve);
-        const ImVec2* pts = delegate.GetCurvePointsList(movingCurve);
+        const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(movingCurve);
         if (!pointsMoved)
         {
             mousePosOrigin = io.MousePos;
@@ -418,15 +420,15 @@ int Edit(SequenceInterface& delegate,
         {
             if (!io.KeyShift) selection.clear();
             // select everythnig is quad
-            for (size_t c = 0; c < curveCount; c++)
+            for (int c = 0; c < curveCount; c++)
             {
-                if (!delegate.IsCurveVisible(c)) continue;
+                if (!delegate.GetCurveVisibility(c)) continue;
 
-                const size_t ptCount = delegate.GetCurvePointCount(c);
+                const int ptCount = delegate.GetCurvePointCount(c);
                 if (ptCount < 1) continue;
 
-                const ImVec2* pts = delegate.GetCurvePointsList(c);
-                for (size_t p = 0; p < ptCount; p++)
+                const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(c);
+                for (int p = 0; p < ptCount; p++)
                 {
                     const ImVec2 center = pointToRange(pts[p]) * viewSize + offset;
                     if (selectionQuad.Contains(center)) selection.insert({int(c), int(p)});
@@ -460,7 +462,7 @@ int Edit(SequenceInterface& delegate,
 
 ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max) { return (point - min) / (max - min); }
 
-ImVec2 SampleCurveForDrawing(const ImVec2* pts,
+ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
                              size_t ptCount,
                              float t,
                              LerpType curveType,
@@ -477,8 +479,8 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
         segmentFloat = (float)(ptCount - 1);
     }
 
-    const ImVec2 p1 = PointToRange(pts[segmentIndex], min, max + ImVec2(1.f, 0.f));
-    const ImVec2 p2 = PointToRange(pts[segmentIndex + 1], min, max + ImVec2(1.f, 0.f));
+    const ImVec2 p1 = PointToRange(pts.at(segmentIndex), min, max + ImVec2(1.f, 0.f));
+    const ImVec2 p2 = PointToRange(pts.at(segmentIndex + 1), min, max + ImVec2(1.f, 0.f));
 
     float localT = segmentFloat - (float)segmentIndex;
 
@@ -496,30 +498,31 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
 }
 
 // TODO(tanim) this should not get the CurveType, it should detect the curve between segments itself
-float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, LerpType curveType)
+float SampleCurveForAnimation(const std::vector<ImVec2>& pts, float time, LerpType curveType)
 {
+    const int ptCount = (int)pts.size();
     for (size_t i = 0; i < ptCount - 1; i++)
     {
-        if (time >= pts[i].x && time <= pts[i + 1].x)
+        if (time >= pts.at(i).x && time <= pts.at(i + 1).x)
         {
-            const float segmentT = (time - pts[i].x) / (pts[i + 1].x - pts[i].x);
+            const float segmentT = (time - pts.at(i).x) / (pts.at(i + 1).x - pts.at(i).x);
 
             if (curveType == LerpType::LINEAR)
             {
-                return ImLerp(pts[i].y, pts[i + 1].y, segmentT);
+                return ImLerp(pts.at(i).y, pts.at(i + 1).y, segmentT);
             }
             else if (curveType == LerpType::SMOOTH)
             {
                 const float smoothT = smoothstep(0.0f, 1.0f, segmentT);
-                return ImLerp(pts[i].y, pts[i + 1].y, smoothT);
+                return ImLerp(pts.at(i).y, pts.at(i + 1).y, smoothT);
             }
         }
     }
 
-    if (time <= pts[0].x) return pts[0].y;
-    if (time >= pts[ptCount - 1].x) return pts[ptCount - 1].y;
+    if (time <= pts.at(0).x) return pts.at(0).y;
+    if (time >= pts.at(ptCount - 1).x) return pts.at(ptCount - 1).y;
 
-    return pts[0].y;
+    return pts.at(0).y;
 }
 
 }  // namespace tanim::sequencer

@@ -30,6 +30,7 @@
 #include "tanim/include/includes.hpp"
 
 #include <stdint.h>
+#include <vector>
 
 struct ImRect;
 
@@ -61,23 +62,25 @@ struct EditPoint
 
 struct SequenceInterface
 {
-    bool focused = false;
-    virtual size_t GetCurveCount() = 0;
-    virtual bool IsCurveVisible(size_t /*curveIndex*/) { return true; }
-    virtual LerpType GetCurveLerpType(size_t /*curveIndex*/) const { return LerpType::LINEAR; }
-    virtual ImVec2& GetMinPointValue() = 0;
-    virtual ImVec2& GetMaxPointValue() = 0;
+    bool m_focused = false;
+    virtual int CurveCount() = 0;
+    virtual bool GetCurveVisibility(int curve_idx) = 0;
+    virtual void SetCurveVisibility(int curve_idx, bool visibility) = 0;
+    virtual LerpType GetCurveLerpType(int curve_idx) = 0;
+    virtual ImVec2 GetMinPointValue() = 0;
+    virtual ImVec2 GetMaxPointValue() = 0;
     virtual void SetMinPointValue(ImVec2 min) = 0;
     virtual void SetMaxPointValue(ImVec2 max) = 0;
-    virtual size_t GetCurvePointCount(size_t curveIndex) = 0;
-    virtual uint32_t GetCurveColor(size_t curveIndex) = 0;
-    virtual ImVec2* GetCurvePointsList(size_t curveIndex) = 0;
-    virtual int EditPoint(size_t curveIndex, int pointIndex, ImVec2 value) = 0;
-    virtual void AddPoint(size_t curveIndex, ImVec2 value) = 0;
-    virtual unsigned int GetBackgroundColor() { return 0xFF202020; }
-    // handle undo/redo thru this functions
-    virtual void BeginEdit(int /*index*/) {}
-    virtual void EndEdit() {}
+    virtual int GetCurvePointCount(int curve_index) = 0;
+    virtual uint32_t GetCurveColor(int curve_index) = 0;
+    virtual const std::vector<ImVec2>& GetCurvePointsList(int curve_index) = 0;
+    virtual int EditPoint(int curve_index, int point_index, ImVec2 value) = 0;
+    virtual void AddPoint(int curve_index, ImVec2 value) = 0;
+    virtual void RemovePoint(int curve_index, int point_index) = 0;
+    virtual unsigned int GetBackgroundColor() = 0;
+    // handle undo/redo through this functions
+    virtual void BeginEdit(int curve_index) = 0;
+    virtual void EndEdit() = 0;
 
     virtual ~SequenceInterface() = default;
 };
@@ -90,13 +93,13 @@ int Edit(SequenceInterface& delegate,
 
 static ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max);
 
-ImVec2 SampleCurveForDrawing(const ImVec2* pts,
+ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
                              size_t ptCount,
                              float t,
                              LerpType curveType,
                              const ImVec2& min,
                              const ImVec2& max);
 
-float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, LerpType curveType);
+float SampleCurveForAnimation(const std::vector<ImVec2>& pts, float time, LerpType curveType);
 
 }  // namespace tanim::sequencer

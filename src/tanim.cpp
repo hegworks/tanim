@@ -155,17 +155,14 @@ void Tanim::Draw()
     float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
 
     float sampledX = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(0),
-                                                        m_timeline.m_sequence.GetCurvePointCount(0),
                                                         sampleTime,
                                                         m_timeline.m_sequence.GetCurveLerpType(0));
 
     float sampledY = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(1),
-                                                        m_timeline.m_sequence.GetCurvePointCount(1),
                                                         sampleTime,
                                                         m_timeline.m_sequence.GetCurveLerpType(1));
 
     float sampledZ = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(2),
-                                                        m_timeline.m_sequence.GetCurvePointCount(2),
                                                         sampleTime,
                                                         m_timeline.m_sequence.GetCurveLerpType(2));
 
