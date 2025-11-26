@@ -33,21 +33,22 @@
 struct ImDrawList;
 struct ImRect;
 
-namespace tanim::sequence_editor
+namespace tanim::timeliner
 {
 
-enum SEQUENCER_OPTIONS
+enum TimelineEditorFlags
 {
-    SEQUENCER_EDIT_NONE = 0,
-    SEQUENCER_EDIT_STARTEND = 1 << 1,
-    SEQUENCER_CHANGE_FRAME = 1 << 3,
-    SEQUENCER_ADD = 1 << 4,
-    SEQUENCER_DEL = 1 << 5,
-    SEQUENCER_COPYPASTE = 1 << 6,
-    SEQUENCER_EDIT_ALL = SEQUENCER_EDIT_STARTEND | SEQUENCER_CHANGE_FRAME
+    TIMELINER_NONE = 0,
+    TIMELINER_EDIT_STARTEND = 1 << 1,
+    TIMELINER_CHANGE_FRAME = 1 << 3,
+    TIMELINER_ADD_SEQUENCE = 1 << 4,
+    TIMELINER_DELETE_SEQUENCE = 1 << 5,
+    TIMELINER_COPYPASTE = 1 << 6,
+    TIMELINER_ALL = TIMELINER_EDIT_STARTEND | TIMELINER_CHANGE_FRAME | TIMELINER_ADD_SEQUENCE | TIMELINER_DELETE_SEQUENCE |
+                    TIMELINER_COPYPASTE,
 };
 
-struct SequenceInterface
+struct TimelineInterface
 {
     bool focused = false;
     virtual int GetFirstFrame() const = 0;
@@ -73,7 +74,9 @@ struct SequenceInterface
     virtual void Paste() {}
 
     virtual size_t GetCustomHeight(int /*index*/) { return 0; }
+
     virtual void DoubleClick(int /*index*/) {}
+
     virtual void CustomDraw(int /*index*/,
                             ImDrawList* /*draw_list*/,
                             const ImRect& /*rc*/,
@@ -82,6 +85,7 @@ struct SequenceInterface
                             const ImRect& /*legendClippingRect*/)
     {
     }
+
     virtual void CustomDrawCompact(int /*index*/,
                                    ImDrawList* /*draw_list*/,
                                    const ImRect& /*rc*/,
@@ -89,15 +93,15 @@ struct SequenceInterface
     {
     }
 
-    virtual ~SequenceInterface() = default;
+    virtual ~TimelineInterface() = default;
 };
 
 // return true if selection is made
-bool Sequencer(SequenceInterface* sequence,
-               int* currentFrame,
+bool Timeliner(TimelineInterface* timeline,
+               int* current_frame,
                bool* expanded,
-               int* selectedEntry,
-               int* firstFrame,
-               int sequenceOptions);
+               int* selected_sequence,
+               int* first_frame,
+               int timeliner_flags);
 
-}  // namespace tanim::sequence_editor
+}  // namespace tanim::timeliner

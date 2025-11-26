@@ -2,134 +2,142 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
-#include "tanim/include/curve.hpp"
-#include "tanim/include/sequence_editor.hpp"
+#include "tanim/include/sequencer.hpp"
 
-#include <vector>
+#include <algorithm>
+#include <iterator>
 
 namespace tanim
 {
 
-static const char* SequenceTypeNames[] = {"Position"};
-
-struct Timeline : public sequence_editor::SequenceInterface
+struct Sequence : public sequencer::SequenceInterface
 {
-    struct SequenceData
+    // TODO(tanim) replace raw array with vector
+    // TODO(tanim) replace SoA with AoS
+    ImVec2 m_curves_points[3][8];
+    size_t m_curve_point_count[3];
+    bool m_curve_visibility[3];
+    ImVec2 m_draw_min{0, -1.5f};
+    ImVec2 m_draw_max{500, 1.5f};
+    int m_timeline_last_frame{1};
+
+    Sequence()
     {
-        int m_type{0};
-        int m_first_frame{0};
-        int m_last_frame{60};
-        bool m_expanded{true};
-    };
+        m_curves_points[0][0] = ImVec2(0.f, 0.0f);
+        m_curves_points[0][1] = ImVec2(10.f, 0.0f);
+        m_curve_point_count[0] = 2;
 
-    int m_first_frame{0};
-    int m_last_frame{500};
+        m_curves_points[1][0] = ImVec2(0.f, 0.0f);
+        m_curves_points[1][1] = ImVec2(10.f, 0.0f);
+        m_curve_point_count[1] = 2;
 
-    std::vector<SequenceData> m_sequence_datas;
-
-    Sequence m_sequence;
-
-    int GetFirstFrame() const override { return 0; }
-
-    int GetLastFrame() const override { return m_last_frame; }
-
-    int GetSequenceCount() const override { return (int)m_sequence_datas.size(); }
-
-    int GetSequenceTypeCount() const override { return sizeof(SequenceTypeNames) / sizeof(char*); }
-
-    const char* GetSequenceTypeName(int typeIndex) const override { return SequenceTypeNames[typeIndex]; }
-
-    const char* GetSequenceLabel(int index) const override
-    {
-        static char tmps[512];
-        snprintf(tmps, 512, "[%02d] %s", index, SequenceTypeNames[m_sequence_datas[index].m_type]);
-        return tmps;
+        m_curves_points[2][0] = ImVec2(0.f, 0.0f);
+        m_curves_points[2][1] = ImVec2(10.f, 0.0f);
+        m_curve_point_count[2] = 2;
+        m_curve_visibility[0] = m_curve_visibility[1] = m_curve_visibility[2] = true;
     }
 
-    // TODO(tanim) replace this abomination with separate getters & setters
-    void MultiGet(int index, int** start, int** end, int* type, unsigned int* color) override
+    // TODO(tanim) replace hardcoded value
+    size_t GetCurveCount() override { return 3; }
+
+    bool IsCurveVisible(size_t curve_index) override { return m_curve_visibility[curve_index]; }
+
+    size_t GetCurvePointCount(size_t curve_index) override { return m_curve_point_count[curve_index]; }
+
+    uint32_t GetCurveColor(size_t curve_index) override
     {
-        SequenceData& item = m_sequence_datas[index];
-        if (color) *color = 0xFFAA8080;  // same color for everyone, return color based on type
-        if (start) *start = &item.m_first_frame;
-        if (end) *end = &item.m_last_frame;
-        if (type) *type = item.m_type;
+        // TODO(tanim) replace hardcoded colors
+        constexpr uint32_t colors[] = {0xFF0000FF, 0xFF00FF00, 0xFFFF0000};
+        return colors[curve_index];
     }
 
-    void AddSequence(int type) override { m_sequence_datas.push_back({type}); }
+    ImVec2* GetCurvePointsList(size_t curve_index) override { return m_curves_points[curve_index]; }
 
-    void DeleteSequence(int index) override { m_sequence_datas.erase(m_sequence_datas.begin() + index); }
-
-    // TanimAddition
-    // duplicate didn't make sense in my case, so I removed the functionality
-    void Duplicate(int /*index*/) override { /*m_sequence_datas.push_back(m_sequence_datas[index]);*/ }
-
-    size_t GetCustomHeight(int index) override { return m_sequence_datas[index].m_expanded ? 300 : 0; }
-
-    void DoubleClick(int index) override
+    sequencer::LerpType GetCurveLerpType(size_t curve_index) const override
     {
-        if (m_sequence_datas[index].m_expanded)
+        // TODO(tanim) replace hardcoded return value
+        IM_UNUSED(curve_index);
+        return sequencer::LerpType::SMOOTH;
+    }
+
+    int EditPoint(size_t curve_index, int point_index, ImVec2 value) override
+    {
+        // TanimAddition
+        // snap the time (x) of keyframes to integers
+        value.x = floorf(value.x);
+
+        // TanimAddition
+        // return early if the keyframes are in the same frame
+        if (point_index + 1 < (int)GetCurvePointCount(curve_index) &&
+            (int)m_curves_points[curve_index][point_index + 1].x == (int)value.x)
         {
-            m_sequence_datas[index].m_expanded = false;
-            return;
+            return point_index;
         }
-        for (auto& item : m_sequence_datas) item.m_expanded = false;
-        m_sequence_datas[index].m_expanded = !m_sequence_datas[index].m_expanded;
-    }
-
-    void CustomDraw(int index,
-                    ImDrawList* draw_list,
-                    const ImRect& rc,
-                    const ImRect& legendRect,
-                    const ImRect& clippingRect,
-                    const ImRect& legendClippingRect) override
-    {
-        static const char* labels[] = {"X", "Y", "Z"};
-
-        draw_list->PushClipRect(legendClippingRect.Min, legendClippingRect.Max, true);
-        for (int i = 0; i < 3; i++)
+        if (point_index - 1 > 0 && (int)m_curves_points[curve_index][point_index - 1].x == (int)value.x)
         {
-            ImVec2 pta(legendRect.Min.x + 30, legendRect.Min.y + i * 14.f);
-            ImVec2 ptb(legendRect.Max.x, legendRect.Min.y + (i + 1) * 14.f);
-            draw_list->AddText(pta, m_sequence.m_curve_visibility[i] ? 0xFFFFFFFF : 0x80FFFFFF, labels[i]);
-            if (ImRect(pta, ptb).Contains(ImGui::GetMousePos()) && ImGui::IsMouseClicked(0))
-                m_sequence.m_curve_visibility[i] = !m_sequence.m_curve_visibility[i];
+            return point_index;
         }
-        draw_list->PopClipRect();
 
-        ImGui::SetCursorScreenPos(rc.Min);
-        const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        curve_editor::Edit(m_sequence, rcSize, 137 + index, &clippingRect);
-    }
+        m_curves_points[curve_index][point_index] = ImVec2(value.x, value.y);
+        SortCurvePoints(curve_index);
 
-    void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
-    {
-        draw_list->PushClipRect(clippingRect.Min, clippingRect.Max, true);
-        for (int i = 0; i < 3; i++)
+        // TanimAddition
+        // force the first keyframe time (x) to 0
+        m_curves_points[curve_index][0].x = 0;
+        // force the last keyframe time (x) to the sequence's last frame
+        m_curves_points[curve_index][GetCurvePointCount(curve_index) - 1].x = (float)m_timeline_last_frame;
+
+        for (size_t i = 0; i < GetCurvePointCount(curve_index); i++)
         {
-            for (unsigned int j = 0; j < m_sequence.m_curve_point_count[i]; j++)
-            {
-                float p = m_sequence.m_curves_points[i][j].x;
-                if (p < m_sequence_datas[index].m_first_frame || p > m_sequence_datas[index].m_last_frame) continue;
-                float r = (p - m_first_frame) / float(m_last_frame - m_first_frame);
-                float x = ImLerp(rc.Min.x, rc.Max.x, r);
-                draw_list->AddLine(ImVec2(x, rc.Min.y + 6), ImVec2(x, rc.Max.y - 4), 0xAA000000, 4.f);
-            }
+            if (m_curves_points[curve_index][i].x == value.x) return (int)i;
         }
-        draw_list->PopClipRect();
+        return point_index;
     }
 
-    void BeginEdit(int /* sequence_idx */) override { /*TODO(tanim)*/ }
+    void AddPoint(size_t curve_index, ImVec2 value) override
+    {
+        // TODO(tanim) remove hardcoded restriction of 8 points on a curve
+        if (m_curve_point_count[curve_index] >= 8) return;
+        m_curves_points[curve_index][m_curve_point_count[curve_index]++] = value;
+        SortCurvePoints(curve_index);
+    }
 
+    ImVec2& GetMaxPointValue() override { return m_draw_max; }
+
+    ImVec2& GetMinPointValue() override { return m_draw_min; }
+
+    void SetMinPointValue(ImVec2 min) override { m_draw_min = min; }
+
+    void SetMaxPointValue(ImVec2 max) override { m_draw_max = max; }
+
+    void BeginEdit(int) override { /*TODO(tanim)*/ }
     void EndEdit() override { /*TODO(tanim)*/ }
 
-    void Copy() override { /*TODO(tanim)*/ }
+    // TODO(tanim) replace hardcoded value (maybe?)
+    unsigned int GetBackgroundColor() override { return 0x00000000; }
 
-    void Paste() override { /*TODO(tanim)*/ }
+    void TimelineLastFrameEdit(int new_last_frame)
+    {
+        m_timeline_last_frame = new_last_frame;
+        ClampLastPointsToTimelineLastFrame();
+    }
 
-    void EditFirstFrame(int /* new_first_frame */) override { /*TODO(tanim)*/ }
+private:
+    void SortCurvePoints(size_t curve_index)
+    {
+        const auto first = std::begin(m_curves_points[curve_index]);
+        const auto last = std::begin(m_curves_points[curve_index]) + GetCurvePointCount(curve_index);
+        std::sort(first, last, [](ImVec2 a, ImVec2 b) { return a.x < b.x; });
+    }
 
-    void EditLastFrame(int new_last_frame) override { m_sequence.TimelineLastFrameEdit(new_last_frame); }
+    void ClampLastPointsToTimelineLastFrame()
+    {
+        for (size_t i = 0; i < GetCurveCount(); i++)
+        {
+            m_curves_points[i][GetCurvePointCount(i) - 1].x = (float)m_timeline_last_frame;
+            SortCurvePoints(i);
+        }
+    }
 };
 
 }  // namespace tanim

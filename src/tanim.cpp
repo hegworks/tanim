@@ -3,7 +3,7 @@
 
 #include "tanim/include/tanim.hpp"
 
-#include "tanim/include/curve_editor.hpp"
+#include "tanim/include/timeliner.hpp"
 #include "tanim/include/sequence.hpp"
 
 namespace tanim
@@ -46,10 +46,18 @@ void Tanim::Update(float dt)
 
 void Tanim::Draw()
 {
-    m_timeline.m_sequence.m_min_point_value.x = 0;
-    m_timeline.m_sequence.m_max_point_value.x = (float)m_timeline.m_last_frame;
+    m_timeline.m_sequence.m_draw_min.x = 0;
+    m_timeline.m_sequence.m_draw_max.x = (float)m_timeline.m_last_frame;
 
-    ImGui::Begin("tanim_timeline");
+    //*****************************************************
+
+    ImGui::Begin("Tanim");
+    // empty parent window
+    ImGui::End();
+
+    //*****************************************************
+
+    ImGui::Begin("controls");
 
     ImGui::PushItemWidth(100);
 
@@ -82,18 +90,15 @@ void Tanim::Draw()
 
     ImGui::PopItemWidth();
 
+    ImGui::End();
+
+    //*****************************************************
+
+    ImGui::Begin("timeliner");
+
     static bool expanded{true};
     static int first_frame{0};
-    sequence_editor::Sequencer(&m_timeline,
-                               &m_player_frame,
-                               &expanded,
-                               &m_selected_sequence,
-                               &first_frame,
-                               sequence_editor::SEQUENCER_EDIT_ALL | sequence_editor::SEQUENCER_ADD |
-                                   sequence_editor::SEQUENCER_DEL | sequence_editor::SEQUENCER_COPYPASTE |
-                                   sequence_editor::SEQUENCER_CHANGE_FRAME);
-
-    ImGui::End();
+    timeliner::Timeliner(&m_timeline, &m_player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
 
     if (m_player_playing)
     {
@@ -104,60 +109,83 @@ void Tanim::Draw()
         m_player_time = FrameToSeconds(m_player_frame);
     }
 
-    ImGui::Begin("tanim_sequence");
+    ImGui::End();
 
-    ImGui::Text("mySequence.focused:   %d", m_timeline.focused);
-    ImGui::Text("mySequence.mFrameMin: %d", m_timeline.m_first_frame);
-    ImGui::Text("mySequence.mFrameMax: %d", m_timeline.m_last_frame);
-    ImGui::Text("mySequence.myItems.size: %zu", m_timeline.m_sequence_datas.size());
+    //*****************************************************
+
+    ImGui::Begin("timeline");
+
+    ImGui::Text("focused:     %d", m_timeline.focused);
+    ImGui::Text("first frame: %d", m_timeline.m_first_frame);
+    ImGui::Text("last frame:  %d", m_timeline.m_last_frame);
 
     ImGui::End();
 
-    ImGui::Begin("tanim_sequence_item");
+    //*****************************************************
 
-    // add a UI to edit that particular item
-    ImGui::Text("selected entry: %d", m_selected_sequence);
+    ImGui::Begin("selected sequence");
+
+    ImGui::Text("index:       %d", m_selected_sequence);
+
+    ImGui::PushItemWidth(100);
+    ImGui::BeginDisabled();
+    ImGui::DragFloat2("draw min", &m_timeline.m_sequence.m_draw_min.x);
+    ImGui::DragFloat2("draw max", &m_timeline.m_sequence.m_draw_max.x);
+    ImGui::EndDisabled();
+    ImGui::PopItemWidth();
+
     if (m_selected_sequence != -1)
     {
-        const Timeline::SequenceData& item = m_timeline.m_sequence_datas[m_selected_sequence];
-
-        ImGui::Text("SequencerItemTypeName: %s", SequenceTypeNames[item.m_type]);
+        const Timeline::SequenceData& sd = m_timeline.m_sequence_datas[m_selected_sequence];
         // switch (type) ...
 
-        ImGui::Text("item.mType:       %d", item.m_type);
-        ImGui::Text("item.mExpanded:   %i", item.m_expanded);
-        ImGui::Text("item.mFrameStart: %d", item.m_first_frame);
-        ImGui::Text("item.mFrameEnd:   %d", item.m_last_frame);
-
-        float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
-
-        float sampledX = curve_editor::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(0),
-                                                               m_timeline.m_sequence.GetCurvePointCount(0),
-                                                               sampleTime,
-                                                               m_timeline.m_sequence.GetCurveLerpType(0));
-
-        float sampledY = curve_editor::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(1),
-                                                               m_timeline.m_sequence.GetCurvePointCount(1),
-                                                               sampleTime,
-                                                               m_timeline.m_sequence.GetCurveLerpType(1));
-
-        float sampledZ = curve_editor::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(2),
-                                                               m_timeline.m_sequence.GetCurvePointCount(2),
-                                                               sampleTime,
-                                                               m_timeline.m_sequence.GetCurveLerpType(2));
-        ImGui::Text("X: %.4f", sampledX);
-        ImGui::Text("Y: %.4f", sampledY);
-        ImGui::Text("Z: %.4f", sampledZ);
+        ImGui::Text("type:        %d", sd.m_type);
+        ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(sd.m_type));
+        ImGui::Text("expanded:    %i", sd.m_expanded);
+        ImGui::Text("first frame: %d", sd.m_first_frame);
+        ImGui::Text("last frame:  %d", sd.m_last_frame);
     }
 
     ImGui::End();
 
-    ImGui::Begin("tanim_ramp_edit");
+    //*****************************************************
 
-    ImGui::DragFloat2("mMin", &m_timeline.m_sequence.m_min_point_value.x);
-    ImGui::DragFloat2("mMax", &m_timeline.m_sequence.m_max_point_value.x);
+    ImGui::Begin("curves");
+
+    float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
+
+    float sampledX = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(0),
+                                                        m_timeline.m_sequence.GetCurvePointCount(0),
+                                                        sampleTime,
+                                                        m_timeline.m_sequence.GetCurveLerpType(0));
+
+    float sampledY = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(1),
+                                                        m_timeline.m_sequence.GetCurvePointCount(1),
+                                                        sampleTime,
+                                                        m_timeline.m_sequence.GetCurveLerpType(1));
+
+    float sampledZ = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(2),
+                                                        m_timeline.m_sequence.GetCurvePointCount(2),
+                                                        sampleTime,
+                                                        m_timeline.m_sequence.GetCurveLerpType(2));
+
+    ImGui::Text("X: %.4f", sampledX);
+    ImGui::Text("Y: %.4f", sampledY);
+    ImGui::Text("Z: %.4f", sampledZ);
 
     ImGui::End();
+
+    //*****************************************************
+
+    ImGui::Begin("Player");
+
+    ImGui::Text("Time:         %.3f", m_player_time);
+    ImGui::Text("Sample Time:  %.3f", SecondsToSampleTime(m_player_time));
+    ImGui::Text("Frame:        %d", m_player_frame);
+
+    ImGui::End();
+
+    //*****************************************************
 }
 
 }  // namespace tanim

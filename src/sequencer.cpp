@@ -26,7 +26,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "tanim/include/curve_editor.hpp"
+#include "tanim/include/sequencer.hpp"
 #include "tanim/include/includes.hpp"
 
 #include <stdint.h>
@@ -41,7 +41,7 @@
 #define _freea(x)
 #endif
 
-namespace tanim::curve_editor
+namespace tanim::sequencer
 {
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -128,7 +128,7 @@ static int DrawPoint(ImDrawList* draw_list, ImVec2 pos, const ImVec2 size, const
     return ret;
 }
 
-int Edit(Delegate& delegate,
+int Edit(SequenceInterface& delegate,
          const ImVec2& size,
          unsigned int id,
          const ImRect* clippingRect,
@@ -522,4 +522,4 @@ float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, Ler
     return pts[0].y;
 }
 
-}  // namespace tanim::curve_editor
+}  // namespace tanim::sequencer

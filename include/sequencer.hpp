@@ -33,7 +33,7 @@
 
 struct ImRect;
 
-namespace tanim::curve_editor
+namespace tanim::sequencer
 {
 
 enum class LerpType
@@ -59,7 +59,7 @@ struct EditPoint
     }
 };
 
-struct Delegate
+struct SequenceInterface
 {
     bool focused = false;
     virtual size_t GetCurveCount() = 0;
@@ -79,10 +79,10 @@ struct Delegate
     virtual void BeginEdit(int /*index*/) {}
     virtual void EndEdit() {}
 
-    virtual ~Delegate() = default;
+    virtual ~SequenceInterface() = default;
 };
 
-int Edit(Delegate& delegate,
+int Edit(SequenceInterface& delegate,
          const ImVec2& size,
          unsigned int id,
          const ImRect* clippingRect = NULL,
@@ -99,4 +99,4 @@ ImVec2 SampleCurveForDrawing(const ImVec2* pts,
 
 float SampleCurveForAnimation(const ImVec2* pts, size_t ptCount, float time, LerpType curveType);
 
-}  // namespace tanim::curve_editor
+}  // namespace tanim::sequencer

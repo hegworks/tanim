@@ -1,5 +1,5 @@
 #pragma once
-#include "tanim/include/sequence.hpp"
+#include "tanim/include/timeline.hpp"
 
 namespace tanim
 {
