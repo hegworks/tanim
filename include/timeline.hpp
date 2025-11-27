@@ -123,6 +123,9 @@ struct Timeline : public timeliner::TimelineInterface
         draw_list->PopClipRect();
     }
 
+    // TODO(tanim) once we have multple sequences, call the function on the expanded sequence
+    void EditSnapY(float value) { m_sequence.EditSnapY(value); }
+
     void BeginEdit(int /* sequence_idx */) override { /*TODO(tanim)*/ }
 
     void EndEdit() override { /*TODO(tanim)*/ }

@@ -5,6 +5,7 @@
 #include "tanim/include/sequencer.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <vector>
 
@@ -38,6 +39,8 @@ struct Sequence : public sequencer::SequenceInterface
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
     int m_timeline_last_frame{1};
+
+    float m_snap_y_value = 0.1f;
 
     Sequence()
     {
@@ -85,6 +88,14 @@ struct Sequence : public sequencer::SequenceInterface
         if (point_index - 1 > 0 && (int)m_curves.at(curve_index).m_points.at(point_index - 1).x == (int)value.x)
         {
             return point_index;
+        }
+
+        if (ImGui::GetIO().KeyCtrl)
+        {
+            if (m_snap_y_value > 0.0f)
+            {
+                value.y = std::round(value.y / m_snap_y_value) * m_snap_y_value;
+            }
         }
 
         m_curves.at(curve_index).m_points.at(point_index) = ImVec2(value.x, value.y);
@@ -137,6 +148,8 @@ struct Sequence : public sequencer::SequenceInterface
         m_timeline_last_frame = new_last_frame;
         ClampLastPointsToTimelineLastFrame();
     }
+
+    void EditSnapY(float value) { m_snap_y_value = value; }
 
 private:
     void SortCurvePoints(int curve_index)

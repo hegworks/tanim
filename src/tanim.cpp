@@ -97,6 +97,17 @@ void Tanim::Draw()
     ImGui::DragInt("MaxFrame", &m_timeline.m_last_frame, 0.1f, m_timeline.GetFirstFrame());
     m_timeline.m_last_frame = ImMax(1, m_timeline.m_last_frame);
 
+    ImGui::SameLine();
+    ImGui::Text(" | ");
+    ImGui::SameLine();
+
+    ImGui::SameLine();
+    if (ImGui::DragFloat("Snap Y", &m_snap_y_value, 0.01f))
+    {
+        m_snap_y_value = ImMax(0.0f, m_snap_y_value);
+        m_timeline.EditSnapY(m_snap_y_value);
+    }
+
     ImGui::PopItemWidth();
 
     ImGui::End();
