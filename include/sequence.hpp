@@ -109,7 +109,14 @@ struct Sequence : public sequencer::SequenceInterface
         SortCurvePoints(curve_index);
     }
 
-    void RemovePoint(int /*curve_index*/, int /*point_index*/) override { /*TODO(tanim)*/ }
+    void RemovePoint(int curve_index, int point_index) override
+    {
+        if (point_index > 0 && point_index < GetCurvePointCount(curve_index) - 1)
+        {
+            std::vector<Point>* points = &m_curves.at(curve_index).m_points;
+            points->erase(points->begin() + point_index);
+        }
+    }
 
     ImVec2 GetMaxPointValue() override { return m_draw_max; }
 

@@ -359,6 +359,16 @@ int Edit(SequenceInterface& delegate,
         }
     }
 
+    // remove point
+    if (overSelectedPoint && selection.size() == 1 && io.MouseDoubleClicked[0])
+    {
+        delegate.BeginEdit(selection.begin()->curveIndex);
+        delegate.RemovePoint(selection.begin()->curveIndex, selection.begin()->pointIndex);
+        selection.clear();
+        overSelectedPoint = false;
+        delegate.EndEdit();
+    }
+
     // add point
     if (overCurve != -1 && io.MouseDoubleClicked[0])
     {
