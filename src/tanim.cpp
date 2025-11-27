@@ -11,11 +11,8 @@ namespace tanim
 
 void Tanim::Init()
 {
-    // sequence with default values
-    m_timeline.m_first_frame = 0;
-    m_timeline.m_last_frame = 500;
-    m_timeline.m_sequence_datas.push_back(Timeline::SequenceData{0, 0, 10, true});
-    m_timeline.m_sequence.TimelineLastFrameEdit(10);
+    // TODO(tanim) remove hardcoded sequence add
+    m_timeline.AddSequence(0);
 }
 
 void Tanim::Play() { m_player_playing = true; }
@@ -37,7 +34,7 @@ void Tanim::Update(float dt)
     if (m_player_playing)
     {
         m_player_time += dt;
-        if (m_player_time > FrameToSeconds(m_timeline.m_sequence.m_timeline_last_frame))
+        if (m_player_time > FrameToSeconds(m_timeline.m_last_frame))
         {
             m_player_time = 0;
         }
@@ -46,8 +43,7 @@ void Tanim::Update(float dt)
 
 void Tanim::Draw()
 {
-    m_timeline.m_sequence.m_draw_min.x = 0;
-    m_timeline.m_sequence.m_draw_max.x = (float)m_timeline.m_last_frame;
+    m_timeline.GetExpandedSequence().m_draw_max.x = (float)m_timeline.m_max_frame;
 
     //*****************************************************
 
@@ -80,7 +76,7 @@ void Tanim::Draw()
     ImGui::SameLine();
 
     ImGui::PushItemWidth(100);
-    ImGui::DragInt("Samples", &m_player_samples, 0.1f, m_timeline.GetFirstFrame());
+    ImGui::DragInt("Samples", &m_player_samples, 0.1f, m_timeline.GetMinFrame());
 
     ImGui::SameLine();
     ImGui::Text(" | ");
@@ -94,15 +90,15 @@ void Tanim::Draw()
     ImGui::Text(" | ");
     ImGui::SameLine();
 
-    ImGui::DragInt("MaxFrame", &m_timeline.m_last_frame, 0.1f, m_timeline.GetFirstFrame());
-    m_timeline.m_last_frame = ImMax(1, m_timeline.m_last_frame);
+    ImGui::DragInt("MaxFrame", &m_timeline.m_max_frame, 0.1f, m_timeline.GetMinFrame());
+    m_timeline.m_max_frame = ImMax(1, m_timeline.m_max_frame);
 
     ImGui::SameLine();
     ImGui::Text(" | ");
     ImGui::SameLine();
 
     ImGui::SameLine();
-    if (ImGui::DragFloat("Snap Y", &m_snap_y_value, 0.01f))
+    if (ImGui::DragFloat("SnapY", &m_snap_y_value, 0.01f))
     {
         m_snap_y_value = ImMax(0.0f, m_snap_y_value);
         m_timeline.EditSnapY(m_snap_y_value);
@@ -136,6 +132,8 @@ void Tanim::Draw()
     ImGui::Begin("timeline");
 
     ImGui::Text("focused:     %d", m_timeline.focused);
+    ImGui::Text("min frame:   %d", m_timeline.m_min_frame);
+    ImGui::Text("max frame:   %d", m_timeline.m_max_frame);
     ImGui::Text("first frame: %d", m_timeline.m_first_frame);
     ImGui::Text("last frame:  %d", m_timeline.m_last_frame);
 
@@ -149,21 +147,19 @@ void Tanim::Draw()
 
     ImGui::PushItemWidth(100);
     ImGui::BeginDisabled();
-    ImGui::DragFloat2("draw min", &m_timeline.m_sequence.m_draw_min.x);
-    ImGui::DragFloat2("draw max", &m_timeline.m_sequence.m_draw_max.x);
+    ImGui::DragFloat2("draw min", &m_timeline.GetExpandedSequence().m_draw_min.x);
+    ImGui::DragFloat2("draw max", &m_timeline.GetExpandedSequence().m_draw_max.x);
     ImGui::EndDisabled();
     ImGui::PopItemWidth();
 
     if (m_selected_sequence != -1)
     {
-        const Timeline::SequenceData& sd = m_timeline.m_sequence_datas[m_selected_sequence];
+        const Sequence& sd = m_timeline.GetExpandedSequence();
         // switch (type) ...
 
         ImGui::Text("type:        %d", sd.m_type);
         ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(sd.m_type));
         ImGui::Text("expanded:    %i", sd.m_expanded);
-        ImGui::Text("first frame: %d", sd.m_first_frame);
-        ImGui::Text("last frame:  %d", sd.m_last_frame);
     }
 
     ImGui::End();
@@ -174,17 +170,17 @@ void Tanim::Draw()
 
     float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
 
-    float sampledX = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(0),
+    float sampledX = sequencer::SampleCurveForAnimation(m_timeline.GetExpandedSequence().GetCurvePointsList(0),
                                                         sampleTime,
-                                                        m_timeline.m_sequence.GetCurveLerpType(0));
+                                                        m_timeline.GetExpandedSequence().GetCurveLerpType(0));
 
-    float sampledY = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(1),
+    float sampledY = sequencer::SampleCurveForAnimation(m_timeline.GetExpandedSequence().GetCurvePointsList(1),
                                                         sampleTime,
-                                                        m_timeline.m_sequence.GetCurveLerpType(1));
+                                                        m_timeline.GetExpandedSequence().GetCurveLerpType(1));
 
-    float sampledZ = sequencer::SampleCurveForAnimation(m_timeline.m_sequence.GetCurvePointsList(2),
+    float sampledZ = sequencer::SampleCurveForAnimation(m_timeline.GetExpandedSequence().GetCurvePointsList(2),
                                                         sampleTime,
-                                                        m_timeline.m_sequence.GetCurveLerpType(2));
+                                                        m_timeline.GetExpandedSequence().GetCurveLerpType(2));
 
     ImGui::Text("X: %.4f", sampledX);
     ImGui::Text("Y: %.4f", sampledY);

@@ -51,8 +51,8 @@ enum TimelineEditorFlags
 struct TimelineInterface
 {
     bool focused = false;
-    virtual int GetFirstFrame() const = 0;
-    virtual int GetLastFrame() const = 0;
+    virtual int GetMinFrame() const = 0;
+    virtual int GetMaxFrame() const = 0;
     virtual int GetSequenceCount() const = 0;
 
     virtual void BeginEdit(int /*index*/) {}

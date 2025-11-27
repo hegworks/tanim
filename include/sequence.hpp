@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iterator>
 #include <vector>
 
 namespace tanim
@@ -35,15 +34,21 @@ struct Sequence : public sequencer::SequenceInterface
         bool m_visibility{true};
     };
 
+    int m_type{0};
     std::vector<Curve> m_curves{};
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
-    int m_timeline_last_frame{1};
+    bool m_expanded{false};
+
+    // TODO(tanim) this has to be removed after we use ECS maybe
+    const int* m_timeline_last_frame{nullptr};
 
     float m_snap_y_value = 0.1f;
 
-    Sequence()
+    // TODO(tanim) the int* has to be removed after we use ECS maybe
+    Sequence(const int* timeline_last_frame)
     {
+        m_timeline_last_frame = timeline_last_frame;
         // TODO(tanim) replace hardcoded curves with curves based on the reflected parameter
         m_curves.emplace_back();
         m_curves.emplace_back();
@@ -105,7 +110,7 @@ struct Sequence : public sequencer::SequenceInterface
         // force the first keyframe time (x) to 0
         m_curves.at(curve_index).m_points.at(0).x = 0;
         // force the last keyframe time (x) to the sequence's last frame
-        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = (float)m_timeline_last_frame;
+        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = (float)*m_timeline_last_frame;
 
         for (int i = 0; i < GetCurvePointCount(curve_index); i++)
         {
@@ -129,13 +134,17 @@ struct Sequence : public sequencer::SequenceInterface
         }
     }
 
-    ImVec2 GetMaxPointValue() override { return m_draw_max; }
+    ImVec2 GetDrawMax() override { return m_draw_max; }
 
-    ImVec2 GetMinPointValue() override { return m_draw_min; }
+    ImVec2 GetDrawMin() override { return m_draw_min; }
 
-    void SetMinPointValue(ImVec2 min) override { m_draw_min = min; }
+    void SetDrawMin(ImVec2 min) override
+    {
+        m_draw_min = min;
+        m_draw_min.x = 0;
+    }
 
-    void SetMaxPointValue(ImVec2 max) override { m_draw_max = max; }
+    void SetDrawMax(ImVec2 max) override { m_draw_max = max; }
 
     void BeginEdit(int) override { /*TODO(tanim)*/ }
     void EndEdit() override { /*TODO(tanim)*/ }
@@ -143,11 +152,7 @@ struct Sequence : public sequencer::SequenceInterface
     // TODO(tanim) replace hardcoded value (maybe?)
     unsigned int GetBackgroundColor() override { return 0x00000000; }
 
-    void TimelineLastFrameEdit(int new_last_frame)
-    {
-        m_timeline_last_frame = new_last_frame;
-        ClampLastPointsToTimelineLastFrame();
-    }
+    void EditTimelineLastFrame() { ClampLastPointsToTimelineLastFrame(); }
 
     void EditSnapY(float value) { m_snap_y_value = value; }
 
@@ -163,7 +168,7 @@ private:
     {
         for (int i = 0; i < CurveCount(); i++)
         {
-            m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)m_timeline_last_frame;
+            m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)*m_timeline_last_frame;
             SortCurvePoints(i);
         }
     }

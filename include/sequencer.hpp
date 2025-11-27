@@ -67,10 +67,10 @@ struct SequenceInterface
     virtual bool GetCurveVisibility(int curve_idx) = 0;
     virtual void SetCurveVisibility(int curve_idx, bool visibility) = 0;
     virtual LerpType GetCurveLerpType(int curve_idx) = 0;
-    virtual ImVec2 GetMinPointValue() = 0;
-    virtual ImVec2 GetMaxPointValue() = 0;
-    virtual void SetMinPointValue(ImVec2 min) = 0;
-    virtual void SetMaxPointValue(ImVec2 max) = 0;
+    virtual ImVec2 GetDrawMin() = 0;
+    virtual ImVec2 GetDrawMax() = 0;
+    virtual void SetDrawMin(ImVec2 min) = 0;
+    virtual void SetDrawMax(ImVec2 max) = 0;
     virtual int GetCurvePointCount(int curve_index) = 0;
     virtual uint32_t GetCurveColor(int curve_index) = 0;
     virtual const std::vector<ImVec2>& GetCurvePointsList(int curve_index) = 0;

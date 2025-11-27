@@ -155,8 +155,8 @@ int Edit(SequenceInterface& delegate,
     const ImVec2 offset = ImGui::GetCursorScreenPos() + ImVec2(0.f, size.y);
     const ImVec2 ssize(size.x, -size.y);
     const ImRect container(offset + ImVec2(0.f, ssize.y), offset + ImVec2(ssize.x, 0.f));
-    ImVec2 min = delegate.GetMinPointValue();
-    ImVec2 max = delegate.GetMaxPointValue();
+    ImVec2 min = delegate.GetDrawMin();
+    ImVec2 max = delegate.GetDrawMax();
 
     // handle zoom and VScroll
     if (container.Contains(io.MousePos))
@@ -174,8 +174,8 @@ int Edit(SequenceInterface& delegate,
             };
             min.y = scaleValue(min.y);
             max.y = scaleValue(max.y);
-            delegate.SetMinPointValue(min);
-            delegate.SetMaxPointValue(max);
+            delegate.SetDrawMin(min);
+            delegate.SetDrawMax(max);
         }
         if (!scrollingV && ImGui::IsMouseDown(2))
         {
@@ -193,8 +193,8 @@ int Edit(SequenceInterface& delegate,
         float deltaH = io.MouseDelta.y * range.y * sizeOfPixel.y;
         min.y -= deltaH;
         max.y -= deltaH;
-        delegate.SetMinPointValue(min);
-        delegate.SetMaxPointValue(max);
+        delegate.SetDrawMin(min);
+        delegate.SetDrawMax(max);
         if (!ImGui::IsMouseDown(2)) scrollingV = false;
     }
 

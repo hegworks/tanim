@@ -90,7 +90,7 @@ bool Timeliner(TimelineInterface* timeline,
 
     int controlHeight = sequenceCount * ItemHeight;
     for (int i = 0; i < sequenceCount; i++) controlHeight += int(timeline->GetCustomHeight(i));
-    int frameCount = ImMax(timeline->GetLastFrame() - timeline->GetFirstFrame(), 1);
+    int frameCount = ImMax(timeline->GetMaxFrame() - timeline->GetMinFrame(), 1);
 
     static bool MovingScrollBar = false;
     static bool MovingCurrentFrame = false;
@@ -123,7 +123,7 @@ bool Timeliner(TimelineInterface* timeline,
             panningViewFrame = *first_frame;
         }
         *first_frame = panningViewFrame - int((io.MousePos.x - panningViewSource.x) / framePixelWidth);
-        *first_frame = ImClamp(*first_frame, timeline->GetFirstFrame(), timeline->GetLastFrame() - visibleFrameCount);
+        *first_frame = ImClamp(*first_frame, timeline->GetMinFrame(), timeline->GetMaxFrame() - visibleFrameCount);
     }
     if (panningView && !io.MouseDown[2])
     {
@@ -133,8 +133,8 @@ bool Timeliner(TimelineInterface* timeline,
 
     framePixelWidth = ImLerp(framePixelWidth, framePixelWidthTarget, 0.33f);
 
-    frameCount = timeline->GetLastFrame() - timeline->GetFirstFrame();
-    if (visibleFrameCount >= frameCount && first_frame) *first_frame = timeline->GetFirstFrame();
+    frameCount = timeline->GetMaxFrame() - timeline->GetMinFrame();
+    if (visibleFrameCount >= frameCount && first_frame) *first_frame = timeline->GetMinFrame();
 
     // --
     if (expanded && !*expanded)
@@ -188,8 +188,8 @@ bool Timeliner(TimelineInterface* timeline,
             if (frameCount)
             {
                 *current_frame = (int)((io.MousePos.x - topRect.Min.x) / framePixelWidth) + firstFrameUsed;
-                if (*current_frame < timeline->GetFirstFrame()) *current_frame = timeline->GetFirstFrame();
-                if (*current_frame >= timeline->GetLastFrame()) *current_frame = timeline->GetLastFrame();
+                if (*current_frame < timeline->GetMinFrame()) *current_frame = timeline->GetMinFrame();
+                if (*current_frame >= timeline->GetMaxFrame()) *current_frame = timeline->GetMaxFrame();
             }
             if (!io.MouseDown[0]) MovingCurrentFrame = false;
         }
@@ -227,7 +227,7 @@ bool Timeliner(TimelineInterface* timeline,
 
         auto drawLine = [&](int i, int regionHeight)
         {
-            bool baseIndex = ((i % modFrameCount) == 0) || (i == timeline->GetLastFrame() || i == timeline->GetFirstFrame());
+            bool baseIndex = ((i % modFrameCount) == 0) || (i == timeline->GetMaxFrame() || i == timeline->GetMinFrame());
             bool halfIndex = (i % halfModFrameCount) == 0;
             int px = (int)canvas_pos.x + int(i * framePixelWidth) + legendWidth - int(firstFrameUsed * framePixelWidth);
             int tiretStart = baseIndex ? 4 : (halfIndex ? 10 : 14);
@@ -268,12 +268,12 @@ bool Timeliner(TimelineInterface* timeline,
                 draw_list->AddLine(ImVec2(float(px), float(tiretStart)), ImVec2(float(px), float(tiretEnd)), 0x30606060, 1);
             }
         };
-        for (int i = timeline->GetFirstFrame(); i <= timeline->GetLastFrame(); i += frameStep)
+        for (int i = timeline->GetMinFrame(); i <= timeline->GetMaxFrame(); i += frameStep)
         {
             drawLine(i, ItemHeight);
         }
-        drawLine(timeline->GetFirstFrame(), ItemHeight);
-        drawLine(timeline->GetLastFrame(), ItemHeight);
+        drawLine(timeline->GetMinFrame(), ItemHeight);
+        drawLine(timeline->GetMaxFrame(), ItemHeight);
         /*
                  draw_list->AddLine(canvas_pos, ImVec2(canvas_pos.x, canvas_pos.y + controlHeight), 0xFF000000, 1);
                  draw_list->AddLine(ImVec2(canvas_pos.x, canvas_pos.y + ItemHeight), ImVec2(canvas_size.x, canvas_pos.y +
@@ -329,12 +329,12 @@ bool Timeliner(TimelineInterface* timeline,
         draw_list->PushClipRect(childFramePos + ImVec2(float(legendWidth), 0.f), childFramePos + childFrameSize, true);
 
         // vertical frame lines in content area
-        for (int i = timeline->GetFirstFrame(); i <= timeline->GetLastFrame(); i += frameStep)
+        for (int i = timeline->GetMinFrame(); i <= timeline->GetMaxFrame(); i += frameStep)
         {
             drawLineContent(i, int(contentHeight));
         }
-        drawLineContent(timeline->GetFirstFrame(), int(contentHeight));
-        drawLineContent(timeline->GetLastFrame(), int(contentHeight));
+        drawLineContent(timeline->GetMinFrame(), int(contentHeight));
+        drawLineContent(timeline->GetMaxFrame(), int(contentHeight));
 
         // selection
         bool selected = selected_sequence && (*selected_sequence >= 0);
@@ -415,9 +415,9 @@ bool Timeliner(TimelineInterface* timeline,
             {
                 ImVec2 rp(canvas_pos.x, contentMin.y + ItemHeight * i + 1 + customHeight);
                 ImRect customRect(
-                    rp + ImVec2(legendWidth - (firstFrameUsed - timeline->GetFirstFrame() - 0.5f) * framePixelWidth,
+                    rp + ImVec2(legendWidth - (firstFrameUsed - timeline->GetMinFrame() - 0.5f) * framePixelWidth,
                                 float(ItemHeight)),
-                    rp + ImVec2(legendWidth + (timeline->GetLastFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
+                    rp + ImVec2(legendWidth + (timeline->GetMaxFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
                                 float(localCustomHeight + ItemHeight)));
                 ImRect clippingRect(rp + ImVec2(float(legendWidth), float(ItemHeight)),
                                     rp + ImVec2(canvas_size.x, float(localCustomHeight + ItemHeight)));
@@ -433,8 +433,8 @@ bool Timeliner(TimelineInterface* timeline,
                 ImVec2 rp(canvas_pos.x, contentMin.y + ItemHeight * i + customHeight);
                 ImRect customRect(
                     rp +
-                        ImVec2(legendWidth - (firstFrameUsed - timeline->GetFirstFrame() - 0.5f) * framePixelWidth, float(0.f)),
-                    rp + ImVec2(legendWidth + (timeline->GetLastFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
+                        ImVec2(legendWidth - (firstFrameUsed - timeline->GetMinFrame() - 0.5f) * framePixelWidth, float(0.f)),
+                    rp + ImVec2(legendWidth + (timeline->GetMaxFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
                                 float(ItemHeight)));
                 ImRect clippingRect(rp + ImVec2(float(legendWidth), float(0.f)), rp + ImVec2(canvas_size.x, float(ItemHeight)));
 
@@ -496,7 +496,7 @@ bool Timeliner(TimelineInterface* timeline,
         }
 
         // cursor
-        if (current_frame && first_frame && *current_frame >= *first_frame && *current_frame <= timeline->GetLastFrame())
+        if (current_frame && first_frame && *current_frame >= *first_frame && *current_frame <= timeline->GetMaxFrame())
         {
             static const float cursorWidth = 8.f;
             float cursorOffset = contentMin.x + legendWidth + (*current_frame - firstFrameUsed) * framePixelWidth +
@@ -557,7 +557,7 @@ bool Timeliner(TimelineInterface* timeline,
             // ratio = number of frames visible in control / number to total frames
 
             float startFrameOffset =
-                ((float)(firstFrameUsed - timeline->GetFirstFrame()) / (float)frameCount) * (canvas_size.x - legendWidth);
+                ((float)(firstFrameUsed - timeline->GetMinFrame()) / (float)frameCount) * (canvas_size.x - legendWidth);
             ImVec2 scrollBarA(scrollBarMin.x + legendWidth, scrollBarMin.y - 2);
             ImVec2 scrollBarB(scrollBarMin.x + canvas_size.x, scrollBarMax.y - 1);
             draw_list->AddRectFilled(scrollBarA, scrollBarB, 0xFF222222, 0);
@@ -601,10 +601,10 @@ bool Timeliner(TimelineInterface* timeline,
                     framePixelWidthTarget = framePixelWidth = framePixelWidth / barRatio;
                     int newVisibleFrameCount = int((canvas_size.x - legendWidth) / framePixelWidthTarget);
                     int lastFrame = *first_frame + newVisibleFrameCount;
-                    if (lastFrame > timeline->GetLastFrame())
+                    if (lastFrame > timeline->GetMaxFrame())
                     {
                         framePixelWidthTarget = framePixelWidth =
-                            (canvas_size.x - legendWidth) / float(timeline->GetLastFrame() - *first_frame);
+                            (canvas_size.x - legendWidth) / float(timeline->GetMaxFrame() - *first_frame);
                     }
                 }
             }
@@ -625,8 +625,8 @@ bool Timeliner(TimelineInterface* timeline,
                         int newVisibleFrameCount = int(visibleFrameCount / barRatio);
                         int newFirstFrame = *first_frame + newVisibleFrameCount - visibleFrameCount;
                         newFirstFrame = ImClamp(newFirstFrame,
-                                                timeline->GetFirstFrame(),
-                                                ImMax(timeline->GetLastFrame() - visibleFrameCount, timeline->GetFirstFrame()));
+                                                timeline->GetMinFrame(),
+                                                ImMax(timeline->GetMaxFrame() - visibleFrameCount, timeline->GetMinFrame()));
                         if (newFirstFrame == *first_frame)
                         {
                             framePixelWidth = framePixelWidthTarget = previousFramePixelWidthTarget;
@@ -651,8 +651,8 @@ bool Timeliner(TimelineInterface* timeline,
                         float framesPerPixelInBar = barWidthInPixels / (float)visibleFrameCount;
                         *first_frame = int((io.MousePos.x - panningViewSource.x) / framesPerPixelInBar) - panningViewFrame;
                         *first_frame = ImClamp(*first_frame,
-                                               timeline->GetFirstFrame(),
-                                               ImMax(timeline->GetLastFrame() - visibleFrameCount, timeline->GetFirstFrame()));
+                                               timeline->GetMinFrame(),
+                                               ImMax(timeline->GetMaxFrame() - visibleFrameCount, timeline->GetMinFrame()));
                     }
                 }
                 else
