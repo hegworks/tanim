@@ -114,7 +114,7 @@ struct Timeline : public timeliner::TimelineInterface
             {
                 float p = seq.m_curves.at(curve_index).m_points.at(point_idx).x;
                 if (p < (float)m_first_frame || p > (float)m_last_frame) continue;
-                float r = (p - (float)m_first_frame) / float(m_last_frame - m_first_frame);
+                float r = (p - (float)m_min_frame) / float(m_max_frame - m_min_frame);
                 float x = ImLerp(rc.Min.x, rc.Max.x, r);
                 draw_list->AddLine(ImVec2(x, rc.Min.y + 6), ImVec2(x, rc.Max.y - 4), 0xAA000000, 4.f);
             }
