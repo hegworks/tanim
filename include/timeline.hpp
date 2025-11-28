@@ -5,6 +5,7 @@
 #include "tanim/include/sequence.hpp"
 #include "tanim/include/timeliner.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace tanim
@@ -122,11 +123,27 @@ struct Timeline : public timeliner::TimelineInterface
         draw_list->PopClipRect();
     }
 
-    // TODO(tanim) once we have multiple sequences, call the function on the expanded sequence
-    void EditSnapY(float value) { m_sequences.at(0).EditSnapY(value); }
+    void EditSnapY(float value)
+    {
+        if (const auto seq = GetExpandedSequenceIdx())
+        {
+            m_sequences.at(seq.value()).EditSnapY(value);
+        }
+    }
 
-    // TODO(tanim) return the actual expanded sequence
-    Sequence& GetExpandedSequence() { return m_sequences.at(0); }
+    std::optional<int> GetExpandedSequenceIdx() const
+    {
+        for (int i = 0; i < (int)m_sequences.size(); ++i)
+        {
+            if (m_sequences.at(i).m_expanded)
+            {
+                return i;
+            }
+        }
+        return std::nullopt;
+    }
+
+    Sequence& GetSequence(int sequence_idx) { return m_sequences.at(sequence_idx); }
 
     void BeginEdit(int /* sequence_idx */) override { /*TODO(tanim)*/ }
 

@@ -43,7 +43,18 @@ void Tanim::Update(float dt)
 
 void Tanim::Draw()
 {
-    m_timeline.GetExpandedSequence().m_draw_max.x = (float)m_timeline.m_max_frame;
+    bool has_expanded_seq = false;
+    int expanded_seq_idx = -1;
+    if (const auto idx = m_timeline.GetExpandedSequenceIdx())
+    {
+        has_expanded_seq = true;
+        expanded_seq_idx = idx.value();
+    }
+
+    if (has_expanded_seq)
+    {
+        m_timeline.GetSequence(expanded_seq_idx).m_draw_max.x = (float)m_timeline.m_max_frame;
+    }
 
     //*****************************************************
 
@@ -145,21 +156,23 @@ void Tanim::Draw()
 
     ImGui::Text("index:       %d", m_selected_sequence);
 
-    ImGui::PushItemWidth(100);
-    ImGui::BeginDisabled();
-    ImGui::DragFloat2("draw min", &m_timeline.GetExpandedSequence().m_draw_min.x);
-    ImGui::DragFloat2("draw max", &m_timeline.GetExpandedSequence().m_draw_max.x);
-    ImGui::EndDisabled();
-    ImGui::PopItemWidth();
-
-    if (m_selected_sequence != -1)
+    if (has_expanded_seq)
     {
-        const Sequence& sd = m_timeline.GetExpandedSequence();
+        ImGui::PushItemWidth(100);
+        ImGui::BeginDisabled();
+        ImGui::DragFloat2("draw min", &m_timeline.GetSequence(expanded_seq_idx).m_draw_min.x);
+        ImGui::DragFloat2("draw max", &m_timeline.GetSequence(expanded_seq_idx).m_draw_max.x);
+        ImGui::EndDisabled();
+        ImGui::PopItemWidth();
+    }
+
+    if (has_expanded_seq)
+    {
         // switch (type) ...
 
-        ImGui::Text("type:        %d", sd.m_type);
-        ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(sd.m_type));
-        ImGui::Text("expanded:    %i", sd.m_expanded);
+        ImGui::Text("type:        %d", m_timeline.GetSequence(expanded_seq_idx).m_type);
+        ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(m_timeline.GetSequence(expanded_seq_idx).m_type));
+        ImGui::Text("expanded:    %i", m_timeline.GetSequence(expanded_seq_idx).m_expanded);
     }
 
     ImGui::End();
@@ -168,23 +181,25 @@ void Tanim::Draw()
 
     ImGui::Begin("curves");
 
-    float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
+    if (has_expanded_seq)
+    {
+        Sequence& seq = m_timeline.GetSequence(expanded_seq_idx);
 
-    float sampledX = sequencer::SampleCurveForAnimation(m_timeline.GetExpandedSequence().GetCurvePointsList(0),
-                                                        sampleTime,
-                                                        m_timeline.GetExpandedSequence().GetCurveLerpType(0));
+        const float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
 
-    float sampledY = sequencer::SampleCurveForAnimation(m_timeline.GetExpandedSequence().GetCurvePointsList(1),
-                                                        sampleTime,
-                                                        m_timeline.GetExpandedSequence().GetCurveLerpType(1));
+        const float sampledX =
+            sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sampleTime, seq.GetCurveLerpType(0));
 
-    float sampledZ = sequencer::SampleCurveForAnimation(m_timeline.GetExpandedSequence().GetCurvePointsList(2),
-                                                        sampleTime,
-                                                        m_timeline.GetExpandedSequence().GetCurveLerpType(2));
+        const float sampledY =
+            sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sampleTime, seq.GetCurveLerpType(1));
 
-    ImGui::Text("X: %.4f", sampledX);
-    ImGui::Text("Y: %.4f", sampledY);
-    ImGui::Text("Z: %.4f", sampledZ);
+        const float sampledZ =
+            sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sampleTime, seq.GetCurveLerpType(2));
+
+        ImGui::Text("X: %.4f", sampledX);
+        ImGui::Text("Y: %.4f", sampledY);
+        ImGui::Text("Z: %.4f", sampledZ);
+    }
 
     ImGui::End();
 
