@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <vector>
+#include <string>
 
 namespace tanim
 {
@@ -19,6 +20,7 @@ struct Timeline : public timeliner::TimelineInterface
     int m_last_frame{10};
     int m_min_frame{0};
     int m_max_frame{500};
+    std::string m_name{"New Timeline"};
     std::vector<Sequence> m_sequences{};
 
     int GetMinFrame() const override { return 0; }

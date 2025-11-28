@@ -9,11 +9,7 @@
 namespace tanim
 {
 
-void Tanim::Init()
-{
-    // TODO(tanim) remove hardcoded sequence add
-    m_timeline.AddSequence(0);
-}
+void Tanim::Init() {}
 
 void Tanim::Play() { m_player_playing = true; }
 
@@ -115,6 +111,17 @@ void Tanim::Draw()
         m_timeline.EditSnapY(m_snap_y_value);
     }
 
+    ImGui::SameLine();
+    ImGui::Text(" | ");
+    ImGui::SameLine();
+
+    if (ImGui::Button("+ Timeline"))
+    {
+        // TODO(tanim) save the previous timeline, create the new one after getting the path in drive
+        m_timeline = {};
+        has_expanded_seq = false;
+    }
+
     ImGui::PopItemWidth();
 
     ImGui::End();
@@ -141,6 +148,19 @@ void Tanim::Draw()
     //*****************************************************
 
     ImGui::Begin("timeline");
+
+    if (ImGui::Button("+ Sequence"))
+    {
+        // TODO(tanim) get the types from reflection and show a pop-up to choose between then, then AddSequence
+        m_timeline.AddSequence(0);
+    }
+
+    char name_buf[256];
+    strncpy_s(name_buf, m_timeline.m_name.c_str(), sizeof(name_buf));
+    if (ImGui::InputText("Timeline Name", name_buf, sizeof(name_buf)))
+    {
+        m_timeline.m_name = std::string(name_buf);
+    }
 
     ImGui::Text("focused:     %d", m_timeline.focused);
     ImGui::Text("min frame:   %d", m_timeline.m_min_frame);
