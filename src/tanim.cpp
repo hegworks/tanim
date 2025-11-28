@@ -172,27 +172,39 @@ void Tanim::Draw()
 
     //*****************************************************
 
-    ImGui::Begin("selected sequence");
-
-    ImGui::Text("index:       %d", m_selected_sequence);
+    ImGui::Begin("expanded sequence");
 
     if (has_expanded_seq)
     {
+        Sequence& seq = m_timeline.GetSequence(expanded_seq_idx);
+
         ImGui::PushItemWidth(100);
+        ImGui::Text("index:       %d", expanded_seq_idx);
         ImGui::BeginDisabled();
-        ImGui::DragFloat2("draw min", &m_timeline.GetSequence(expanded_seq_idx).m_draw_min.x);
-        ImGui::DragFloat2("draw max", &m_timeline.GetSequence(expanded_seq_idx).m_draw_max.x);
+        ImGui::DragFloat2("draw min", &seq.m_draw_min.x);
+        ImGui::DragFloat2("draw max", &seq.m_draw_max.x);
         ImGui::EndDisabled();
         ImGui::PopItemWidth();
-    }
 
-    if (has_expanded_seq)
-    {
         // switch (type) ...
 
-        ImGui::Text("type:        %d", m_timeline.GetSequence(expanded_seq_idx).m_type);
-        ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(m_timeline.GetSequence(expanded_seq_idx).m_type));
-        ImGui::Text("expanded:    %i", m_timeline.GetSequence(expanded_seq_idx).m_expanded);
+        ImGui::Text("type:        %d", seq.m_type);
+        ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(seq.m_type));
+        ImGui::Text("expanded:    %i", seq.m_expanded);
+
+        for (int i = 0; i < seq.GetCurveCount(); ++i)
+        {
+            ImGui::PushID(i);
+
+            char curve_name_buf[256];
+            strncpy_s(curve_name_buf, seq.m_curves.at(i).m_name.c_str(), sizeof(curve_name_buf));
+            if (ImGui::InputText("Field", curve_name_buf, sizeof(curve_name_buf)))
+            {
+                seq.m_curves.at(i).m_name = std::string(curve_name_buf);
+            }
+
+            ImGui::PopID();
+        }
     }
 
     ImGui::End();

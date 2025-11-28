@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 #include <vector>
 
 namespace tanim
@@ -32,6 +33,7 @@ struct Sequence : public sequencer::SequenceInterface
         std::vector<Point> m_points{{0, 0}, {10, 0}};
         sequencer::LerpType m_lerp_type{sequencer::LerpType::SMOOTH};
         bool m_visibility{true};
+        std::string m_name{"name"};
     };
 
     int m_type{0};
@@ -55,7 +57,7 @@ struct Sequence : public sequencer::SequenceInterface
         m_curves.emplace_back();
     }
 
-    int CurveCount() override { return (int)m_curves.size(); }
+    int GetCurveCount() override { return (int)m_curves.size(); }
 
     bool GetCurveVisibility(int curve_idx) override { return m_curves.at(curve_idx).m_visibility; }
 
@@ -166,7 +168,7 @@ private:
 
     void ClampLastPointsToTimelineLastFrame()
     {
-        for (int i = 0; i < CurveCount(); i++)
+        for (int i = 0; i < GetCurveCount(); i++)
         {
             m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)*m_timeline_last_frame;
             SortCurvePoints(i);

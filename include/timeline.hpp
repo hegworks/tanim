@@ -78,40 +78,38 @@ struct Timeline : public timeliner::TimelineInterface
         m_sequences[index].m_expanded = !m_sequences[index].m_expanded;
     }
 
-    void CustomDraw(int index,
+    void CustomDraw(int seq_idx,
                     ImDrawList* draw_list,
                     const ImRect& rc,
                     const ImRect& legendRect,
                     const ImRect& clippingRect,
                     const ImRect& legendClippingRect) override
     {
-        // TODO(tanim) hardcoded labels
-        static const char* labels[] = {"X", "Y", "Z"};
-
         draw_list->PushClipRect(legendClippingRect.Min, legendClippingRect.Max, true);
 
-        // TODO(tanim) hardcoded 3
-        for (int i = 0; i < 3; i++)
+        Sequence& seq = m_sequences.at(seq_idx);
+        for (int curve_idx = 0; curve_idx < seq.GetCurveCount(); curve_idx++)
         {
-            Sequence& seq = m_sequences.at(index);
-            ImVec2 pta(legendRect.Min.x + 30, legendRect.Min.y + i * 14.f);
-            ImVec2 ptb(legendRect.Max.x, legendRect.Min.y + (i + 1) * 14.f);
-            draw_list->AddText(pta, seq.GetCurveVisibility(i) ? 0xFFFFFFFF : 0x80FFFFFF, labels[i]);
+            ImVec2 pta(legendRect.Min.x + 30, legendRect.Min.y + (float)curve_idx * 14.f);
+            ImVec2 ptb(legendRect.Max.x, legendRect.Min.y + (float)(curve_idx + 1) * 14.f);
+            draw_list->AddText(pta,
+                               seq.GetCurveVisibility(curve_idx) ? 0xFFFFFFFF : 0x80FFFFFF,
+                               seq.m_curves.at(curve_idx).m_name.c_str());
             if (ImRect(pta, ptb).Contains(ImGui::GetMousePos()) && ImGui::IsMouseClicked(0))
-                seq.SetCurveVisibility(i, !seq.GetCurveVisibility(i));
+                seq.SetCurveVisibility(curve_idx, !seq.GetCurveVisibility(curve_idx));
         }
         draw_list->PopClipRect();
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        sequencer::Edit(m_sequences.at(0), rcSize, 137 + index, &clippingRect);
+        sequencer::Edit(m_sequences.at(0), rcSize, 137 + seq_idx, &clippingRect);
     }
 
     void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
     {
         draw_list->PushClipRect(clippingRect.Min, clippingRect.Max, true);
         Sequence& seq = m_sequences.at(index);
-        for (int curve_index = 0; curve_index < seq.CurveCount(); curve_index++)
+        for (int curve_index = 0; curve_index < seq.GetCurveCount(); curve_index++)
         {
             for (int point_idx = 0; point_idx < seq.GetCurvePointCount(curve_index); point_idx++)
             {
@@ -161,7 +159,10 @@ struct Timeline : public timeliner::TimelineInterface
     void EditLastFrame(int new_last_frame) override
     {
         m_last_frame = new_last_frame;
-        m_sequences.at(0).EditTimelineLastFrame();
+        for (int i = 0; i < (int)m_sequences.size(); ++i)
+        {
+            m_sequences.at(i).EditTimelineLastFrame();
+        }
     }
 };
 

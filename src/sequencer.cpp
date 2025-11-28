@@ -186,7 +186,7 @@ int Edit(SequenceInterface& delegate,
 
     const ImVec2 viewSize(size.x, -size.y);
     const ImVec2 sizeOfPixel = ImVec2(1.f, 1.f) / viewSize;
-    const int curveCount = delegate.CurveCount();
+    const int curveCount = delegate.GetCurveCount();
 
     if (scrollingV)
     {
