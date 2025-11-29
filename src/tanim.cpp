@@ -3,6 +3,7 @@
 
 #include "tanim/include/tanim.hpp"
 
+#include "tanim/include/registry.hpp"
 #include "tanim/include/timeliner.hpp"
 #include "tanim/include/sequence.hpp"
 
@@ -159,8 +160,20 @@ void Tanim::Draw()
 
     if (ImGui::Button("+ Sequence"))
     {
-        // TODO(tanim) get the types from reflection and show a pop-up to choose between then, then AddSequence
-        m_timeline.AddSequence(0);
+        ImGui::OpenPopup("AddSequencePopup");
+    }
+
+    if (ImGui::BeginPopup("AddSequencePopup"))
+    {
+        const auto& components = GetRegistry().GetComponents();
+        for (const auto& component : components)
+        {
+            if (ImGui::MenuItem(component.m_name.c_str()))
+            {
+                component.m_add_sequence(m_timeline);
+            }
+        }
+        ImGui::EndPopup();
     }
 
     char name_buf[256];

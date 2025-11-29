@@ -47,7 +47,7 @@ struct Timeline : public timeliner::TimelineInterface
     const char* GetSequenceLabel(int index) const override
     {
         static char tmps[512];
-        snprintf(tmps, 512, "[%02d] %s", index, SequenceTypeNames[m_data->m_sequences.at(index).m_type]);
+        snprintf(tmps, 512, "[%02d] %s", index, m_data->m_sequences.at(index).m_name.c_str());
         return tmps;
     }
 

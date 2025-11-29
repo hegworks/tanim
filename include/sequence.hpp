@@ -33,7 +33,7 @@ struct Sequence : public sequencer::SequenceInterface
         std::vector<Point> m_points{{0, 0}, {10, 0}};
         sequencer::LerpType m_lerp_type{sequencer::LerpType::SMOOTH};
         bool m_visibility{true};
-        std::string m_name{"name"};
+        std::string m_name{"new_curve"};
     };
 
     int m_type{0};
@@ -41,6 +41,9 @@ struct Sequence : public sequencer::SequenceInterface
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
     bool m_expanded{false};
+    std::string m_name{"new_sequence"};
+
+    Curve& AddCurve() { return m_curves.emplace_back(); }
 
     // TODO(tanim) this has to be removed after we use ECS maybe
     const int* m_timeline_last_frame{nullptr};
@@ -48,14 +51,7 @@ struct Sequence : public sequencer::SequenceInterface
     float m_snap_y_value = 0.1f;
 
     // TODO(tanim) the int* has to be removed after we use ECS maybe
-    Sequence(const int* timeline_last_frame)
-    {
-        m_timeline_last_frame = timeline_last_frame;
-        // TODO(tanim) replace hardcoded curves with curves based on the reflected parameter
-        m_curves.emplace_back();
-        m_curves.emplace_back();
-        m_curves.emplace_back();
-    }
+    Sequence(const int* timeline_last_frame) { m_timeline_last_frame = timeline_last_frame; }
 
     int GetCurveCount() override { return (int)m_curves.size(); }
 
