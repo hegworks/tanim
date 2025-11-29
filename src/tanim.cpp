@@ -30,15 +30,22 @@ void Tanim::Update(float dt)
     if (m_player_playing)
     {
         m_player_time += dt;
-        if (m_player_time > FrameToSeconds(m_timeline.m_last_frame))
+        if (m_player_time > FrameToSeconds(m_timeline.GetLastFrame()))
         {
             m_player_time = 0;
         }
     }
 }
 
+void Tanim::SetTimelineData(TimelineData* timeline_data) { m_timeline.m_data = timeline_data; }
+
 void Tanim::Draw()
 {
+    if (!m_timeline.HasData())
+    {
+        return;
+    }
+
     bool has_expanded_seq = false;
     int expanded_seq_idx = -1;
     if (const auto idx = m_timeline.GetExpandedSequenceIdx())
@@ -49,7 +56,7 @@ void Tanim::Draw()
 
     if (has_expanded_seq)
     {
-        m_timeline.GetSequence(expanded_seq_idx).m_draw_max.x = (float)m_timeline.m_max_frame;
+        m_timeline.GetSequence(expanded_seq_idx).m_draw_max.x = (float)m_timeline.GetMaxFrame();
     }
 
     //*****************************************************
@@ -97,8 +104,9 @@ void Tanim::Draw()
     ImGui::Text(" | ");
     ImGui::SameLine();
 
-    ImGui::DragInt("MaxFrame", &m_timeline.m_max_frame, 0.1f, m_timeline.GetMinFrame());
-    m_timeline.m_max_frame = ImMax(1, m_timeline.m_max_frame);
+    int max_frame = m_timeline.GetMaxFrame();
+    ImGui::DragInt("MaxFrame", &max_frame, 0.1f, m_timeline.GetMinFrame());
+    m_timeline.SetMaxFrame(ImMax(1, max_frame));
 
     ImGui::SameLine();
     ImGui::Text(" | ");
@@ -156,17 +164,17 @@ void Tanim::Draw()
     }
 
     char name_buf[256];
-    strncpy_s(name_buf, m_timeline.m_name.c_str(), sizeof(name_buf));
+    strncpy_s(name_buf, m_timeline.GetName().c_str(), sizeof(name_buf));
     if (ImGui::InputText("Timeline Name", name_buf, sizeof(name_buf)))
     {
-        m_timeline.m_name = std::string(name_buf);
+        m_timeline.SetName(std::string(name_buf));
     }
 
     ImGui::Text("focused:     %d", m_timeline.focused);
-    ImGui::Text("min frame:   %d", m_timeline.m_min_frame);
-    ImGui::Text("max frame:   %d", m_timeline.m_max_frame);
-    ImGui::Text("first frame: %d", m_timeline.m_first_frame);
-    ImGui::Text("last frame:  %d", m_timeline.m_last_frame);
+    ImGui::Text("min frame:   %d", m_timeline.GetMinFrame());
+    ImGui::Text("max frame:   %d", m_timeline.GetMaxFrame());
+    ImGui::Text("first frame: %d", m_timeline.GetFirstFrame());
+    ImGui::Text("last frame:  %d", m_timeline.GetLastFrame());
 
     ImGui::End();
 

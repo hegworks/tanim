@@ -12,6 +12,7 @@ public:
     static void Init();
     static void Draw();
     static void Update(float dt);
+    static void SetTimelineData(TimelineData* timeline_data);
     static inline float m_snap_y_value = 0.1f;
 
 private:
