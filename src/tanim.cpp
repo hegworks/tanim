@@ -252,6 +252,12 @@ void Tanim::Draw()
         ImGui::Text("X: %.4f", sampledX);
         ImGui::Text("Y: %.4f", sampledY);
         ImGui::Text("Z: %.4f", sampledZ);
+
+        const auto& components = GetRegistry().GetComponents();
+        for (const auto& component : components)
+        {
+            component.m_sample(m_timeline, sampleTime);
+        }
     }
 
     ImGui::End();
