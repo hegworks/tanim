@@ -7,6 +7,7 @@ Timeline Animation Library based on ImGui & ImGuizmo's ImSequencer.
 ## Dependencies
 
 - Dear ImGui (TODO: specify version)
+- [VisitStruct 1.2.0](https://github.com/cbeck88/visit_struct/releases/tag/1.2.0)
 
 ## Adding the library
 
