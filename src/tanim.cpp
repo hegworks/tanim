@@ -196,6 +196,8 @@ void Tanim::Draw()
     ImGui::Text("max frame:   %d", m_timeline.GetMaxFrame());
     ImGui::Text("first frame: %d", m_timeline.GetFirstFrame());
     ImGui::Text("last frame:  %d", m_timeline.GetLastFrame());
+    ImGui::Text("entity:      %llu", static_cast<uint64_t>(m_timeline.m_data->m_entity));
+    ImGui::Text("id:          %llu", m_timeline.m_data->m_id);
 
     ImGui::End();
 

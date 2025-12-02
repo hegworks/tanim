@@ -13,6 +13,7 @@ struct TimelineData
     int m_max_frame{500};
     std::string m_name{"New Timeline"};
     std::vector<Sequence> m_sequences{};
+    uint64_t m_id{0};
 
     TimelineData(entt::entity entity) : m_entity(entity), m_sequences({}) {}
 
