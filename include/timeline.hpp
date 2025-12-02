@@ -79,7 +79,6 @@ struct Timeline : public timeliner::TimelineInterface
     {
         auto& seq = m_data->m_sequences.emplace_back(&m_data->m_last_frame);
         seq.m_type = type;
-        seq.m_expanded = true;
     }
 
     void DeleteSequence(int index) override { m_data->m_sequences.erase(m_data->m_sequences.begin() + index); }
@@ -125,7 +124,7 @@ struct Timeline : public timeliner::TimelineInterface
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        sequencer::Edit(m_data->m_sequences.at(0), rcSize, 137 + seq_idx, &clippingRect);
+        sequencer::Edit(m_data->m_sequences.at(seq_idx), rcSize, 137 + seq_idx, &clippingRect);
     }
 
     void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
