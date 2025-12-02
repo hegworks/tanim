@@ -168,11 +168,19 @@ void Tanim::Draw()
         const auto& components = GetRegistry().GetComponents();
         for (const auto& component : components)
         {
-            if (ImGui::MenuItem(component.m_name.c_str()))
+            for (const auto& field_name : component.m_field_names)
             {
-                component.m_add_sequence(m_timeline);
+                const std::string full_name = component.m_struct_name + "::" + field_name;
+                if (!m_timeline.HasSequenceWithName(full_name))
+                {
+                    if (ImGui::MenuItem(full_name.c_str()))
+                    {
+                        component.m_add_sequence(m_timeline, field_name);
+                    }
+                }
             }
         }
+
         ImGui::EndPopup();
     }
 

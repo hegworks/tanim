@@ -53,6 +53,28 @@ struct Sequence : public sequencer::SequenceInterface
     // TODO(tanim) the int* has to be removed after we use ECS maybe
     Sequence(const int* timeline_last_frame) { m_timeline_last_frame = timeline_last_frame; }
 
+    /// turns "a::b::c::d" into "c::d"
+    std::string GetNameWithLessColumns() const
+    {
+        if (m_name.empty()) return m_name;
+
+        const size_t last_column_pos = m_name.find_last_of("::");
+        if (last_column_pos == std::string::npos) return m_name;  // No :: found
+
+        if (last_column_pos < 2) return m_name;  // Not enough characters before ::
+
+        const std::string before_last_column_str = m_name.substr(0, last_column_pos - 1);
+        if (before_last_column_str.empty()) return m_name;
+
+        const size_t second_last_column_pos = before_last_column_str.find_last_of("::");
+        if (second_last_column_pos == std::string::npos) return m_name;  // Only one :: pair found
+
+        if (second_last_column_pos + 1 >= m_name.length()) return m_name;  // Not enough characters after second ::
+
+        std::string after_second_last_column_str = m_name.substr(second_last_column_pos + 1);
+        return after_second_last_column_str;
+    }
+
     int GetCurveCount() override { return (int)m_curves.size(); }
 
     bool GetCurveVisibility(int curve_idx) override { return m_curves.at(curve_idx).m_visibility; }

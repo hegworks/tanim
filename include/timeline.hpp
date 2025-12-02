@@ -36,6 +36,20 @@ struct Timeline : public timeliner::TimelineInterface
 
     void SetName(const std::string& name) { m_data->m_name = name; }
 
+    const std::string& GetName() { return m_data->m_name; }
+
+    bool HasSequenceWithName(const std::string& seq_name) const
+    {
+        for (const auto& sequence : m_data->m_sequences)
+        {
+            if (seq_name == sequence.m_name)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     int GetSequenceCount() const override { return (int)m_data->m_sequences.size(); }
 
     // TODO(tanim) change after reflection
@@ -47,7 +61,7 @@ struct Timeline : public timeliner::TimelineInterface
     const char* GetSequenceLabel(int index) const override
     {
         static char tmps[512];
-        snprintf(tmps, 512, "[%02d] %s", index, m_data->m_sequences.at(index).m_name.c_str());
+        snprintf(tmps, 512, "%s", m_data->m_sequences.at(index).GetNameWithLessColumns().c_str());
         return tmps;
     }
 

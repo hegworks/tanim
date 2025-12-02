@@ -17,37 +17,44 @@ struct VSContext
 
 struct RegisteredComponent
 {
-    std::string m_name{};
-    std::function<void(Timeline& timeline)> m_add_sequence;
+    std::string m_struct_name{};
+    std::vector<std::string> m_field_names{};
+    std::function<void(Timeline& timeline, const std::string& seq_name)> m_add_sequence;
     std::function<void(Timeline& timeline, float sample_time)> m_sample;
 };
 
 template <typename T>
-static void AddSequence(T& ecs_component, Timeline& timeline)
+static void AddSequence(T& ecs_component, Timeline& timeline, const std::string& seq_name)
 {
     visit_struct::context<VSContext>::for_each(ecs_component,
-                                               [&timeline](const char* field_name, auto& field)
+                                               [&timeline, &seq_name](const char* field_name, auto& field)
                                                {
                                                    using FieldType = std::decay_t<decltype(field)>;
-                                                   if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                                                   const std::string field_name_str = field_name;
+                                                   if (field_name_str == seq_name)
                                                    {
-                                                       // TODO(tanim) set based on metadata sequence type (position, color,
-                                                       // etc.)
-                                                       timeline.AddSequence(0);
+                                                       if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                                                       {
+                                                           // TODO(tanim) set based on metadata sequence type (position, color,
+                                                           // etc.)
+                                                           timeline.AddSequence(0);
 
-                                                       Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                                                       seq.m_name = field_name;
-                                                       {
-                                                           Sequence::Curve& curve = seq.AddCurve();
-                                                           curve.m_name = "X";
-                                                       }
-                                                       {
-                                                           Sequence::Curve& curve = seq.AddCurve();
-                                                           curve.m_name = "Y";
-                                                       }
-                                                       {
-                                                           Sequence::Curve& curve = seq.AddCurve();
-                                                           curve.m_name = "Z";
+                                                           Sequence& seq =
+                                                               timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                                                           const std::string struct_name = visit_struct::get_name<T>();
+                                                           seq.m_name = struct_name + "::" + field_name;
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "X";
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Y";
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Z";
+                                                           }
                                                        }
                                                    }
                                                });
@@ -61,6 +68,9 @@ static void Sample(T& ecs_component, Timeline& timeline, float sample_time)
         [&timeline, &sample_time](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
+            const std::string field_name_str = field_name;
+            // if (field_name_str == seq_name)
+            //{
             if constexpr (std::is_same_v<FieldType, glm::vec3>)
             {
                 Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
@@ -68,6 +78,7 @@ static void Sample(T& ecs_component, Timeline& timeline, float sample_time)
                 field.y = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
                 field.z = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
             }
+            //}
         });
 }
 
@@ -83,10 +94,15 @@ public:
         if (IsRegisteredOnce(type_name)) return;
 
         RegisteredComponent registered_component;
-        registered_component.m_name = type_name;
 
-        registered_component.m_add_sequence = [&registry](Timeline& timeline)
-        { AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline); };
+        registered_component.m_struct_name = type_name;
+
+        visit_struct::context<VSContext>::for_each(T{},
+                                                   [&](const char* field_name, auto&& field)
+                                                   { registered_component.m_field_names.emplace_back(field_name); });
+
+        registered_component.m_add_sequence = [&registry](Timeline& timeline, const std::string& seq_name)
+        { AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline, seq_name); };
 
         registered_component.m_sample = [&registry](Timeline& timeline, float sample_time)
         { Sample(registry.get<T>(timeline.m_data->m_entity), timeline, sample_time); };
@@ -103,7 +119,7 @@ private:
     {
         for (const auto& component : m_components)
         {
-            if (component.m_name == name) return true;
+            if (component.m_struct_name == name) return true;
         }
         return false;
     }
