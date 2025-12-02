@@ -242,11 +242,33 @@ void Tanim::Draw()
 
     ImGui::Begin("curves");
 
-    if (has_expanded_seq)
+    const float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
+    const auto& components = GetRegistry().GetComponents();
+    for (const auto& component : components)
     {
-        Sequence& seq = m_timeline.GetSequence(expanded_seq_idx);
+        for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)
+        {
+            Sequence& seq = m_timeline.GetSequence(seq_idx);
+            component.m_sample(m_timeline, sampleTime, seq);
 
-        const float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
+            /*const float sampledX =
+                sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sampleTime, seq.GetCurveLerpType(0));
+
+            const float sampledY =
+                sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sampleTime, seq.GetCurveLerpType(1));
+
+            const float sampledZ =
+                sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sampleTime, seq.GetCurveLerpType(2));
+
+            ImGui::Text("X: %.4f", sampledX);
+            ImGui::Text("Y: %.4f", sampledY);
+            ImGui::Text("Z: %.4f", sampledZ);*/
+        }
+    }
+
+    for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)
+    {
+        Sequence& seq = m_timeline.GetSequence(seq_idx);
 
         const float sampledX =
             sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sampleTime, seq.GetCurveLerpType(0));
@@ -260,12 +282,6 @@ void Tanim::Draw()
         ImGui::Text("X: %.4f", sampledX);
         ImGui::Text("Y: %.4f", sampledY);
         ImGui::Text("Z: %.4f", sampledZ);
-
-        const auto& components = GetRegistry().GetComponents();
-        for (const auto& component : components)
-        {
-            component.m_sample(m_timeline, sampleTime);
-        }
     }
 
     ImGui::End();

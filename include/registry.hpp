@@ -20,7 +20,7 @@ struct RegisteredComponent
     std::string m_struct_name{};
     std::vector<std::string> m_field_names{};
     std::function<void(Timeline& timeline, const std::string& seq_name)> m_add_sequence;
-    std::function<void(Timeline& timeline, float sample_time)> m_sample;
+    std::function<void(Timeline& timeline, float sample_time, Sequence& seq)> m_sample;
 };
 
 template <typename T>
@@ -42,7 +42,8 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                            Sequence& seq =
                                                                timeline.GetSequence(timeline.GetSequenceCount() - 1);
                                                            const std::string struct_name = visit_struct::get_name<T>();
-                                                           seq.m_name = struct_name + "::" + field_name;
+                                                           const std::string full_name = struct_name + "::" + field_name;
+                                                           seq.m_name = full_name;
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "X";
@@ -61,24 +62,30 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
 }
 
 template <typename T>
-static void Sample(T& ecs_component, Timeline& timeline, float sample_time)
+static void Sample(T& ecs_component, float sample_time, Sequence& seq)
 {
     visit_struct::context<VSContext>::for_each(
         ecs_component,
-        [&timeline, &sample_time](const char* field_name, auto& field)
+        [&seq, &sample_time](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
-            // if (field_name_str == seq_name)
-            //{
-            if constexpr (std::is_same_v<FieldType, glm::vec3>)
+            const std::string struct_name = visit_struct::get_name<T>();
+            const std::string full_name = struct_name + "::" + field_name;
+            if (seq.m_name == full_name)
             {
-                Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                field.x = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
-                field.y = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
-                field.z = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
+                if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                {
+                    field.x =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+
+                    field.y =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
+
+                    field.z =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
+                }
             }
-            //}
         });
 }
 
@@ -104,8 +111,8 @@ public:
         registered_component.m_add_sequence = [&registry](Timeline& timeline, const std::string& seq_name)
         { AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline, seq_name); };
 
-        registered_component.m_sample = [&registry](Timeline& timeline, float sample_time)
-        { Sample(registry.get<T>(timeline.m_data->m_entity), timeline, sample_time); };
+        registered_component.m_sample = [&registry](Timeline& timeline, float sample_time, Sequence& seq)
+        { Sample(registry.get<T>(timeline.m_data->m_entity), sample_time, seq); };
 
         m_components.push_back(std::move(registered_component));
     }
