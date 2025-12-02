@@ -19,46 +19,61 @@ struct RegisteredComponent
 {
     std::string m_struct_name{};
     std::vector<std::string> m_field_names{};
+    std::vector<std::string> m_full_names{};  // m_struct_name + "::" + m_field_name
     std::function<void(Timeline& timeline, const std::string& seq_name)> m_add_sequence;
     std::function<void(Timeline& timeline, float sample_time, Sequence& seq)> m_sample;
+    std::function<void(Timeline& timeline, Sequence& seq)> m_inspect;
+    bool HasSequence(const std::string& seq_name) const
+    {
+        return std::find(m_full_names.begin(), m_full_names.end(), seq_name) != m_full_names.end();
+    }
 };
 
 template <typename T>
 static void AddSequence(T& ecs_component, Timeline& timeline, const std::string& seq_name)
 {
-    visit_struct::context<VSContext>::for_each(ecs_component,
-                                               [&timeline, &seq_name](const char* field_name, auto& field)
-                                               {
-                                                   using FieldType = std::decay_t<decltype(field)>;
-                                                   const std::string field_name_str = field_name;
-                                                   if (field_name_str == seq_name)
-                                                   {
-                                                       if constexpr (std::is_same_v<FieldType, glm::vec3>)
-                                                       {
-                                                           // TODO(tanim) set based on metadata sequence type (position, color,
-                                                           // etc.)
-                                                           timeline.AddSequence(0);
+    visit_struct::context<VSContext>::for_each(
+        ecs_component,
+        [&timeline, &seq_name](const char* field_name, auto& field)
+        {
+            using FieldType = std::decay_t<decltype(field)>;
+            const std::string field_name_str = field_name;
+            if (field_name_str == seq_name)
+            {
+                const std::string struct_name = visit_struct::get_name<T>();
+                const std::string full_name = struct_name + "::" + field_name;
+                if constexpr (std::is_same_v<FieldType, float>)
+                {
+                    timeline.AddSequence(0);
+                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                    seq.m_name = full_name;
 
-                                                           Sequence& seq =
-                                                               timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                                                           const std::string struct_name = visit_struct::get_name<T>();
-                                                           const std::string full_name = struct_name + "::" + field_name;
-                                                           seq.m_name = full_name;
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "X";
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Y";
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Z";
-                                                           }
-                                                       }
-                                                   }
-                                               });
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = field_name_str;
+                    }
+                }
+                if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                {
+                    timeline.AddSequence(0);
+                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                    seq.m_name = full_name;
+
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "X";
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Y";
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Z";
+                    }
+                }
+            }
+        });
 }
 
 template <typename T>
@@ -74,6 +89,10 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
             const std::string full_name = struct_name + "::" + field_name;
             if (seq.m_name == full_name)
             {
+                if constexpr (std::is_same_v<FieldType, float>)
+                {
+                    field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                }
                 if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
                     field.x =
@@ -87,6 +106,30 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
             }
         });
+}
+
+template <typename T>
+static void Inspect(T& ecs_component, Sequence& seq)
+{
+    visit_struct::context<VSContext>::for_each(ecs_component,
+                                               [&seq](const char* field_name, auto& field)
+                                               {
+                                                   using FieldType = std::decay_t<decltype(field)>;
+                                                   const std::string field_name_str = field_name;
+                                                   const std::string struct_name = visit_struct::get_name<T>();
+                                                   const std::string full_name = struct_name + "::" + field_name;
+                                                   if (seq.m_name == full_name)
+                                                   {
+                                                       if constexpr (std::is_same_v<FieldType, float>)
+                                                       {
+                                                           ImGui::InputFloat(field_name, &field);
+                                                       }
+                                                       if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                                                       {
+                                                           ImGui::InputFloat3(field_name, &field.x);
+                                                       }
+                                                   }
+                                               });
 }
 
 class Registry
@@ -104,15 +147,22 @@ public:
 
         registered_component.m_struct_name = type_name;
 
-        visit_struct::context<VSContext>::for_each(T{},
-                                                   [&](const char* field_name, auto&& field)
-                                                   { registered_component.m_field_names.emplace_back(field_name); });
+        visit_struct::context<VSContext>::for_each(
+            T{},
+            [&](const char* field_name, auto&& field)
+            {
+                registered_component.m_field_names.emplace_back(field_name);
+                registered_component.m_full_names.emplace_back(registered_component.m_struct_name + "::" + field_name);
+            });
 
         registered_component.m_add_sequence = [&registry](Timeline& timeline, const std::string& seq_name)
         { AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline, seq_name); };
 
         registered_component.m_sample = [&registry](Timeline& timeline, float sample_time, Sequence& seq)
         { Sample(registry.get<T>(timeline.m_data->m_entity), sample_time, seq); };
+
+        registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
+        { Inspect(registry.get<T>(timeline.m_data->m_entity), seq); };
 
         m_components.push_back(std::move(registered_component));
     }
