@@ -87,7 +87,7 @@ struct Timeline : public timeliner::TimelineInterface
     // duplicate didn't make sense in my case, so I removed the functionality
     void Duplicate(int /*index*/) override { /*m_sequence_datas.push_back(m_sequence_datas[index]);*/ }
 
-    size_t GetCustomHeight(int index) override { return m_data->m_sequences[index].m_expanded ? 300 : 0; }
+    size_t GetCustomHeight(int index) override { return m_data->m_sequences[index].m_expanded ? 200 : 0; }
 
     void DoubleClick(int index) override
     {
