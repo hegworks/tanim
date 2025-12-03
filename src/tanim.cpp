@@ -120,16 +120,16 @@ void Tanim::Draw()
         m_timeline.EditSnapY(m_snap_y_value);
     }
 
-    ImGui::SameLine();
+    /*ImGui::SameLine();
     ImGui::Text(" | ");
-    ImGui::SameLine();
+    ImGui::SameLine();*/
 
-    if (ImGui::Button("+ Timeline"))
-    {
-        // TODO(tanim) save the previous timeline, create the new one after getting the path in drive
-        m_timeline = {};
-        has_expanded_seq = false;
-    }
+    // if (ImGui::Button("+ Timeline"))
+    //{
+    //     // TODO(tanim) save the previous timeline, create the new one after getting the path in drive
+    //     m_timeline = {};
+    //     has_expanded_seq = false;
+    // }
 
     ImGui::PopItemWidth();
 
@@ -168,14 +168,17 @@ void Tanim::Draw()
         const auto& components = GetRegistry().GetComponents();
         for (const auto& component : components)
         {
-            for (const auto& field_name : component.m_field_names)
+            if (component.m_entity_has(m_timeline.m_data->m_entity))
             {
-                const std::string full_name = component.m_struct_name + "::" + field_name;
-                if (!m_timeline.HasSequenceWithName(full_name))
+                for (const auto& field_name : component.m_field_names)
                 {
-                    if (ImGui::MenuItem(full_name.c_str()))
+                    const std::string full_name = component.m_struct_name + "::" + field_name;
+                    if (!m_timeline.HasSequenceWithName(full_name))
                     {
-                        component.m_add_sequence(m_timeline, field_name);
+                        if (ImGui::MenuItem(full_name.c_str()))
+                        {
+                            component.m_add_sequence(m_timeline, field_name);
+                        }
                     }
                 }
             }
@@ -191,10 +194,10 @@ void Tanim::Draw()
         m_timeline.SetName(std::string(name_buf));
     }
 
-    ImGui::Text("focused:     %d", m_timeline.focused);
-    ImGui::Text("min frame:   %d", m_timeline.GetMinFrame());
+    // ImGui::Text("focused:     %d", m_timeline.focused);
+    // ImGui::Text("min frame:   %d", m_timeline.GetMinFrame());
     ImGui::Text("max frame:   %d", m_timeline.GetMaxFrame());
-    ImGui::Text("first frame: %d", m_timeline.GetFirstFrame());
+    // ImGui::Text("first frame: %d", m_timeline.GetFirstFrame());
     ImGui::Text("last frame:  %d", m_timeline.GetLastFrame());
     ImGui::Text("entity:      %llu", static_cast<uint64_t>(m_timeline.m_data->m_entity));
     ImGui::Text("id:          %llu", m_timeline.m_data->m_id);

@@ -23,6 +23,7 @@ struct RegisteredComponent
     std::function<void(Timeline& timeline, const std::string& seq_name)> m_add_sequence;
     std::function<void(Timeline& timeline, float sample_time, Sequence& seq)> m_sample;
     std::function<void(Timeline& timeline, Sequence& seq)> m_inspect;
+    std::function<bool(entt::entity entity)> m_entity_has;
     bool HasSequence(const std::string& seq_name) const
     {
         return std::find(m_full_names.begin(), m_full_names.end(), seq_name) != m_full_names.end();
@@ -163,6 +164,8 @@ public:
 
         registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
         { Inspect(registry.get<T>(timeline.m_data->m_entity), seq); };
+
+        registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.any_of<T>(entity); };
 
         m_components.push_back(std::move(registered_component));
     }
