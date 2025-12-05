@@ -1,4 +1,5 @@
 #pragma once
+#include "tanim/include/helpers.hpp"
 #include "tanim/include/sequence.hpp"
 
 namespace tanim
@@ -14,6 +15,16 @@ struct TimelineData
     std::string m_name{"New Timeline"};
     std::vector<Sequence> m_sequences{};
     uint64_t m_id{0};
+    bool m_play_immediately{true};
+    int m_player_samples{60};  // SamplesPerSecond
+    float m_player_time{0};
+    bool m_player_playing{false};
+
+    int PlayerFrame() const { return helpers::SecondsToFrame(m_player_time, m_player_samples); }
+    float PlayerSampleTime() const { return helpers::SecondsToSampleTime(m_player_time, m_player_samples); }
+    float LastFrameTime() const { return helpers::FrameToSeconds(m_last_frame, m_player_samples); }
+    void SetPlayerTimeFromFrame(int frame_num) { m_player_time = helpers::FrameToSeconds(frame_num, m_player_samples); }
+    void SetPlayerTimeFromSeconds(float time) { m_player_time = time; }
 
     TimelineData(entt::entity entity) : m_entity(entity), m_sequences({}) {}
 

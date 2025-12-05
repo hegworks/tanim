@@ -52,6 +52,12 @@ struct Timeline : public timeliner::TimelineInterface
 
     int GetSequenceCount() const override { return (int)m_data->m_sequences.size(); }
 
+    void Play() { m_data->m_player_playing = true; }
+
+    void Pause() { m_data->m_player_playing = false; }
+
+    bool GetPlayerPlaying() const { return m_data->m_player_playing; }
+
     // TODO(tanim) change after reflection
     int GetSequenceTypeCount() const override { return sizeof(SequenceTypeNames) / sizeof(char*); }
 

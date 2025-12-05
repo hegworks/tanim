@@ -30,6 +30,9 @@ struct RegisteredComponent
     }
 };
 
+namespace reflection
+{
+
 template <typename T>
 static void AddSequence(T& ecs_component, Timeline& timeline, const std::string& seq_name)
 {
@@ -133,6 +136,8 @@ static void Inspect(T& ecs_component, Sequence& seq)
                                                });
 }
 
+}  // namespace reflection
+
 class Registry
 {
 public:
@@ -157,13 +162,13 @@ public:
             });
 
         registered_component.m_add_sequence = [&registry](Timeline& timeline, const std::string& seq_name)
-        { AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline, seq_name); };
+        { reflection::AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline, seq_name); };
 
         registered_component.m_sample = [&registry](Timeline& timeline, float sample_time, Sequence& seq)
-        { Sample(registry.get<T>(timeline.m_data->m_entity), sample_time, seq); };
+        { reflection::Sample(registry.get<T>(timeline.m_data->m_entity), sample_time, seq); };
 
         registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
-        { Inspect(registry.get<T>(timeline.m_data->m_entity), seq); };
+        { reflection::Inspect(registry.get<T>(timeline.m_data->m_entity), seq); };
 
         registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.any_of<T>(entity); };
 

@@ -12,33 +12,46 @@ namespace tanim
 
 void Tanim::Init() {}
 
-void Tanim::Play() { m_player_playing = true; }
+void Tanim::Play() { m_timeline.Play(); }
 
-void Tanim::Pause() { m_player_playing = false; }
-
-int Tanim::SecondsToFrame(float time) { return (int)floorf(time * (float)m_player_samples); }
-
-float Tanim::SecondsToSampleTime(float time) { return time * (float)m_player_samples; }
-
-float Tanim::FrameToSeconds(int frame)
-{
-    float tickTime = 1.0f / (float)m_player_samples;
-    return (float)frame * tickTime;
-}
+void Tanim::Pause() { m_timeline.Pause(); }
 
 void Tanim::Update(float dt)
 {
-    if (m_player_playing)
+    if (m_timeline.HasData() && m_timeline.GetPlayerPlaying())
     {
-        m_player_time += dt;
-        if (m_player_time > FrameToSeconds(m_timeline.GetLastFrame()))
+        m_timeline.m_data->m_player_time += dt;
+        if (m_timeline.m_data->m_player_time > m_timeline.m_data->LastFrameTime())
         {
-            m_player_time = 0;
+            // TODO(tanim) check for ping-pong, hold, reset, etc.
+            m_timeline.m_data->SetPlayerTimeFromSeconds(0.0f);
         }
     }
 }
 
 void Tanim::SetTimelineData(TimelineData* timeline_data) { m_timeline.m_data = timeline_data; }
+
+void Tanim::Sample(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+
+    const float sampleTime =
+        m_timeline.GetPlayerPlaying() ? m_timeline.m_data->PlayerSampleTime() : (float)m_timeline.m_data->PlayerFrame();
+    const auto& components = GetRegistry().GetComponents();
+
+    for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)
+    {
+        for (const auto& component : components)
+        {
+            Sequence& seq = m_timeline.GetSequence(seq_idx);
+
+            if (component.HasSequence(seq.m_name))
+            {
+                component.m_sample(m_timeline, sampleTime, seq);
+            }
+        }
+    }
+}
 
 void Tanim::Draw()
 {
@@ -70,11 +83,11 @@ void Tanim::Draw()
 
     ImGui::Begin("controls");
 
-    if (!m_player_playing)
+    if (!m_timeline.GetPlayerPlaying())
     {
         if (ImGui::Button("Play", {50, 0}))
         {
-            m_player_time = 0;
+            m_timeline.m_data->SetPlayerTimeFromSeconds(0.0f);
             Play();
         }
     }
@@ -91,15 +104,19 @@ void Tanim::Draw()
     ImGui::SameLine();
 
     ImGui::PushItemWidth(100);
-    ImGui::DragInt("Samples", &m_player_samples, 0.1f, m_timeline.GetMinFrame());
+    ImGui::DragInt("Samples", &m_timeline.m_data->m_player_samples, 0.1f, m_timeline.GetMinFrame());
 
     ImGui::SameLine();
     ImGui::Text(" | ");
     ImGui::SameLine();
 
-    m_player_samples = ImMax(0, m_player_samples);
-    ImGui::InputInt("Frame", &m_player_frame);
-    m_player_frame = ImMax(0, m_player_frame);
+    m_timeline.m_data->m_player_samples = ImMax(0, m_timeline.m_data->m_player_samples);
+    int player_frame = m_timeline.m_data->PlayerFrame();
+    if (ImGui::InputInt("Frame", &player_frame))
+    {
+        player_frame = ImMax(0, player_frame);
+        m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
+    }
 
     ImGui::SameLine();
     ImGui::Text(" | ");
@@ -141,15 +158,16 @@ void Tanim::Draw()
 
     static bool expanded{true};
     static int first_frame{0};
-    timeliner::Timeliner(&m_timeline, &m_player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
+    static int m_selected_sequence{-1};
+    timeliner::Timeliner(&m_timeline, &player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
 
-    if (m_player_playing)
+    if (m_timeline.GetPlayerPlaying())
     {
-        m_player_frame = SecondsToFrame(m_player_time);
+        //
     }
     else
     {
-        m_player_time = FrameToSeconds(m_player_frame);
+        m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
     }
 
     ImGui::End();
@@ -193,6 +211,8 @@ void Tanim::Draw()
     {
         m_timeline.SetName(std::string(name_buf));
     }
+
+    ImGui::Checkbox("Play Immediately", &m_timeline.m_data->m_play_immediately);
 
     // ImGui::Text("focused:     %d", m_timeline.focused);
     // ImGui::Text("min frame:   %d", m_timeline.GetMinFrame());
@@ -247,7 +267,7 @@ void Tanim::Draw()
 
     ImGui::Begin("curves");
 
-    const float sampleTime = m_player_playing ? SecondsToSampleTime(m_player_time) : (float)m_player_frame;
+    Sample(m_timeline.m_data);
     const auto& components = GetRegistry().GetComponents();
 
     for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)
@@ -258,8 +278,6 @@ void Tanim::Draw()
 
             if (component.HasSequence(seq.m_name))
             {
-                component.m_sample(m_timeline, sampleTime, seq);
-
                 ImGui::Text("%s", component.m_struct_name.c_str());
                 component.m_inspect(m_timeline, seq);
                 ImGui::Separator();
@@ -273,9 +291,9 @@ void Tanim::Draw()
 
     ImGui::Begin("Player");
 
-    ImGui::Text("Time:         %.3f", m_player_time);
-    ImGui::Text("Sample Time:  %.3f", SecondsToSampleTime(m_player_time));
-    ImGui::Text("Frame:        %d", m_player_frame);
+    ImGui::Text("Time:         %.3f", m_timeline.m_data->m_player_time);
+    ImGui::Text("Sample Time:  %.3f", m_timeline.m_data->PlayerSampleTime());
+    ImGui::Text("Frame:        %d", m_timeline.m_data->PlayerFrame());
 
     ImGui::End();
 
