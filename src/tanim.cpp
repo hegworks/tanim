@@ -18,13 +18,16 @@ void Tanim::Pause() { m_timeline.Pause(); }
 
 void Tanim::Update(float dt)
 {
-    if (m_timeline.HasData() && m_timeline.GetPlayerPlaying())
+    if (m_engine_state == EngineState::EDITOR)
     {
-        m_timeline.m_data->m_player_time += dt;
-        if (m_timeline.m_data->m_player_time > m_timeline.m_data->LastFrameTime())
+        if (m_timeline.HasData() && m_timeline.GetPlayerPlaying())
         {
-            // TODO(tanim) check for ping-pong, hold, reset, etc.
-            m_timeline.m_data->SetPlayerTimeFromSeconds(0.0f);
+            m_timeline.TickTime(dt);
+            Sample(m_timeline.m_data);
+            if (m_timeline.IsPassedLastFrame())
+            {
+                m_timeline.m_data->SetPlayerTimeFromSeconds(0.0f);
+            }
         }
     }
 }
@@ -51,6 +54,13 @@ void Tanim::Sample(TimelineData* timeline_data)
             }
         }
     }
+}
+
+void Tanim::UpdateTimeline(TimelineData* timeline_data, float delta_time)
+{
+    m_timeline.m_data = timeline_data;
+    m_timeline.TickTime(delta_time);
+    Sample(timeline_data);
 }
 
 void Tanim::Draw()
@@ -159,15 +169,14 @@ void Tanim::Draw()
     static bool expanded{true};
     static int first_frame{0};
     static int m_selected_sequence{-1};
+    int player_frame_before = player_frame;
     timeliner::Timeliner(&m_timeline, &player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
+    int player_frame_after = player_frame;
 
-    if (m_timeline.GetPlayerPlaying())
-    {
-        //
-    }
-    else
+    if (player_frame_after != player_frame_before && m_engine_state == EngineState::EDITOR && !m_timeline.GetPlayerPlaying())
     {
         m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
+        Sample(m_timeline.m_data);
     }
 
     ImGui::End();
@@ -267,7 +276,6 @@ void Tanim::Draw()
 
     ImGui::Begin("curves");
 
-    Sample(m_timeline.m_data);
     const auto& components = GetRegistry().GetComponents();
 
     for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)

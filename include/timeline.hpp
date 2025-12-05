@@ -58,6 +58,10 @@ struct Timeline : public timeliner::TimelineInterface
 
     bool GetPlayerPlaying() const { return m_data->m_player_playing; }
 
+    void TickTime(float dt) { m_data->m_player_time += dt; }
+
+    bool IsPassedLastFrame() const { return m_data->m_player_time > m_data->LastFrameTime(); }
+
     // TODO(tanim) change after reflection
     int GetSequenceTypeCount() const override { return sizeof(SequenceTypeNames) / sizeof(char*); }
 
