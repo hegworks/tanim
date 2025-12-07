@@ -55,6 +55,7 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
+                        curve.m_points = {{0, field}, {10, field}};
                     }
                 }
                 if constexpr (std::is_same_v<FieldType, glm::vec3>)
@@ -66,14 +67,17 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
+                        curve.m_points = {{0, field.x}, {10, field.x}};
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
+                        curve.m_points = {{0, field.y}, {10, field.y}};
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
+                        curve.m_points = {{0, field.z}, {10, field.z}};
                     }
                 }
             }

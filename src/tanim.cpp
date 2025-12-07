@@ -169,11 +169,9 @@ void Tanim::Draw()
     static bool expanded{true};
     static int first_frame{0};
     static int m_selected_sequence{-1};
-    int player_frame_before = player_frame;
     timeliner::Timeliner(&m_timeline, &player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
-    int player_frame_after = player_frame;
 
-    if (player_frame_after != player_frame_before && m_engine_state == EngineState::EDITOR && !m_timeline.GetPlayerPlaying())
+    if (m_engine_state == EngineState::EDITOR && !m_timeline.GetPlayerPlaying())
     {
         m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
         Sample(m_timeline.m_data);
