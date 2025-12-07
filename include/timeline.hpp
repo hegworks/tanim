@@ -56,6 +56,12 @@ struct Timeline : public timeliner::TimelineInterface
 
     void Pause() { m_data->m_player_playing = false; }
 
+    void Stop()
+    {
+        m_data->m_player_playing = false;
+        m_data->SetPlayerTimeFromSeconds(0);
+    }
+
     bool GetPlayerPlaying() const { return m_data->m_player_playing; }
 
     void TickTime(float dt) { m_data->m_player_time += dt; }

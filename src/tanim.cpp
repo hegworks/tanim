@@ -12,13 +12,9 @@ namespace tanim
 
 void Tanim::Init() {}
 
-void Tanim::Play() { m_timeline.Play(); }
-
-void Tanim::Pause() { m_timeline.Pause(); }
-
-void Tanim::Update(float dt)
+void Tanim::UpdateEditor(float dt)
 {
-    if (m_engine_state == EngineState::EDITOR)
+    if (!m_is_engine_in_play_mode)
     {
         if (m_timeline.HasData() && m_timeline.GetPlayerPlaying())
         {
@@ -56,11 +52,29 @@ void Tanim::Sample(TimelineData* timeline_data)
     }
 }
 
+void Tanim::StartTimeline(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+    if (m_timeline.m_data->m_play_immediately)
+    {
+        m_timeline.Play();
+    }
+}
+
 void Tanim::UpdateTimeline(TimelineData* timeline_data, float delta_time)
 {
     m_timeline.m_data = timeline_data;
-    m_timeline.TickTime(delta_time);
-    Sample(timeline_data);
+    if (m_timeline.GetPlayerPlaying())
+    {
+        m_timeline.TickTime(delta_time);
+        Sample(timeline_data);
+    }
+}
+
+void Tanim::StopTimeline(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+    m_timeline.Stop();
 }
 
 void Tanim::Draw()
@@ -98,14 +112,14 @@ void Tanim::Draw()
         if (ImGui::Button("Play", {50, 0}))
         {
             m_timeline.m_data->SetPlayerTimeFromSeconds(0.0f);
-            Play();
+            m_timeline.Play();
         }
     }
     else
     {
         if (ImGui::Button("Pause", {50, 0}))
         {
-            Pause();
+            m_timeline.Pause();
         }
     }
 
@@ -171,7 +185,7 @@ void Tanim::Draw()
     static int m_selected_sequence{-1};
     timeliner::Timeliner(&m_timeline, &player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
 
-    if (m_engine_state == EngineState::EDITOR && !m_timeline.GetPlayerPlaying())
+    if (!m_is_engine_in_play_mode && !m_timeline.GetPlayerPlaying())
     {
         m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
         Sample(m_timeline.m_data);
