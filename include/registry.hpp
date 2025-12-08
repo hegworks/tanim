@@ -58,6 +58,19 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                         curve.m_points = {{0, field}, {10, field}};
                     }
                 }
+                else if constexpr (std::is_same_v<FieldType, int>)
+                {
+                    timeline.AddSequence(0);
+                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                    seq.m_name = full_name;
+                    seq.m_type_meta = Sequence::TypeMeta::INT;
+
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = field_name_str;
+                        curve.m_points = {{0.0f, static_cast<float>(field)}, {10.0f, static_cast<float>(field)}};
+                    }
+                }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
                     timeline.AddSequence(0);
@@ -122,6 +135,11 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 {
                     field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
                 }
+                else if constexpr (std::is_same_v<FieldType, int>)
+                {
+                    field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                    field = static_cast<int>(std::floorf(field));
+                }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
                     field.x =
@@ -164,6 +182,10 @@ static void Inspect(T& ecs_component, Sequence& seq)
                                                        if constexpr (std::is_same_v<FieldType, float>)
                                                        {
                                                            ImGui::InputFloat(field_name, &field);
+                                                       }
+                                                       else if constexpr (std::is_same_v<FieldType, int>)
+                                                       {
+                                                           ImGui::InputInt(field_name, &field);
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                                                        {

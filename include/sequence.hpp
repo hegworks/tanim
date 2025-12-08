@@ -14,6 +14,13 @@ namespace tanim
 
 struct Sequence : public sequencer::SequenceInterface
 {
+    enum class TypeMeta : uint8_t
+    {
+        NONE = 0,
+        INT = 1 << 0,
+        BOOL = 1 << 1,
+    };
+
     struct Point : ImVec2
     {
         Point(float px = 0, float py = 0) : ImVec2{px, py} {}
@@ -37,6 +44,7 @@ struct Sequence : public sequencer::SequenceInterface
     };
 
     int m_type{0};
+    TypeMeta m_type_meta{TypeMeta::NONE};
     std::vector<Curve> m_curves{};
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
@@ -121,6 +129,11 @@ struct Sequence : public sequencer::SequenceInterface
             {
                 value.y = std::round(value.y / m_snap_y_value) * m_snap_y_value;
             }
+        }
+
+        if (m_type_meta == TypeMeta::INT)
+        {
+            value.y = std::floorf(value.y);
         }
 
         m_curves.at(curve_index).m_points.at(point_index) = ImVec2(value.x, value.y);
