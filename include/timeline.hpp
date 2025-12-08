@@ -32,6 +32,8 @@ struct Timeline : public timeliner::TimelineInterface
 
     void SetMaxFrame(int max_frame) { m_data->m_max_frame = max_frame; }
 
+    int GetPlayerFrame() const { return m_data->PlayerFrame(); }
+
     const std::string& GetName() const { return m_data->m_name; }
 
     void SetName(const std::string& name) { m_data->m_name = name; }

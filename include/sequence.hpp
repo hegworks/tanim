@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -169,6 +170,25 @@ struct Sequence : public sequencer::SequenceInterface
             std::vector<Point>* points = &m_curves.at(curve_index).m_points;
             points->erase(points->begin() + point_index);
         }
+    }
+
+    std::optional<int> GetPointIdx(int curve_idx, int frame_num)
+    {
+        if (curve_idx < 0 || curve_idx >= GetCurveCount())
+        {
+            return std::nullopt;
+        }
+
+        const Curve& curve = m_curves.at(curve_idx);
+        for (int point_idx = 0; point_idx < (int)curve.m_points.size(); ++point_idx)
+        {
+            if (curve.m_points.at(point_idx).Frame() == frame_num)
+            {
+                return point_idx;
+            }
+        }
+
+        return std::nullopt;
     }
 
     ImVec2 GetDrawMax() override { return m_draw_max; }

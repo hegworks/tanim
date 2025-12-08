@@ -176,43 +176,150 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
 }
 
 template <typename T>
-static void Inspect(T& ecs_component, Sequence& seq)
+static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 {
-    visit_struct::context<VSContext>::for_each(ecs_component,
-                                               [&seq](const char* field_name, auto& field)
-                                               {
-                                                   using FieldType = std::decay_t<decltype(field)>;
-                                                   const std::string field_name_str = field_name;
-                                                   const std::string struct_name = visit_struct::get_name<T>();
-                                                   const std::string full_name = struct_name + "::" + field_name;
-                                                   if (seq.m_name == full_name)
-                                                   {
-                                                       if constexpr (std::is_same_v<FieldType, float>)
-                                                       {
-                                                           ImGui::InputFloat(field_name, &field);
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, int>)
-                                                       {
-                                                           ImGui::InputInt(field_name, &field);
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, bool>)
-                                                       {
-                                                           ImGui::Checkbox(field_name, &field);
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, glm::vec2>)
-                                                       {
-                                                           ImGui::InputFloat2(field_name, &field.x);
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, glm::vec3>)
-                                                       {
-                                                           ImGui::InputFloat3(field_name, &field.x);
-                                                       }
-                                                       else
-                                                       {
-                                                           static_assert(false, "Unsupported Type");
-                                                       }
-                                                   }
-                                               });
+    visit_struct::context<VSContext>::for_each(
+        ecs_component,
+        [&seq, &timeline](const char* field_name, auto& field)
+        {
+            using FieldType = std::decay_t<decltype(field)>;
+            const std::string field_name_str = field_name;
+            const std::string struct_name = visit_struct::get_name<T>();
+            const std::string full_name = struct_name + "::" + field_name;
+            if (seq.m_name == full_name)
+            {
+                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, timeline.GetPlayerFrame());
+                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, timeline.GetPlayerFrame());
+                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, timeline.GetPlayerFrame());
+
+                if constexpr (std::is_same_v<FieldType, float>)
+                {
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+
+                    if (ImGui::InputFloat(field_name, &field))
+                    {
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field});
+                    }
+
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, int>)
+                {
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+
+                    if (ImGui::InputInt(field_name, &field))
+                    {
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), (float)field});
+                    }
+
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, bool>)
+                {
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+
+                    if (ImGui::Checkbox(field_name, &field))
+                    {
+                        seq.EditPoint(0,
+                                      curve_0_optional_point_idx.value(),
+                                      {(float)timeline.GetPlayerFrame(), field == true ? 1.0f : 0.0f});
+                    }
+
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                {
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+                    if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
+                    {
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                    }
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+
+                    if (!curve_1_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+                    if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
+                    {
+                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                    }
+                    if (!curve_1_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                {
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+                    if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
+                    {
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                    }
+                    if (!curve_0_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+
+                    if (!curve_1_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+                    if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
+                    {
+                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                    }
+                    if (!curve_1_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+
+                    if (!curve_2_optional_point_idx.has_value())
+                    {
+                        ImGui::BeginDisabled();
+                    }
+                    if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
+                    {
+                        seq.EditPoint(1, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                    }
+                    if (!curve_2_optional_point_idx.has_value())
+                    {
+                        ImGui::EndDisabled();
+                    }
+                }
+                else
+                {
+                    static_assert(false, "Unsupported Type");
+                }
+            }
+        });
 }
 
 }  // namespace reflection
@@ -247,7 +354,7 @@ public:
         { reflection::Sample(registry.get<T>(timeline.m_data->m_entity), sample_time, seq); };
 
         registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
-        { reflection::Inspect(registry.get<T>(timeline.m_data->m_entity), seq); };
+        { reflection::Inspect(registry.get<T>(timeline.m_data->m_entity), timeline, seq); };
 
         registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.any_of<T>(entity); };
 
