@@ -264,8 +264,8 @@ int Edit(SequenceInterface& delegate,
                 ImVec2 dp1 = p1 * viewSize + offset;
                 ImVec2 dp2 = ImVec2(p2.x, p1.y) * viewSize + offset;
                 ImVec2 dp3 = p2 * viewSize + offset;
-                draw_list->AddLine(dp1, dp2, curveColor, 1.3f);
-                draw_list->AddLine(dp2, dp3, curveColor, 1.3f);
+                draw_list->AddLine(dp1, dp2, curveColor, 1.3f);  // horizontal
+                draw_list->AddLine(dp2, dp3, curveColor, 1.3f);  // vertical
 
                 if ((distance(io.MousePos.x, io.MousePos.y, dp1.x, dp1.y, dp3.x, dp1.y) < 8.f ||
                      distance(io.MousePos.x, io.MousePos.y, dp3.x, dp1.y, dp3.x, dp3.y) < 8.f)
@@ -503,6 +503,10 @@ ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
         float smoothT = smoothstep(0.0f, 1.0f, localT);
         return ImVec2(ImLerp(p1.x, p2.x, localT), ImLerp(p1.y, p2.y, smoothT));
     }
+    else
+    {
+        assert(0);  /// Unsupported LerpType
+    }
 
     return p1;
 }
@@ -525,6 +529,14 @@ float SampleCurveForAnimation(const std::vector<ImVec2>& pts, float time, LerpTy
             {
                 const float smoothT = smoothstep(0.0f, 1.0f, segmentT);
                 return ImLerp(pts.at(i).y, pts.at(i + 1).y, smoothT);
+            }
+            else if (curveType == LerpType::DISCRETE)
+            {
+                return pts.at(i).y;
+            }
+            else
+            {
+                assert(0);  /// Unsupported LerpType
             }
         }
     }

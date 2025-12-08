@@ -135,6 +135,10 @@ struct Sequence : public sequencer::SequenceInterface
         {
             value.y = std::floorf(value.y);
         }
+        else if (m_type_meta == TypeMeta::BOOL)
+        {
+            value.y = value.y > 0.5f ? 1.0f : 0.0f;
+        }
 
         m_curves.at(curve_index).m_points.at(point_index) = ImVec2(value.x, value.y);
         SortCurvePoints(curve_index);

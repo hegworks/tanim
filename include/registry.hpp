@@ -36,86 +36,89 @@ namespace reflection
 template <typename T>
 static void AddSequence(T& ecs_component, Timeline& timeline, const std::string& seq_name)
 {
-    visit_struct::context<VSContext>::for_each(
-        ecs_component,
-        [&timeline, &seq_name](const char* field_name, auto& field)
-        {
-            using FieldType = std::decay_t<decltype(field)>;
-            const std::string field_name_str = field_name;
-            if (field_name_str == seq_name)
-            {
-                const std::string struct_name = visit_struct::get_name<T>();
-                const std::string full_name = struct_name + "::" + field_name;
-                if constexpr (std::is_same_v<FieldType, float>)
-                {
-                    timeline.AddSequence(0);
-                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                    seq.m_name = full_name;
+    visit_struct::context<VSContext>::for_each(ecs_component,
+                                               [&timeline, &seq_name](const char* field_name, auto& field)
+                                               {
+                                                   using FieldType = std::decay_t<decltype(field)>;
+                                                   const std::string field_name_str = field_name;
+                                                   if (field_name_str == seq_name)
+                                                   {
+                                                       const std::string struct_name = visit_struct::get_name<T>();
+                                                       const std::string full_name = struct_name + "::" + field_name;
 
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = field_name_str;
-                        curve.m_points = {{0, field}, {10, field}};
-                    }
-                }
-                else if constexpr (std::is_same_v<FieldType, int>)
-                {
-                    timeline.AddSequence(0);
-                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                    seq.m_name = full_name;
-                    seq.m_type_meta = Sequence::TypeMeta::INT;
+                                                       timeline.AddSequence(0);
+                                                       Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                                                       seq.m_name = full_name;
 
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = field_name_str;
-                        curve.m_points = {{0.0f, static_cast<float>(field)}, {10.0f, static_cast<float>(field)}};
-                    }
-                }
-                else if constexpr (std::is_same_v<FieldType, glm::vec2>)
-                {
-                    timeline.AddSequence(0);
-                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                    seq.m_name = full_name;
+                                                       if constexpr (std::is_same_v<FieldType, float>)
+                                                       {
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = field_name_str;
+                                                               curve.m_points = {{0, field}, {10, field}};
+                                                           }
+                                                       }
+                                                       else if constexpr (std::is_same_v<FieldType, int>)
+                                                       {
+                                                           seq.m_type_meta = Sequence::TypeMeta::INT;
 
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = "X";
-                        curve.m_points = {{0, field.x}, {10, field.x}};
-                    }
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = "Y";
-                        curve.m_points = {{0, field.y}, {10, field.y}};
-                    }
-                }
-                else if constexpr (std::is_same_v<FieldType, glm::vec3>)
-                {
-                    timeline.AddSequence(0);
-                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
-                    seq.m_name = full_name;
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = field_name_str;
+                                                               curve.m_points = {{0.0f, static_cast<float>(field)},
+                                                                                 {10.0f, static_cast<float>(field)}};
+                                                               curve.m_lerp_type = sequencer::LerpType::LINEAR;
+                                                           }
+                                                       }
+                                                       else if constexpr (std::is_same_v<FieldType, bool>)
+                                                       {
+                                                           seq.m_type_meta = Sequence::TypeMeta::BOOL;
 
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = "X";
-                        curve.m_points = {{0, field.x}, {10, field.x}};
-                    }
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = "Y";
-                        curve.m_points = {{0, field.y}, {10, field.y}};
-                    }
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = "Z";
-                        curve.m_points = {{0, field.z}, {10, field.z}};
-                    }
-                }
-                else
-                {
-                    static_assert(false, "Unsupported Type");
-                }
-            }
-        });
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = field_name_str;
+                                                               float f = field == true ? 1.0f : 0.0f;
+                                                               curve.m_points = {{0.0f, f}, {10.0f, f}};
+                                                               curve.m_lerp_type = sequencer::LerpType::DISCRETE;
+                                                           }
+                                                       }
+                                                       else if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                                                       {
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "X";
+                                                               curve.m_points = {{0, field.x}, {10, field.x}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Y";
+                                                               curve.m_points = {{0, field.y}, {10, field.y}};
+                                                           }
+                                                       }
+                                                       else if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                                                       {
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "X";
+                                                               curve.m_points = {{0, field.x}, {10, field.x}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Y";
+                                                               curve.m_points = {{0, field.y}, {10, field.y}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Z";
+                                                               curve.m_points = {{0, field.z}, {10, field.z}};
+                                                           }
+                                                       }
+                                                       else
+                                                       {
+                                                           static_assert(false, "Unsupported Type");
+                                                       }
+                                                   }
+                                               });
 }
 
 template <typename T>
@@ -139,6 +142,11 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 {
                     field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
                     field = static_cast<int>(std::floorf(field));
+                }
+                else if constexpr (std::is_same_v<FieldType, bool>)
+                {
+                    field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                    field = std::round(field) >= 0.5f ? true : false;
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
@@ -186,6 +194,10 @@ static void Inspect(T& ecs_component, Sequence& seq)
                                                        else if constexpr (std::is_same_v<FieldType, int>)
                                                        {
                                                            ImGui::InputInt(field_name, &field);
+                                                       }
+                                                       else if constexpr (std::is_same_v<FieldType, bool>)
+                                                       {
+                                                           ImGui::Checkbox(field_name, &field);
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                                                        {
