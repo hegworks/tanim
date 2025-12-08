@@ -58,6 +58,23 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                         curve.m_points = {{0, field}, {10, field}};
                     }
                 }
+                if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                {
+                    timeline.AddSequence(0);
+                    Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                    seq.m_name = full_name;
+
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "X";
+                        curve.m_points = {{0, field.x}, {10, field.x}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Y";
+                        curve.m_points = {{0, field.y}, {10, field.y}};
+                    }
+                }
                 if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
                     timeline.AddSequence(0);
@@ -80,6 +97,10 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                         curve.m_points = {{0, field.z}, {10, field.z}};
                     }
                 }
+                else
+                {
+                    // static_assert(false, "Unsupported Type");
+                }
             }
         });
 }
@@ -101,6 +122,14 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 {
                     field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
                 }
+                if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                {
+                    field.x =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+
+                    field.y =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
+                }
                 if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
                     field.x =
@@ -111,6 +140,10 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
 
                     field.z =
                         sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
+                }
+                else
+                {
+                    // static_assert(false, "Unsupported Type");
                 }
             }
         });
@@ -132,9 +165,17 @@ static void Inspect(T& ecs_component, Sequence& seq)
                                                        {
                                                            ImGui::InputFloat(field_name, &field);
                                                        }
+                                                       if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                                                       {
+                                                           ImGui::InputFloat2(field_name, &field.x);
+                                                       }
                                                        if constexpr (std::is_same_v<FieldType, glm::vec3>)
                                                        {
                                                            ImGui::InputFloat3(field_name, &field.x);
+                                                       }
+                                                       else
+                                                       {
+                                                           // static_assert(false, "Unsupported Type");
                                                        }
                                                    }
                                                });
