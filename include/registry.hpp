@@ -356,7 +356,7 @@ public:
         registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
         { reflection::Inspect(registry.get<T>(timeline.m_data->m_entity), timeline, seq); };
 
-        registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.any_of<T>(entity); };
+        registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.all_of<T>(entity); };
 
         m_components.push_back(std::move(registered_component));
     }
