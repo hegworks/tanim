@@ -19,6 +19,11 @@ public:
     static void UpdateTimeline(TimelineData* timeline_data, float delta_time);
     static void StopTimeline(TimelineData* timeline_data);
 
+    static bool IsPlaying(const TimelineData* timeline_data);
+    static void Play(TimelineData* timeline_data);
+    static void Pause(TimelineData* timeline_data);
+    static void Stop(TimelineData* timeline_data);
+
     static void EnterPlayMode() { m_is_engine_in_play_mode = true; }
     static void ExitPlayMode() { m_is_engine_in_play_mode = false; }
 

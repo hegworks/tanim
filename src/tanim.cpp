@@ -54,10 +54,9 @@ void Tanim::Sample(TimelineData* timeline_data)
 
 void Tanim::StartTimeline(TimelineData* timeline_data)
 {
-    m_timeline.m_data = timeline_data;
-    if (m_timeline.m_data->m_play_immediately)
+    if (timeline_data->m_play_immediately)
     {
-        m_timeline.Play();
+        Play(timeline_data);
     }
 }
 
@@ -72,6 +71,26 @@ void Tanim::UpdateTimeline(TimelineData* timeline_data, float delta_time)
 }
 
 void Tanim::StopTimeline(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+    m_timeline.Stop();
+}
+
+bool Tanim::IsPlaying(const TimelineData* timeline_data) { return timeline_data->m_player_playing; }
+
+void Tanim::Play(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+    m_timeline.Play();
+}
+
+void Tanim::Pause(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+    m_timeline.Pause();
+}
+
+void Tanim::Stop(TimelineData* timeline_data)
 {
     m_timeline.m_data = timeline_data;
     m_timeline.Stop();
