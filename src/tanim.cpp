@@ -140,6 +140,7 @@ void Tanim::Draw()
     {
         player_frame = ImMax(0, player_frame);
         m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
+        Sample(m_timeline.m_data);
     }
 
     ImGui::SameLine();
@@ -183,11 +184,13 @@ void Tanim::Draw()
     static bool expanded{true};
     static int first_frame{0};
     static int m_selected_sequence{-1};
+    const int player_frame_before = player_frame;
     timeliner::Timeliner(&m_timeline, &player_frame, &expanded, &m_selected_sequence, &first_frame, timeliner::TIMELINER_ALL);
+    const int player_frame_after = player_frame;
 
-    if (!m_is_engine_in_play_mode && !m_timeline.GetPlayerPlaying())
+    if ((!m_is_engine_in_play_mode && !m_timeline.GetPlayerPlaying()) || (player_frame_before != player_frame_after))
     {
-        m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
+        m_timeline.m_data->SetPlayerTimeFromFrame(player_frame_after);
         Sample(m_timeline.m_data);
     }
 
