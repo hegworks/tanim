@@ -19,8 +19,9 @@ inline float FrameToSeconds(int frame, int samples)
 }
 
 template <typename EnumType>
-static void InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions = {})
+static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions = {})
 {
+    bool changed = false;
     const std::string type_name = std::string(magic_enum::enum_type_name<EnumType>());
     auto current_name = magic_enum::enum_name(enum_);
     const std::string preview = current_name.empty() ? "Unknown" : std::string(current_name);
@@ -42,6 +43,7 @@ static void InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions
             if (ImGui::Selectable(std::string(enum_name).c_str(), is_selected))
             {
                 enum_ = enum_value;
+                changed = true;
             }
 
             if (is_selected)
@@ -51,6 +53,7 @@ static void InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions
         }
         ImGui::EndCombo();
     }
+    return changed;
 }
 
 }  // namespace tanim::helpers

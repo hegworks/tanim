@@ -116,6 +116,32 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                                curve.m_points = {{0, field.z}, {10, field.z}};
                                                            }
                                                        }
+
+                                                       else if constexpr (std::is_same_v<FieldType, glm::vec4>)
+                                                       {
+                                                           seq.m_representation_meta = RepresentationMeta::QUAT;
+
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "X";
+                                                               curve.m_points = {{0, field.x}, {10, field.x}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Y";
+                                                               curve.m_points = {{0, field.y}, {10, field.y}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Z";
+                                                               curve.m_points = {{0, field.z}, {10, field.z}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "W";
+                                                               curve.m_points = {{0, field.w}, {10, field.w}};
+                                                           }
+                                                       }
                                                        else
                                                        {
                                                            static_assert(false, "Unsupported Type");
@@ -170,6 +196,20 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                     field.z =
                         sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
                 }
+                else if constexpr (std::is_same_v<FieldType, glm::vec4>)
+                {
+                    field.x =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+
+                    field.y =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
+
+                    field.z =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
+
+                    field.w =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(3), sample_time, seq.GetCurveLerpType(3));
+                }
                 else
                 {
                     static_assert(false, "Unsupported Type");
@@ -194,6 +234,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, timeline.GetPlayerFrame());
                 const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, timeline.GetPlayerFrame());
                 const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, timeline.GetPlayerFrame());
+                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, timeline.GetPlayerFrame());
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -278,7 +319,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::QUAT});
+                    helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::QUAT});
 
                     switch (seq.m_representation_meta)
                     {
@@ -336,6 +377,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                             const bool disabled = !curve_0_optional_point_idx.has_value() ||
                                                   !curve_1_optional_point_idx.has_value() ||
                                                   !curve_2_optional_point_idx.has_value();
+
                             if (disabled)
                             {
                                 ImGui::BeginDisabled();
@@ -364,6 +406,140 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                             break;
                         }
                         case RepresentationMeta::QUAT:
+                        case RepresentationMeta::NONE:
+                        default:
+                            assert(0);  // unhandled ReresentationMeta
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec4>)
+                {
+                    if (helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::VECTOR}))
+                    {
+                        switch (seq.m_representation_meta)
+                        {
+                            case RepresentationMeta::COLOR:
+                                seq.m_curves.at(0).m_name = "r";
+                                seq.m_curves.at(1).m_name = "g";
+                                seq.m_curves.at(2).m_name = "b";
+                                seq.m_curves.at(3).m_name = "a";
+                                break;
+                            case RepresentationMeta::QUAT:
+                                seq.m_curves.at(0).m_name = "x";
+                                seq.m_curves.at(1).m_name = "y";
+                                seq.m_curves.at(2).m_name = "z";
+                                seq.m_curves.at(3).m_name = "w";
+                                break;
+                            case RepresentationMeta::VECTOR:
+                            case RepresentationMeta::NONE:
+                            default:
+                                assert(0);  // unhandled ReresentationMeta
+                        }
+                    }
+
+                    switch (seq.m_representation_meta)
+                    {
+                        case RepresentationMeta::QUAT:
+                        {
+                            if (!curve_0_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
+                            {
+                                seq.EditPoint(0,
+                                              curve_0_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.x});
+                            }
+                            if (!curve_0_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            if (!curve_1_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
+                            {
+                                seq.EditPoint(1,
+                                              curve_1_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.y});
+                            }
+                            if (!curve_1_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            if (!curve_2_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
+                            {
+                                seq.EditPoint(2,
+                                              curve_2_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.z});
+                            }
+                            if (!curve_2_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            if (!curve_3_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w))
+                            {
+                                seq.EditPoint(3,
+                                              curve_3_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.w});
+                            }
+                            if (!curve_3_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            break;
+                        }
+                        case RepresentationMeta::COLOR:
+                        {
+                            const bool disabled =
+                                !curve_0_optional_point_idx.has_value() || !curve_1_optional_point_idx.has_value() ||
+                                !curve_2_optional_point_idx.has_value() || !curve_3_optional_point_idx.has_value();
+
+                            if (disabled)
+                            {
+                                ImGui::BeginDisabled();
+                            }
+
+                            if (ImGui::ColorEdit4(field_name, &field.r) && !disabled)
+                            {
+                                seq.EditPoint(0,
+                                              curve_0_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.r});
+
+                                seq.EditPoint(1,
+                                              curve_1_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.g});
+
+                                seq.EditPoint(2,
+                                              curve_2_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.b});
+
+                                seq.EditPoint(3,
+                                              curve_3_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.a});
+                            }
+
+                            if (disabled)
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            break;
+                        }
+                        case RepresentationMeta::VECTOR:
                         case RepresentationMeta::NONE:
                         default:
                             assert(0);  // unhandled ReresentationMeta
