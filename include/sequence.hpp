@@ -56,6 +56,17 @@ struct Sequence : public sequencer::SequenceInterface
 
     Curve& AddCurve() { return m_curves.emplace_back(); }
 
+    void AddNewKeyframe(int frame_num)
+    {
+        for (int curve_idx = 0; curve_idx < GetCurveCount(); ++curve_idx)
+        {
+            if (!GetPointIdx(curve_idx, frame_num).has_value())
+            {
+                AddPoint(curve_idx, {(float)frame_num, 0.0f});
+            }
+        }
+    }
+
     // TODO(tanim) this has to be removed after we use ECS maybe
     const int* m_timeline_last_frame{nullptr};
 

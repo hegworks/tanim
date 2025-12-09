@@ -275,6 +275,11 @@ void Tanim::Draw()
     {
         Sequence& seq = m_timeline.GetSequence(expanded_seq_idx);
 
+        if (ImGui::Button("+Keyframe"))
+        {
+            seq.AddNewKeyframe(m_timeline.GetPlayerFrame());
+        }
+
         ImGui::PushItemWidth(100);
         ImGui::Text("index:       %d", expanded_seq_idx);
         ImGui::BeginDisabled();
