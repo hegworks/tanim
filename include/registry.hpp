@@ -24,6 +24,7 @@ struct RegisteredComponent
     std::function<void(Timeline& timeline, const std::string& seq_name)> m_add_sequence;
     std::function<void(Timeline& timeline, float sample_time, Sequence& seq)> m_sample;
     std::function<void(Timeline& timeline, Sequence& seq)> m_inspect;
+    std::function<void(Timeline& timeline, Sequence& seq)> m_record;
     std::function<bool(entt::entity entity)> m_entity_has;
     bool HasSequence(const std::string& seq_name) const
     {
@@ -675,6 +676,35 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
         });
 }
 
+template <typename T>
+static void Record(T& ecs_component, Timeline& timeline, Sequence& seq)
+{
+    visit_struct::context<VSContext>::for_each(
+        ecs_component,
+        [&seq, &timeline](const char* field_name, auto& field)
+        {
+            using FieldType = std::decay_t<decltype(field)>;
+            const std::string field_name_str = field_name;
+            const std::string struct_name = visit_struct::get_name<T>();
+            const std::string full_name = struct_name + "::" + field_name;
+            if (seq.m_name == full_name)
+            {
+                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, timeline.GetPlayerFrame());
+                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, timeline.GetPlayerFrame());
+                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, timeline.GetPlayerFrame());
+                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, timeline.GetPlayerFrame());
+
+                if constexpr (std::is_same_v<FieldType, float>)
+                {
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field});
+                }
+                else if constexpr (std::is_same_v<FieldType, int>)
+                {
+                }
+            }
+        });
+}
+
 }  // namespace reflection
 
 class Registry
@@ -708,6 +738,9 @@ public:
 
         registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
         { reflection::Inspect(registry.get<T>(timeline.m_data->m_entity), timeline, seq); };
+
+        registered_component.m_record = [&registry](Timeline& timeline, Sequence& seq)
+        { reflection::Record(registry.get<T>(timeline.m_data->m_entity), timeline, seq); };
 
         registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.all_of<T>(entity); };
 

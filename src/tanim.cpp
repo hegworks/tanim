@@ -44,7 +44,7 @@ void Tanim::Sample(TimelineData* timeline_data)
         {
             Sequence& seq = m_timeline.GetSequence(seq_idx);
 
-            if (component.HasSequence(seq.m_name))
+            if (!seq.IsRecording() && component.HasSequence(seq.m_name))
             {
                 component.m_sample(m_timeline, sampleTime, seq);
             }
@@ -275,9 +275,60 @@ void Tanim::Draw()
     {
         Sequence& seq = m_timeline.GetSequence(expanded_seq_idx);
 
+        const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(m_timeline.GetPlayerFrame());
+        if (is_keyframe_in_all_curves)
+        {
+            ImGui::BeginDisabled();
+        }
         if (ImGui::Button("+Keyframe"))
         {
             seq.AddNewKeyframe(m_timeline.GetPlayerFrame());
+            seq.StartRecording(m_timeline.GetPlayerFrame());
+
+            const auto& components = GetRegistry().GetComponents();
+            for (const auto& component : components)
+            {
+                if (component.HasSequence(seq.m_name))
+                {
+                    component.m_record(m_timeline, seq);
+                }
+            }
+
+            seq.StopRecording();
+        }
+        if (is_keyframe_in_all_curves)
+        {
+            ImGui::EndDisabled();
+        }
+
+        if (seq.IsRecording())
+        {
+            const bool clicked_on_stop_recording = ImGui::Button("Stop Recording");
+            const bool has_moved_player_frame = m_timeline.GetPlayerFrame() != seq.GetRecordingFrame();
+            const bool has_moved_recording_frame_x = !seq.IsKeyframeInAllCurves(seq.GetRecordingFrame());
+            if (clicked_on_stop_recording || has_moved_player_frame || has_moved_recording_frame_x)
+            {
+                seq.StopRecording();
+            }
+            else
+            {
+                const auto& components = GetRegistry().GetComponents();
+                for (const auto& component : components)
+                {
+                    if (component.HasSequence(seq.m_name))
+                    {
+                        component.m_record(m_timeline, seq);
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (ImGui::Button("Record"))
+            {
+                seq.AddNewKeyframe(m_timeline.GetPlayerFrame());
+                seq.StartRecording(m_timeline.GetPlayerFrame());
+            }
         }
 
         ImGui::PushItemWidth(100);
@@ -322,12 +373,24 @@ void Tanim::Draw()
         for (const auto& component : components)
         {
             Sequence& seq = m_timeline.GetSequence(seq_idx);
+            const bool is_recording = seq.IsRecording();
 
             if (component.HasSequence(seq.m_name))
             {
+                if (is_recording)
+                {
+                    ImGui::Text("RECORDING");
+                    ImGui::BeginDisabled();
+                }
+
                 ImGui::Text("%s", component.m_struct_name.c_str());
                 component.m_inspect(m_timeline, seq);
                 ImGui::Separator();
+
+                if (is_recording)
+                {
+                    ImGui::EndDisabled();
+                }
             }
         }
     }

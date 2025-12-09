@@ -64,7 +64,7 @@ struct EditPoint
 struct SequenceInterface
 {
     bool m_focused = false;
-    virtual int GetCurveCount() = 0;
+    virtual int GetCurveCount() const = 0;
     virtual bool GetCurveVisibility(int curve_idx) = 0;
     virtual void SetCurveVisibility(int curve_idx, bool visibility) = 0;
     virtual LerpType GetCurveLerpType(int curve_idx) = 0;

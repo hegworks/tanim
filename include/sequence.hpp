@@ -53,8 +53,22 @@ struct Sequence : public sequencer::SequenceInterface
     ImVec2 m_draw_max{500, 1.5f};
     bool m_expanded{false};
     std::string m_name{"new_sequence"};
+    bool m_recording{false};
+    int m_recording_frame{-1};
 
     Curve& AddCurve() { return m_curves.emplace_back(); }
+
+    bool IsKeyframeInAllCurves(int frame_num) const
+    {
+        for (int curve_idx = 0; curve_idx < GetCurveCount(); ++curve_idx)
+        {
+            if (!GetPointIdx(curve_idx, frame_num).has_value())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 
     void AddNewKeyframe(int frame_num)
     {
@@ -97,7 +111,7 @@ struct Sequence : public sequencer::SequenceInterface
         return after_second_last_column_str;
     }
 
-    int GetCurveCount() override { return (int)m_curves.size(); }
+    int GetCurveCount() const override { return (int)m_curves.size(); }
 
     bool GetCurveVisibility(int curve_idx) override { return m_curves.at(curve_idx).m_visibility; }
 
@@ -118,6 +132,22 @@ struct Sequence : public sequencer::SequenceInterface
     }
 
     sequencer::LerpType GetCurveLerpType(int curve_idx) override { return m_curves.at(curve_idx).m_lerp_type; }
+
+    bool IsRecording() const { return m_recording; }
+
+    int GetRecordingFrame() const { return m_recording_frame; }
+
+    void StartRecording(int frame_num)
+    {
+        m_recording = true;
+        m_recording_frame = frame_num;
+    }
+
+    void StopRecording()
+    {
+        m_recording = false;
+        m_recording_frame = -1;
+    }
 
     int EditPoint(int curve_index, int point_index, ImVec2 value) override
     {
@@ -190,7 +220,7 @@ struct Sequence : public sequencer::SequenceInterface
         }
     }
 
-    std::optional<int> GetPointIdx(int curve_idx, int frame_num)
+    std::optional<int> GetPointIdx(int curve_idx, int frame_num) const
     {
         if (curve_idx < 0 || curve_idx >= GetCurveCount())
         {
