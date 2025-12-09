@@ -2,6 +2,7 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
+#include "tanim/include/enums.hpp"
 #include "tanim/include/sequencer.hpp"
 
 #include <algorithm>
@@ -18,8 +19,8 @@ struct Sequence : public sequencer::SequenceInterface
     enum class TypeMeta : uint8_t
     {
         NONE = 0,
-        INT = 1 << 0,
-        BOOL = 1 << 1,
+        INT,
+        BOOL,
     };
 
     struct Point : ImVec2
@@ -46,6 +47,7 @@ struct Sequence : public sequencer::SequenceInterface
 
     int m_type{0};
     TypeMeta m_type_meta{TypeMeta::NONE};
+    RepresentationMeta m_representation_meta{RepresentationMeta::NONE};
     std::vector<Curve> m_curves{};
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};

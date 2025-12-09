@@ -512,7 +512,10 @@ ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
 }
 
 // TODO(tanim) this should not get the CurveType, it should detect the curve between segments itself
-float SampleCurveForAnimation(const std::vector<ImVec2>& pts, float time, LerpType curveType)
+float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
+                              float time,
+                              LerpType curve_type,
+                              RepresentationMeta /*representation_meta*/)
 {
     const int ptCount = (int)pts.size();
     for (size_t i = 0; i < ptCount - 1; i++)
@@ -521,16 +524,16 @@ float SampleCurveForAnimation(const std::vector<ImVec2>& pts, float time, LerpTy
         {
             const float segmentT = (time - pts.at(i).x) / (pts.at(i + 1).x - pts.at(i).x);
 
-            if (curveType == LerpType::LINEAR)
+            if (curve_type == LerpType::LINEAR)
             {
                 return ImLerp(pts.at(i).y, pts.at(i + 1).y, segmentT);
             }
-            else if (curveType == LerpType::SMOOTH)
+            else if (curve_type == LerpType::SMOOTH)
             {
                 const float smoothT = smoothstep(0.0f, 1.0f, segmentT);
                 return ImLerp(pts.at(i).y, pts.at(i + 1).y, smoothT);
             }
-            else if (curveType == LerpType::DISCRETE)
+            else if (curve_type == LerpType::DISCRETE)
             {
                 return pts.at(i).y;
             }

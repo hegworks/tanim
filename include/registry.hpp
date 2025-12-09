@@ -2,6 +2,7 @@
 
 #include "tanim/include/timeline.hpp"
 #include "tanim/include/includes.hpp"
+#include "tanim/include/enums.hpp"
 
 #include <functional>
 #include <string>
@@ -97,6 +98,8 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                                                        {
+                                                           seq.m_representation_meta = RepresentationMeta::VECTOR;
+
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "X";
@@ -158,14 +161,34 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    field.x =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                    switch (seq.m_representation_meta)
+                    {
+                        case RepresentationMeta::VECTOR:
+                        {
+                            field.x = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0),
+                                                                         sample_time,
+                                                                         seq.GetCurveLerpType(0));
 
-                    field.y =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
+                            field.y = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1),
+                                                                         sample_time,
+                                                                         seq.GetCurveLerpType(1));
 
-                    field.z =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
+                            field.z = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2),
+                                                                         sample_time,
+                                                                         seq.GetCurveLerpType(2));
+
+                            break;
+                        }
+                        case RepresentationMeta::COLOR:
+                        {
+                            // TODO(tanim)
+                            break;
+                        }
+                        case RepresentationMeta::QUAT:
+                        case RepresentationMeta::NONE:
+                        default:
+                            assert(0);  // unhandled ReresentationMeta
+                    }
                 }
                 else
                 {
@@ -275,43 +298,81 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    if (!curve_0_optional_point_idx.has_value())
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
-                    {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                    }
-                    if (!curve_0_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
-                    }
+                    helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::QUAT});
 
-                    if (!curve_1_optional_point_idx.has_value())
+                    switch (seq.m_representation_meta)
                     {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
-                    {
-                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
-                    }
-                    if (!curve_1_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
-                    }
+                        case RepresentationMeta::VECTOR:
+                        {
+                            if (!curve_0_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
+                            {
+                                seq.EditPoint(0,
+                                              curve_0_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.x});
+                            }
+                            if (!curve_0_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
 
-                    if (!curve_2_optional_point_idx.has_value())
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
-                    {
-                        seq.EditPoint(1, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
-                    }
-                    if (!curve_2_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
+                            if (!curve_1_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
+                            {
+                                seq.EditPoint(1,
+                                              curve_1_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.y});
+                            }
+                            if (!curve_1_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            if (!curve_2_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+                            if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
+                            {
+                                seq.EditPoint(1,
+                                              curve_2_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.z});
+                            }
+                            if (!curve_2_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            break;
+                        }
+                        case RepresentationMeta::COLOR:
+                        {
+                            if (!curve_0_optional_point_idx.has_value())
+                            {
+                                ImGui::BeginDisabled();
+                            }
+
+                            if (ImGui::ColorEdit3(field_name, &field.x))
+                            {
+                            }
+
+                            if (!curve_0_optional_point_idx.has_value())
+                            {
+                                ImGui::EndDisabled();
+                            }
+
+                            break;
+                        }
+                        case RepresentationMeta::QUAT:
+                        case RepresentationMeta::NONE:
+                        default:
+                            assert(0);  // unhandled ReresentationMeta
                     }
                 }
                 else

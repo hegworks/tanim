@@ -28,6 +28,7 @@
 
 #pragma once
 #include "tanim/include/includes.hpp"
+#include "tanim/include/enums.hpp"
 
 #include <stdint.h>
 #include <vector>
@@ -100,6 +101,9 @@ ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
                              const ImVec2& min,
                              const ImVec2& max);
 
-float SampleCurveForAnimation(const std::vector<ImVec2>& pts, float time, LerpType curveType);
+float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
+                              float time,
+                              LerpType curve_type,
+                              RepresentationMeta representation_meta = RepresentationMeta::NONE);
 
 }  // namespace tanim::sequencer
