@@ -161,34 +161,14 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    switch (seq.m_representation_meta)
-                    {
-                        case RepresentationMeta::VECTOR:
-                        {
-                            field.x = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(0));
+                    field.x =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
 
-                            field.y = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(1));
+                    field.y =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
 
-                            field.z = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(2));
-
-                            break;
-                        }
-                        case RepresentationMeta::COLOR:
-                        {
-                            // TODO(tanim)
-                            break;
-                        }
-                        case RepresentationMeta::QUAT:
-                        case RepresentationMeta::NONE:
-                        default:
-                            assert(0);  // unhandled ReresentationMeta
-                    }
+                    field.z =
+                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
                 }
                 else
                 {
@@ -353,16 +333,30 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                         }
                         case RepresentationMeta::COLOR:
                         {
-                            if (!curve_0_optional_point_idx.has_value())
+                            const bool disabled = !curve_0_optional_point_idx.has_value() ||
+                                                  !curve_1_optional_point_idx.has_value() ||
+                                                  !curve_2_optional_point_idx.has_value();
+                            if (disabled)
                             {
                                 ImGui::BeginDisabled();
                             }
 
-                            if (ImGui::ColorEdit3(field_name, &field.x))
+                            if (ImGui::ColorEdit3(field_name, &field.x) && !disabled)
                             {
+                                seq.EditPoint(0,
+                                              curve_0_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.x});
+
+                                seq.EditPoint(1,
+                                              curve_1_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.y});
+
+                                seq.EditPoint(2,
+                                              curve_2_optional_point_idx.value(),
+                                              {(float)timeline.GetPlayerFrame(), field.z});
                             }
 
-                            if (!curve_0_optional_point_idx.has_value())
+                            if (disabled)
                             {
                                 ImGui::EndDisabled();
                             }
