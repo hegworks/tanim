@@ -50,6 +50,7 @@ void Tanim::Sample(TimelineData* timeline_data)
 
 void Tanim::StartTimeline(TimelineData* timeline_data)
 {
+    timeline_data->SetPlayerTimeFromSeconds(0);
     if (timeline_data->m_play_immediately)
     {
         Play(timeline_data);
