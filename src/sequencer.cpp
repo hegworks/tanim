@@ -557,6 +557,7 @@ glm::quat SampleQuatForAnimation(Sequence& seq, float time)
     const auto& pts_x = seq.GetCurvePointsList(1);
     const auto& pts_y = seq.GetCurvePointsList(2);
     const auto& pts_z = seq.GetCurvePointsList(3);
+    const auto& pts_spins = seq.GetCurvePointsList(4);
     const int pt_count = (int)pts_w.size();
 
     for (int i = 0; i < pt_count - 1; i++)
@@ -569,12 +570,12 @@ glm::quat SampleQuatForAnimation(Sequence& seq, float time)
 
             if (seq.GetCurveLerpType(0) == LerpType::LINEAR)
             {
-                return glm::slerp(q_a, q_b, segment_t);
+                return glm::slerp(q_a, q_b, segment_t, (int)pts_spins.at(i + 1).y);
             }
             else if (seq.GetCurveLerpType(0) == LerpType::SMOOTH)
             {
                 const float smoothT = smoothstep(0.0f, 1.0f, segment_t);
-                return glm::slerp(q_a, q_b, smoothT);
+                return glm::slerp(q_a, q_b, smoothT, (int)pts_spins.at(i + 1).y);
             }
             else if (seq.GetCurveLerpType(0) == LerpType::DISCRETE)
             {

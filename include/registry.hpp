@@ -141,6 +141,11 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                                curve.m_name = "A";
                                                                curve.m_points = {{0, field.a}, {10, field.a}};
                                                            }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Spins";
+                                                               curve.m_points = {{0, 0}, {10, 0}};
+                                                           }
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::quat>)
                                                        {
@@ -165,6 +170,12 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Z";
                                                                curve.m_points = {{0, field.z}, {10, field.z}};
+                                                           }
+                                                           {
+                                                               Sequence::Curve& curve = seq.AddCurve();
+                                                               curve.m_name = "Spins";
+                                                               curve.m_points = {{0, 0}, {10, 0}};
+                                                               curve.m_lerp_type = sequencer::LerpType::DISCRETE;
                                                            }
                                                        }
                                                        else
@@ -287,6 +298,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, timeline.GetPlayerFrame());
                 const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, timeline.GetPlayerFrame());
                 const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, timeline.GetPlayerFrame());
+                const auto& curve_4_optional_point_idx = seq.GetPointIdx(4, timeline.GetPlayerFrame());
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -480,6 +492,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                                 seq.m_curves.at(1).m_name = "X";
                                 seq.m_curves.at(2).m_name = "Y";
                                 seq.m_curves.at(3).m_name = "Z";
+                                seq.m_curves.at(4).m_name = "Spins";
                                 break;
                             case RepresentationMeta::VECTOR:
                             case RepresentationMeta::NONE:
@@ -492,65 +505,14 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                     {
                         case RepresentationMeta::QUAT:
                         {
-                            if (!curve_0_optional_point_idx.has_value())
-                            {
-                                ImGui::BeginDisabled();
-                            }
-                            if (ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w))
-                            {
-                                seq.EditPoint(0,
-                                              curve_0_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.w});
-                            }
-                            if (!curve_0_optional_point_idx.has_value())
-                            {
-                                ImGui::EndDisabled();
-                            }
+                            ImGui::BeginDisabled();
 
-                            if (!curve_1_optional_point_idx.has_value())
-                            {
-                                ImGui::BeginDisabled();
-                            }
-                            if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
-                            {
-                                seq.EditPoint(1,
-                                              curve_1_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.x});
-                            }
-                            if (!curve_1_optional_point_idx.has_value())
-                            {
-                                ImGui::EndDisabled();
-                            }
+                            ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
+                            ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
+                            ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
+                            ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
 
-                            if (!curve_2_optional_point_idx.has_value())
-                            {
-                                ImGui::BeginDisabled();
-                            }
-                            if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
-                            {
-                                seq.EditPoint(2,
-                                              curve_2_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.y});
-                            }
-                            if (!curve_2_optional_point_idx.has_value())
-                            {
-                                ImGui::EndDisabled();
-                            }
-
-                            if (!curve_3_optional_point_idx.has_value())
-                            {
-                                ImGui::BeginDisabled();
-                            }
-                            if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
-                            {
-                                seq.EditPoint(3,
-                                              curve_3_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.z});
-                            }
-                            if (!curve_3_optional_point_idx.has_value())
-                            {
-                                ImGui::EndDisabled();
-                            }
+                            ImGui::EndDisabled();
 
                             break;
                         }
@@ -608,10 +570,27 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                     ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
                     ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
                     ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
-
                     ImGui::DragFloat3("euler", &euler_angles.x);
 
                     ImGui::EndDisabled();
+
+                    if (curve_4_optional_point_idx.has_value())
+                    {
+                        float spins = seq.m_curves.at(4).m_points.at(curve_4_optional_point_idx.value()).y;
+                        int spins_int = (int)spins;
+                        if (ImGui::InputInt("Spins", &spins_int))
+                        {
+                            spins = (float)spins_int;
+                            seq.EditPoint(4, curve_4_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), spins});
+
+                            field = sequencer::SampleQuatForAnimation(seq, (float)timeline.GetPlayerFrame());
+
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                        }
+                    }
                 }
                 else
                 {
