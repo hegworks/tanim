@@ -10,4 +10,5 @@
 
 #ifdef USE_GLM
 #include "glm/glm.hpp"
+#include <glm/gtc/quaternion.hpp>
 #endif

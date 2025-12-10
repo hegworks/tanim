@@ -28,6 +28,7 @@
 
 #include "tanim/include/sequencer.hpp"
 #include "tanim/include/includes.hpp"
+#include "tanim/include/sequence.hpp"
 
 #include <stdint.h>
 #include <set>
@@ -518,7 +519,7 @@ float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
                               RepresentationMeta /*representation_meta*/)
 {
     const int ptCount = (int)pts.size();
-    for (size_t i = 0; i < ptCount - 1; i++)
+    for (int i = 0; i < ptCount - 1; i++)
     {
         if (time >= pts.at(i).x && time <= pts.at(i + 1).x)
         {
@@ -548,6 +549,52 @@ float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
     if (time >= pts.at(ptCount - 1).x) return pts.at(ptCount - 1).y;
 
     return pts.at(0).y;
+}
+
+glm::quat SampleQuatForAnimation(Sequence& seq, float time)
+{
+    const auto& pts_w = seq.GetCurvePointsList(0);
+    const auto& pts_x = seq.GetCurvePointsList(1);
+    const auto& pts_y = seq.GetCurvePointsList(2);
+    const auto& pts_z = seq.GetCurvePointsList(3);
+    const int pt_count = (int)pts_w.size();
+
+    for (int i = 0; i < pt_count - 1; i++)
+    {
+        if (time >= pts_w.at(i).x && time <= pts_w.at(i + 1).x)
+        {
+            const float segment_t = (time - pts_w.at(i).x) / (pts_w.at(i + 1).x - pts_w.at(i).x);
+            const auto q_a = glm::quat(pts_w.at(i).y, pts_x.at(i).y, pts_y.at(i).y, pts_z.at(i).y);
+            const auto q_b = glm::quat(pts_w.at(i + 1).y, pts_x.at(i + 1).y, pts_y.at(i + 1).y, pts_z.at(i + 1).y);
+
+            if (seq.GetCurveLerpType(0) == LerpType::LINEAR)
+            {
+                return glm::slerp(q_a, q_b, segment_t);
+            }
+            else if (seq.GetCurveLerpType(0) == LerpType::SMOOTH)
+            {
+                const float smoothT = smoothstep(0.0f, 1.0f, segment_t);
+                return glm::slerp(q_a, q_b, smoothT);
+            }
+            else if (seq.GetCurveLerpType(0) == LerpType::DISCRETE)
+            {
+                return q_a;
+            }
+            else
+            {
+                assert(0);  /// Unsupported LerpType
+            }
+        }
+    }
+
+    const auto q_0 = glm::quat(pts_w.at(0).y, pts_x.at(0).y, pts_y.at(0).y, pts_z.at(0).y);
+    if (time <= pts_w.at(0).x) return q_0;
+
+    const auto q_last =
+        glm::quat(pts_w.at(pt_count - 1).y, pts_x.at(pt_count - 1).y, pts_y.at(pt_count - 1).y, pts_z.at(pt_count - 1).y);
+    if (time >= pts_w.at(pt_count - 1).x) return q_last;
+
+    return q_0;
 }
 
 }  // namespace tanim::sequencer

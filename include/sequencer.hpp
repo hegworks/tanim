@@ -33,6 +33,11 @@
 #include <stdint.h>
 #include <vector>
 
+namespace tanim
+{
+struct Sequence;
+}
+
 struct ImRect;
 
 namespace tanim::sequencer
@@ -105,5 +110,7 @@ float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
                               float time,
                               LerpType curve_type,
                               RepresentationMeta representation_meta = RepresentationMeta::NONE);
+
+glm::quat SampleQuatForAnimation(Sequence& seq, float time);
 
 }  // namespace tanim::sequencer

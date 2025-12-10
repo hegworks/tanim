@@ -144,6 +144,8 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::quat>)
                                                        {
+                                                           seq.m_representation_meta = RepresentationMeta::QUAT;
+
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "W";
@@ -245,21 +247,7 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                         }
                         case RepresentationMeta::QUAT:
                         {
-                            field.w = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(0));
-
-                            field.x = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(1));
-
-                            field.y = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(2));
-
-                            field.z = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(3),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(3));
+                            field = sequencer::SampleQuatForAnimation(seq, sample_time);
 
                             break;
                         }
@@ -271,17 +259,7 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    field.w =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
-
-                    field.x =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
-
-                    field.y =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
-
-                    field.z =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(3), sample_time, seq.GetCurveLerpType(3));
+                    field = sequencer::SampleQuatForAnimation(seq, sample_time);
                 }
                 else
                 {
@@ -620,57 +598,19 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    if (!curve_0_optional_point_idx.has_value())
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w))
-                    {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
-                    }
-                    if (!curve_0_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
-                    }
+                    glm::quat q = field;
+                    glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(q));
 
-                    if (!curve_1_optional_point_idx.has_value())
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
-                    {
-                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                    }
-                    if (!curve_1_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
-                    }
+                    ImGui::BeginDisabled();
 
-                    if (!curve_2_optional_point_idx.has_value())
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
-                    {
-                        seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
-                    }
-                    if (!curve_2_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
-                    }
+                    ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
+                    ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
+                    ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
+                    ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
 
-                    if (!curve_3_optional_point_idx.has_value())
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
-                    {
-                        seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
-                    }
-                    if (!curve_3_optional_point_idx.has_value())
-                    {
-                        ImGui::EndDisabled();
-                    }
+                    ImGui::DragFloat3("euler", &euler_angles.x);
+
+                    ImGui::EndDisabled();
                 }
                 else
                 {
