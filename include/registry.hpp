@@ -672,6 +672,10 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                         ImGui::EndDisabled();
                     }
                 }
+                else
+                {
+                    static_assert(false, "Unsupported Type");
+                }
             }
         });
 }
@@ -700,6 +704,57 @@ static void Record(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), (float)field});
+                }
+                else if constexpr (std::is_same_v<FieldType, bool>)
+                {
+                    seq.EditPoint(0,
+                                  curve_0_optional_point_idx.value(),
+                                  {(float)timeline.GetPlayerFrame(), field == true ? 1.0f : 0.0f});
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                {
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                {
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec4>)
+                {
+                    switch (seq.m_representation_meta)
+                    {
+                        case RepresentationMeta::COLOR:
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.r});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.g});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.b});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.a});
+                            break;
+                        case RepresentationMeta::QUAT:
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                            break;
+                        case RepresentationMeta::VECTOR:
+                        case RepresentationMeta::NONE:
+                        default:
+                            assert(0);  // unhandled ReresentationMeta
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::quat>)
+                {
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                    seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                }
+                else
+                {
+                    static_assert(false, "Unsupported Type");
                 }
             }
         });
