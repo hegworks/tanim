@@ -147,6 +147,34 @@ void Tanim::Draw()
     ImGui::SameLine();
 
     ImGui::PushItemWidth(100);
+
+    const bool disabled = m_timeline.GetPlayerPlaying();
+    if (disabled)
+    {
+        ImGui::BeginDisabled();
+        m_preview = true;
+    }
+    if (ImGui::Checkbox("Preview", &m_preview))
+    {
+        if (m_preview == false)
+        {
+            m_preview = true;
+            const int frame_before = m_timeline.GetPlayerFrame();
+            m_timeline.m_data->SetPlayerTimeFromSeconds(0);
+            Sample(m_timeline.m_data);
+            m_preview = false;
+            m_timeline.m_data->SetPlayerTimeFromFrame(frame_before);
+        }
+    }
+    if (disabled)
+    {
+        ImGui::EndDisabled();
+    }
+
+    ImGui::SameLine();
+    ImGui::Text(" | ");
+    ImGui::SameLine();
+
     ImGui::DragInt("Samples", &m_timeline.m_data->m_player_samples, 0.1f, m_timeline.GetMinFrame());
 
     ImGui::SameLine();
@@ -159,7 +187,10 @@ void Tanim::Draw()
     {
         player_frame = ImMax(0, player_frame);
         m_timeline.m_data->SetPlayerTimeFromFrame(player_frame);
-        Sample(m_timeline.m_data);
+        if (m_preview)
+        {
+            Sample(m_timeline.m_data);
+        }
     }
 
     ImGui::SameLine();
@@ -210,7 +241,10 @@ void Tanim::Draw()
     if ((!m_is_engine_in_play_mode && !m_timeline.GetPlayerPlaying()) || (player_frame_before != player_frame_after))
     {
         m_timeline.m_data->SetPlayerTimeFromFrame(player_frame_after);
-        Sample(m_timeline.m_data);
+        if (m_preview)
+        {
+            Sample(m_timeline.m_data);
+        }
     }
 
     ImGui::End();

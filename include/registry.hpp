@@ -434,7 +434,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
                             {
-                                seq.EditPoint(1,
+                                seq.EditPoint(2,
                                               curve_2_optional_point_idx.value(),
                                               {(float)timeline.GetPlayerFrame(), field.z});
                             }

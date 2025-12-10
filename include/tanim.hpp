@@ -30,6 +30,7 @@ public:
 private:
     static inline Timeline m_timeline{};
     static inline bool m_is_engine_in_play_mode{};
+    static inline bool m_preview{true};
 
     static void Sample(TimelineData* timeline_data);
 };
