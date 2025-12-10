@@ -66,7 +66,28 @@ struct Timeline : public timeliner::TimelineInterface
 
     bool GetPlayerPlaying() const { return m_data->m_player_playing; }
 
-    void TickTime(float dt) { m_data->m_player_time += dt; }
+    void TickTime(float dt)
+    {
+        m_data->m_player_time += dt;
+        if (IsPassedLastFrame())
+        {
+            switch (m_data->m_playback_type)
+            {
+                case PlaybackType::HOLD:
+                    m_data->SetPlayerTimeFromFrame(GetLastFrame());
+                    Pause();
+                    break;
+                case PlaybackType::RESET:
+                    Stop();
+                    break;
+                case PlaybackType::LOOP:
+                    m_data->SetPlayerTimeFromSeconds(0);
+                    break;
+                default:
+                    assert(0);  // unhandled PlaybackType
+            }
+        }
+    }
 
     bool IsPassedLastFrame() const { return m_data->m_player_time > m_data->LastFrameTime(); }
 

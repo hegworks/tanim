@@ -12,4 +12,11 @@ enum class RepresentationMeta : uint8_t
     QUAT,
 };
 
-}
+enum class PlaybackType : uint8_t
+{
+    HOLD = 0,
+    RESET,
+    LOOP,
+};
+
+}  // namespace tanim

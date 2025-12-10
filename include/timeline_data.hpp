@@ -19,6 +19,7 @@ struct TimelineData
     int m_player_samples{60};  // SamplesPerSecond
     float m_player_time{0};
     bool m_player_playing{false};
+    PlaybackType m_playback_type{PlaybackType::HOLD};
 
     int PlayerFrame() const { return helpers::SecondsToFrame(m_player_time, m_player_samples); }
     float PlayerSampleTime() const { return helpers::SecondsToSampleTime(m_player_time, m_player_samples); }

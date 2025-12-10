@@ -20,10 +20,6 @@ void Tanim::UpdateEditor(float dt)
         {
             m_timeline.TickTime(dt);
             Sample(m_timeline.m_data);
-            if (m_timeline.IsPassedLastFrame())
-            {
-                m_timeline.m_data->SetPlayerTimeFromSeconds(0.0f);
-            }
         }
     }
 }
@@ -252,6 +248,8 @@ void Tanim::Draw()
     //*****************************************************
 
     ImGui::Begin("timeline");
+
+    helpers::InspectEnum(m_timeline.m_data->m_playback_type);
 
     if (ImGui::Button("+ Sequence"))
     {

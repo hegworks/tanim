@@ -247,7 +247,8 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                         }
                         case RepresentationMeta::QUAT:
                         {
-                            field = sequencer::SampleQuatForAnimation(seq, sample_time);
+                            const glm::quat q = sequencer::SampleQuatForAnimation(seq, sample_time);
+                            field = {q.w, q.x, q.y, q.z};
 
                             break;
                         }
