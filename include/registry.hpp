@@ -302,6 +302,9 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
+                    helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
+
                     if (!curve_0_optional_point_idx.has_value())
                     {
                         ImGui::BeginDisabled();
@@ -319,6 +322,9 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
+                    helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
+
                     if (!curve_0_optional_point_idx.has_value())
                     {
                         ImGui::BeginDisabled();
@@ -355,6 +361,14 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
+                    helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                                         "X LerpType");
+
+                    helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
+                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                                         "Y LerpType");
+
                     if (!curve_0_optional_point_idx.has_value())
                     {
                         ImGui::BeginDisabled();
@@ -389,6 +403,18 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                     {
                         case RepresentationMeta::VECTOR:
                         {
+                            helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                                 {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                                                 "X LerpType");
+
+                            helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
+                                                 {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                                                 "Y LerpType");
+
+                            helpers::InspectEnum(seq.m_curves.at(2).m_lerp_type,
+                                                 {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                                                 "Z LerpType");
+
                             if (!curve_0_optional_point_idx.has_value())
                             {
                                 ImGui::BeginDisabled();
@@ -442,6 +468,13 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                                                   !curve_1_optional_point_idx.has_value() ||
                                                   !curve_2_optional_point_idx.has_value();
 
+                            if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                                     {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
+                            {
+                                seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                                seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                            }
+
                             if (disabled)
                             {
                                 ImGui::BeginDisabled();
@@ -477,6 +510,14 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
+                    if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                             {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
+                    {
+                        seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                        seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                        seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    }
+
                     if (helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::VECTOR}))
                     {
                         switch (seq.m_representation_meta)
@@ -561,6 +602,14 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
+                    if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                                             {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
+                    {
+                        seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                        seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                        seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    }
+
                     glm::quat q = field;
                     glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(q));
 
@@ -570,6 +619,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                     ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
                     ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
                     ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
+
                     ImGui::DragFloat3("euler", &euler_angles.x);
 
                     ImGui::EndDisabled();

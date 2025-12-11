@@ -19,15 +19,16 @@ inline float FrameToSeconds(int frame, int samples)
 }
 
 template <typename EnumType>
-static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions = {})
+static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions = {}, const std::string& custom_name = {})
 {
     bool changed = false;
     const std::string type_name = std::string(magic_enum::enum_type_name<EnumType>());
     auto current_name = magic_enum::enum_name(enum_);
     const std::string preview = current_name.empty() ? "Unknown" : std::string(current_name);
+    const std::string dropdown_name = custom_name.empty() ? type_name : custom_name;
 
     ImGui::PushItemWidth(150.0f);
-    if (ImGui::BeginCombo(type_name.c_str(), preview.c_str()))
+    if (ImGui::BeginCombo(dropdown_name.c_str(), preview.c_str()))
     {
         constexpr auto enum_values = magic_enum::enum_values<EnumType>();
         for (const auto& enum_value : enum_values)

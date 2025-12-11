@@ -403,11 +403,10 @@ void Tanim::Draw()
 
     for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)
     {
+        Sequence& seq = m_timeline.GetSequence(seq_idx);
+        const bool is_recording = seq.IsRecording();
         for (const auto& component : components)
         {
-            Sequence& seq = m_timeline.GetSequence(seq_idx);
-            const bool is_recording = seq.IsRecording();
-
             if (component.HasSequence(seq.m_name))
             {
                 if (is_recording)
