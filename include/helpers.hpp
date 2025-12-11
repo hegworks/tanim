@@ -21,6 +21,8 @@ inline float FrameToSeconds(int frame, int samples)
 template <typename EnumType>
 static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions = {}, const std::string& custom_name = {})
 {
+    ImGui::PushID(&enum_);
+
     bool changed = false;
     const std::string type_name = std::string(magic_enum::enum_type_name<EnumType>());
     auto current_name = magic_enum::enum_name(enum_);
@@ -54,6 +56,9 @@ static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions
         }
         ImGui::EndCombo();
     }
+
+    ImGui::PopID();
+
     return changed;
 }
 
