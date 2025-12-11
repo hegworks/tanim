@@ -309,7 +309,7 @@ void Tanim::Draw()
         Sequence& seq = m_timeline.GetSequence(expanded_seq_idx);
 
         const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(m_timeline.GetPlayerFrame());
-        if (is_keyframe_in_all_curves)
+        if (is_keyframe_in_all_curves || IsPlaying(m_timeline.m_data))
         {
             ImGui::BeginDisabled();
         }
@@ -329,7 +329,7 @@ void Tanim::Draw()
 
             seq.StopRecording();
         }
-        if (is_keyframe_in_all_curves)
+        if (is_keyframe_in_all_curves || IsPlaying(m_timeline.m_data))
         {
             ImGui::EndDisabled();
         }
@@ -357,10 +357,18 @@ void Tanim::Draw()
         }
         else
         {
+            if (IsPlaying(m_timeline.m_data))
+            {
+                ImGui::BeginDisabled();
+            }
             if (ImGui::Button("Record"))
             {
                 seq.AddNewKeyframe(m_timeline.GetPlayerFrame());
                 seq.StartRecording(m_timeline.GetPlayerFrame());
+            }
+            if (IsPlaying(m_timeline.m_data))
+            {
+                ImGui::EndDisabled();
             }
         }
 
