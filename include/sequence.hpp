@@ -45,7 +45,6 @@ struct Sequence : public sequencer::SequenceInterface
         std::string m_name{"new_curve"};
     };
 
-    int m_type{0};
     TypeMeta m_type_meta{TypeMeta::NONE};
     RepresentationMeta m_representation_meta{RepresentationMeta::NONE};
     std::vector<Curve> m_curves{};

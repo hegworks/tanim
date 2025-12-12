@@ -5,6 +5,7 @@
 #include <visit_struct/visit_struct.hpp>  // minimum version 1.2.0
 #include <entt/entt.hpp>                  // tested with version 3.15.0
 #include <magic_enum/magic_enum.hpp>      // tested with version 0.9.7
+#include <nlohmann/json.hpp>              // tested with version 3.12.0
 
 #define USE_GLM
 

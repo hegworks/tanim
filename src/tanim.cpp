@@ -380,10 +380,6 @@ void Tanim::Draw()
         ImGui::EndDisabled();
         ImGui::PopItemWidth();
 
-        // switch (type) ...
-
-        ImGui::Text("type:        %d", seq.m_type);
-        ImGui::Text("type name:   %s", m_timeline.GetSequenceTypeName(seq.m_type));
         ImGui::Text("expanded:    %i", seq.m_expanded);
 
         for (int i = 0; i < seq.GetCurveCount(); ++i)
@@ -448,6 +444,70 @@ void Tanim::Draw()
     ImGui::End();
 
     //*****************************************************
+}
+
+std::string Tanim::Serialize(TimelineData* timeline_data)
+{
+    m_timeline.m_data = timeline_data;
+
+    nlohmann::ordered_json json{};
+
+    json["about"] = {"Tanim Serialized JSON", "more info: https://github.com/hegworks/tanim"};
+    json["version"] = 1;
+
+    nlohmann::ordered_json timeline_js{};
+    timeline_js["m_name"] = timeline_data->m_name;
+    timeline_js["m_first_frame"] = timeline_data->m_first_frame;
+    timeline_js["m_last_frame"] = timeline_data->m_last_frame;
+    timeline_js["m_min_frame"] = timeline_data->m_min_frame;
+    timeline_js["m_max_frame"] = timeline_data->m_max_frame;
+    timeline_js["m_play_immediately"] = timeline_data->m_play_immediately;
+    timeline_js["m_player_samples"] = timeline_data->m_player_samples;
+    timeline_js["m_playback_type"] = std::string(magic_enum::enum_name(timeline_data->m_playback_type));
+
+    nlohmann::ordered_json sequences_js_array = nlohmann::ordered_json::array();
+    for (int seq_idx = 0; seq_idx < m_timeline.GetSequenceCount(); ++seq_idx)
+    {
+        nlohmann::ordered_json seq_js{};
+
+        Sequence& seq = m_timeline.GetSequence(seq_idx);
+        seq_js["m_name"] = seq.m_name;
+        seq_js["m_type_meta"] = std::string(magic_enum::enum_name(seq.m_type_meta));
+        seq_js["m_representation_meta"] = std::string(magic_enum::enum_name(seq.m_representation_meta));
+
+        nlohmann::ordered_json curves_js_array = nlohmann::ordered_json::array();
+        for (int curve_idx = 0; curve_idx < seq.GetCurveCount(); ++curve_idx)
+        {
+            nlohmann::ordered_json curve_js{};
+
+            Sequence::Curve& curve = seq.m_curves.at(curve_idx);
+            curve_js["m_name"] = curve.m_name;
+            seq_js["m_lerp_type"] = std::string(magic_enum::enum_name(curve.m_lerp_type));
+
+            nlohmann::ordered_json pts_js_array = nlohmann::ordered_json::array();
+            for (int pt_idx = 0; pt_idx < seq.GetCurvePointCount(curve_idx); ++pt_idx)
+            {
+                const auto& pt = curve.m_points.at(pt_idx);
+                pts_js_array.push_back({pt.x, pt.y});
+            }
+            curve_js["m_points"] = pts_js_array;
+
+            curves_js_array.push_back(curve_js);
+        }
+
+        seq_js["m_curves"] = curves_js_array;
+        sequences_js_array.push_back(seq_js);
+    }
+
+    timeline_js["m_sequences"] = sequences_js_array;
+    json["timeline_data"] = timeline_js;
+
+    return json.dump(4);
+}
+
+void Tanim::Deserialize(TimelineData* timeline_data, const std::string& /*serialized_string*/)
+{
+    m_timeline.m_data = timeline_data;
 }
 
 }  // namespace tanim

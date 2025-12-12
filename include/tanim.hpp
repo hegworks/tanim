@@ -24,6 +24,9 @@ public:
     static void Pause(TimelineData* timeline_data);
     static void Stop(TimelineData* timeline_data);
 
+    [[nodiscard]] static std::string Serialize(TimelineData* timeline_data);
+    static void Deserialize(TimelineData* timeline_data, const std::string& serialized_string);
+
     static void EnterPlayMode() { m_is_engine_in_play_mode = true; }
     static void ExitPlayMode() { m_is_engine_in_play_mode = false; }
 

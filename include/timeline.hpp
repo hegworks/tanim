@@ -105,20 +105,15 @@ struct Timeline : public timeliner::TimelineInterface
     }
 
     // TODO(tanim) replace this abomination with separate getters & setters
-    void MultiGet(int index, int** start, int** end, int* type, unsigned int* color) override
+    void MultiGet(int /*index*/, int** start, int** end, int* type, unsigned int* color) override
     {
-        Sequence& item = m_data->m_sequences[index];
         if (color) *color = 0xFFAA8080;  // same color for everyone, return color based on type
         if (start) *start = &m_data->m_first_frame;
         if (end) *end = &m_data->m_last_frame;
-        if (type) *type = item.m_type;
+        if (type) *type = 0;
     }
 
-    void AddSequence(int type) override
-    {
-        auto& seq = m_data->m_sequences.emplace_back(&m_data->m_last_frame);
-        seq.m_type = type;
-    }
+    void AddSequence(int /*type*/) override { m_data->m_sequences.emplace_back(&m_data->m_last_frame); }
 
     void DeleteSequence(int index) override { m_data->m_sequences.erase(m_data->m_sequences.begin() + index); }
 
