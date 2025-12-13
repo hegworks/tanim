@@ -482,7 +482,7 @@ std::string Tanim::Serialize(TimelineData* timeline_data)
 
             Sequence::Curve& curve = seq.m_curves.at(curve_idx);
             curve_js["m_name"] = curve.m_name;
-            seq_js["m_lerp_type"] = std::string(magic_enum::enum_name(curve.m_lerp_type));
+            curve_js["m_lerp_type"] = std::string(magic_enum::enum_name(curve.m_lerp_type));
 
             nlohmann::ordered_json pts_js_array = nlohmann::ordered_json::array();
             for (int pt_idx = 0; pt_idx < seq.GetCurvePointCount(curve_idx); ++pt_idx)
@@ -505,9 +505,57 @@ std::string Tanim::Serialize(TimelineData* timeline_data)
     return json.dump(4);
 }
 
-void Tanim::Deserialize(TimelineData* timeline_data, const std::string& /*serialized_string*/)
+void Tanim::Deserialize(TimelineData* timeline_data, const std::string& serialized_string)
 {
     m_timeline.m_data = timeline_data;
+    assert(!serialized_string.empty());
+    const nlohmann::ordered_json json = nlohmann::ordered_json::parse(serialized_string);
+    assert(!json.empty());
+
+    const auto& timeline_js = json["timeline_data"];
+    timeline_data->m_name = timeline_js["m_name"].get<std::string>();
+    timeline_data->m_first_frame = timeline_js["m_first_frame"].get<int>();
+    timeline_data->m_last_frame = timeline_js["m_last_frame"].get<int>();
+    timeline_data->m_min_frame = timeline_js["m_min_frame"].get<int>();
+    timeline_data->m_max_frame = timeline_js["m_max_frame"].get<int>();
+    timeline_data->m_play_immediately = timeline_js["m_play_immediately"].get<bool>();
+    timeline_data->m_player_samples = timeline_js["m_player_samples"].get<int>();
+
+    const std::string playback_type_str = timeline_js["m_playback_type"].get<std::string>();
+    timeline_data->m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
+
+    for (const auto& seq_js : timeline_js["m_sequences"])
+    {
+        Sequence& seq = timeline_data->m_sequences.emplace_back(&timeline_data->m_last_frame);
+
+        seq.m_name = seq_js["m_name"].get<std::string>();
+
+        const std::string type_meta_str = seq_js["m_type_meta"].get<std::string>();
+        seq.m_type_meta = magic_enum::enum_cast<Sequence::TypeMeta>(type_meta_str).value_or(Sequence::TypeMeta::NONE);
+
+        const std::string representation_meta_str = seq_js["m_representation_meta"].get<std::string>();
+        seq.m_representation_meta =
+            magic_enum::enum_cast<RepresentationMeta>(representation_meta_str).value_or(RepresentationMeta::NONE);
+
+        seq.m_curves.clear();
+        for (const auto& curve_js : seq_js["m_curves"])
+        {
+            Sequence::Curve& curve = seq.m_curves.emplace_back();
+
+            curve.m_name = curve_js["m_name"].get<std::string>();
+
+            const std::string lerp_type_str = curve_js["m_lerp_type"].get<std::string>();
+            curve.m_lerp_type = magic_enum::enum_cast<sequencer::LerpType>(lerp_type_str).value_or(sequencer::LerpType::SMOOTH);
+
+            curve.m_points.clear();
+            for (const auto& pt_js : curve_js["m_points"])
+            {
+                const float x = pt_js[0].get<float>();
+                const float y = pt_js[1].get<float>();
+                curve.m_points.emplace_back(x, y);
+            }
+        }
+    }
 }
 
 }  // namespace tanim
