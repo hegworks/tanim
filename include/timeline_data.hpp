@@ -14,7 +14,7 @@ struct TimelineData
     int m_max_frame{500};
     std::string m_name{"New Timeline"};
     std::vector<Sequence> m_sequences{};
-    uint64_t m_id{0};
+    // uint64_t m_id{0};
     bool m_play_immediately{true};
     int m_player_samples{60};  // SamplesPerSecond
     float m_player_time{0};
