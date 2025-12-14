@@ -28,6 +28,7 @@
 
 #include "tanim/include/timeliner.hpp"
 #include "tanim/include/includes.hpp"
+#include "tanim/include/timeline.hpp"
 
 #include <cstdlib>
 
@@ -40,23 +41,23 @@ static ImVec2 operator+(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x + 
 
 static bool TimelinerAddDelButton(ImDrawList* draw_list, ImVec2 pos, bool add = true)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    ImRect btnRect(pos, ImVec2(pos.x + 16, pos.y + 16));
-    bool overBtn = btnRect.Contains(io.MousePos);
-    bool containedClick = overBtn && btnRect.Contains(io.MouseClickedPos[0]);
-    bool clickedBtn = containedClick && io.MouseReleased[0];
-    int btnColor = overBtn ? 0xAAEAFFAA : 0x77A3B2AA;
-    if (containedClick && io.MouseDownDuration[0] > 0) btnRect.Expand(2.0f);
+    const ImGuiIO& io = ImGui::GetIO();
+    ImRect btn_rect(pos, ImVec2(pos.x + 16, pos.y + 16));
+    const bool over_btn = btn_rect.Contains(io.MousePos);
+    const bool contained_click = over_btn && btn_rect.Contains(io.MouseClickedPos[0]);
+    const bool clicked_btn = contained_click && io.MouseReleased[0];
+    const unsigned int btn_color = over_btn ? 0xAAEAFFAA : 0x77A3B2AA;
+    if (contained_click && io.MouseDownDuration[0] > 0) btn_rect.Expand(2.0f);
 
-    float midy = pos.y + 16 / 2 - 0.5f;
-    float midx = pos.x + 16 / 2 - 0.5f;
-    draw_list->AddRect(btnRect.Min, btnRect.Max, btnColor, 4);
-    draw_list->AddLine(ImVec2(btnRect.Min.x + 3, midy), ImVec2(btnRect.Max.x - 3, midy), btnColor, 2);
-    if (add) draw_list->AddLine(ImVec2(midx, btnRect.Min.y + 3), ImVec2(midx, btnRect.Max.y - 3), btnColor, 2);
-    return clickedBtn;
+    const float mid_y = pos.y + 16.0f / 2.0f - 0.5f;
+    const float mid_x = pos.x + 16.0f / 2.0f - 0.5f;
+    draw_list->AddRect(btn_rect.Min, btn_rect.Max, btn_color, 4);
+    draw_list->AddLine(ImVec2(btn_rect.Min.x + 3, mid_y), ImVec2(btn_rect.Max.x - 3, mid_y), btn_color, 2);
+    if (add) draw_list->AddLine(ImVec2(mid_x, btn_rect.Min.y + 3), ImVec2(mid_x, btn_rect.Max.y - 3), btn_color, 2);
+    return clicked_btn;
 }
 
-bool Timeliner(TimelineInterface* timeline,
+bool Timeliner(TimelineData& data,
                int* current_frame,
                bool* expanded,
                int* selected_sequence,
@@ -65,89 +66,89 @@ bool Timeliner(TimelineInterface* timeline,
 {
     bool ret = false;
     ImGuiIO& io = ImGui::GetIO();
-    int cx = (int)(io.MousePos.x);
-    int cy = (int)(io.MousePos.y);
-    static float framePixelWidth = 10.f;
-    static float framePixelWidthTarget = 10.f;
-    int legendWidth = 200;
+    int cx = static_cast<int>(io.MousePos.x);
+    int cy = static_cast<int>(io.MousePos.y);
+    static float frame_pixel_width = 10.f;
+    static float frame_pixel_width_target = 10.f;
+    int legend_width = 200;
 
-    static int movingEntry = -1;
-    static int movingPos = -1;
-    static int movingPart = -1;
-    int delEntry = -1;
-    int dupEntry = -1;
-    int ItemHeight = 20;
+    static int moving_entry = -1;
+    static int moving_pos = -1;
+    static int moving_part = -1;
+    int del_entry = -1;
+    // int dup_entry = -1;
+    int item_height = 20;
 
-    bool popupOpened = false;
-    int sequenceCount = timeline->GetSequenceCount();
-    if (!sequenceCount) return false;
+    bool popup_opened = false;
+    int sequence_count = Timeline::GetSequenceCount(data);
+    if (!sequence_count) return false;
     ImGui::BeginGroup();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 canvas_pos = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
     ImVec2 canvas_size = ImGui::GetContentRegionAvail();  // Resize canvas to what's available
-    int firstFrameUsed = first_frame ? *first_frame : 0;
+    int first_frame_used = first_frame ? *first_frame : 0;
 
-    int controlHeight = sequenceCount * ItemHeight;
-    for (int i = 0; i < sequenceCount; i++) controlHeight += int(timeline->GetCustomHeight(i));
-    int frameCount = ImMax(timeline->GetMaxFrame() - timeline->GetMinFrame(), 1);
+    int controlHeight = sequence_count * item_height;
+    for (int i = 0; i < sequence_count; i++) controlHeight += static_cast<int>(Timeline::GetCustomHeight(data, i));
+    int frame_count = ImMax(Timeline::GetMaxFrame(data) - Timeline::GetMinFrame(data), 1);
 
-    static bool MovingScrollBar = false;
-    static bool MovingCurrentFrame = false;
+    static bool moving_scroll_bar = false;
+    static bool moving_current_frame = false;
     struct CustomDraw
     {
-        int index;
-        ImRect customRect;
-        ImRect legendRect;
-        ImRect clippingRect;
-        ImRect legendClippingRect;
+        int m_index;
+        ImRect m_custom_rect;
+        ImRect m_legend_rect;
+        ImRect m_clipping_rect;
+        ImRect m_legend_clipping_rect;
     };
-    ImVector<CustomDraw> customDraws;
-    ImVector<CustomDraw> compactCustomDraws;
+    ImVector<CustomDraw> custom_draws;
+    ImVector<CustomDraw> compact_custom_draws;
     // zoom in/out
-    const int visibleFrameCount = (int)floorf((canvas_size.x - legendWidth) / framePixelWidth);
-    const float barWidthRatio = ImMin(visibleFrameCount / (float)frameCount, 1.f);
-    const float barWidthInPixels = barWidthRatio * (canvas_size.x - legendWidth);
+    const int visible_frame_count = static_cast<int>(floorf((canvas_size.x - legend_width) / frame_pixel_width));
+    const float bar_width_ratio = ImMin(visible_frame_count / static_cast<float>(frame_count), 1.f);
+    const float bar_width_in_pixels = bar_width_ratio * (canvas_size.x - legend_width);
 
-    ImRect regionRect(canvas_pos, canvas_pos + canvas_size);
+    ImRect region_rect(canvas_pos, canvas_pos + canvas_size);
 
-    static bool panningView = false;
-    static ImVec2 panningViewSource;
-    static int panningViewFrame;
+    static bool panning_view = false;
+    static ImVec2 panning_view_source;
+    static int panning_view_frame;
     if (ImGui::IsWindowFocused() && io.KeyAlt && io.MouseDown[2])
     {
-        if (!panningView)
+        if (!panning_view)
         {
-            panningViewSource = io.MousePos;
-            panningView = true;
-            panningViewFrame = *first_frame;
+            panning_view_source = io.MousePos;
+            panning_view = true;
+            panning_view_frame = *first_frame;
         }
-        *first_frame = panningViewFrame - int((io.MousePos.x - panningViewSource.x) / framePixelWidth);
-        *first_frame = ImClamp(*first_frame, timeline->GetMinFrame(), timeline->GetMaxFrame() - visibleFrameCount);
+        *first_frame = panning_view_frame - static_cast<int>((io.MousePos.x - panning_view_source.x) / frame_pixel_width);
+        *first_frame = ImClamp(*first_frame, Timeline::GetMinFrame(data), Timeline::GetMaxFrame(data) - visible_frame_count);
     }
-    if (panningView && !io.MouseDown[2])
+    if (panning_view && !io.MouseDown[2])
     {
-        panningView = false;
+        panning_view = false;
     }
-    framePixelWidthTarget = ImClamp(framePixelWidthTarget, 0.1f, 50.f);
+    frame_pixel_width_target = ImClamp(frame_pixel_width_target, 0.1f, 50.f);
 
-    framePixelWidth = ImLerp(framePixelWidth, framePixelWidthTarget, 0.33f);
+    frame_pixel_width = ImLerp(frame_pixel_width, frame_pixel_width_target, 0.33f);
 
-    frameCount = timeline->GetMaxFrame() - timeline->GetMinFrame();
-    if (visibleFrameCount >= frameCount && first_frame) *first_frame = timeline->GetMinFrame();
+    frame_count = Timeline::GetMaxFrame(data) - Timeline::GetMinFrame(data);
+    if (visible_frame_count >= frame_count && first_frame) *first_frame = Timeline::GetMinFrame(data);
 
     // --
     if (expanded && !*expanded)
     {
-        ImGui::InvisibleButton("canvas", ImVec2(canvas_size.x - canvas_pos.x, (float)ItemHeight));
-        draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_size.x + canvas_pos.x, canvas_pos.y + ItemHeight), 0xFF3D3837, 0);
+        ImGui::InvisibleButton("canvas", ImVec2(canvas_size.x - canvas_pos.x, static_cast<float>(item_height)));
+        draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_size.x + canvas_pos.x, canvas_pos.y + item_height), 0xFF3D3837, 0);
         char tmps[512];
-        ImFormatString(tmps, IM_ARRAYSIZE(tmps), timeline->GetCollapseFmt(), frameCount, sequenceCount);
+        ImFormatString(tmps, IM_ARRAYSIZE(tmps), Timeline::GetName(data).c_str(), frame_count, sequence_count);
         draw_list->AddText(ImVec2(canvas_pos.x + 26, canvas_pos.y + 2), 0xFFFFFFFF, tmps);
     }
     else
     {
-        bool hasScrollBar(true);
+        bool has_scroll_bar(true);
         /*
         int framesPixelWidth = int(frameCount * framePixelWidth);
         if ((framesPixelWidth + legendWidth) >= canvas_size.x)
@@ -156,45 +157,45 @@ bool Timeliner(TimelineInterface* timeline,
         }
         */
         // test scroll area
-        ImVec2 headerSize(canvas_size.x, (float)ItemHeight);
-        ImVec2 scrollBarSize(canvas_size.x, 14.f);
-        ImGui::InvisibleButton("topBar", headerSize);
-        draw_list->AddRectFilled(canvas_pos, canvas_pos + headerSize, 0xFFFF0000, 0);
-        ImVec2 childFramePos = ImGui::GetCursorScreenPos();
-        ImVec2 childFrameSize(canvas_size.x, canvas_size.y - 8.f - headerSize.y - (hasScrollBar ? scrollBarSize.y : 0));
+        ImVec2 header_size(canvas_size.x, static_cast<float>(item_height));
+        ImVec2 scroll_bar_size(canvas_size.x, 14.f);
+        ImGui::InvisibleButton("topBar", header_size);
+        draw_list->AddRectFilled(canvas_pos, canvas_pos + header_size, 0xFFFF0000, 0);
+        ImVec2 child_frame_pos = ImGui::GetCursorScreenPos();
+        ImVec2 child_frame_size(canvas_size.x, canvas_size.y - 8.f - header_size.y - (has_scroll_bar ? scroll_bar_size.y : 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, 0);
-        ImGui::BeginChild(889, childFrameSize, ImGuiChildFlags_FrameStyle);
-        timeline->focused = ImGui::IsWindowFocused();
-        ImGui::InvisibleButton("contentBar", ImVec2(canvas_size.x, float(controlHeight)));
-        const ImVec2 contentMin = ImGui::GetItemRectMin();
-        const ImVec2 contentMax = ImGui::GetItemRectMax();
-        const ImRect contentRect(contentMin, contentMax);
-        const float contentHeight = contentMax.y - contentMin.y;
+        ImGui::BeginChild(889, child_frame_size, ImGuiChildFlags_FrameStyle);
+        data.m_focused = ImGui::IsWindowFocused();
+        ImGui::InvisibleButton("contentBar", ImVec2(canvas_size.x, static_cast<float>(controlHeight)));
+        const ImVec2 content_min = ImGui::GetItemRectMin();
+        const ImVec2 content_max = ImGui::GetItemRectMax();
+        const float content_height = content_max.y - content_min.y;
 
         // full background
         draw_list->AddRectFilled(canvas_pos, canvas_pos + canvas_size, 0xFF242424, 0);
 
         // current frame top
-        ImRect topRect(ImVec2(canvas_pos.x + legendWidth, canvas_pos.y),
-                       ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + ItemHeight));
+        ImRect topRect(ImVec2(canvas_pos.x + legend_width, canvas_pos.y),
+                       ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + item_height));
 
-        if (!MovingCurrentFrame && !MovingScrollBar && movingEntry == -1 && timeliner_flags & TIMELINER_CHANGE_FRAME &&
+        if (!moving_current_frame && !moving_scroll_bar && moving_entry == -1 && timeliner_flags & TIMELINER_CHANGE_FRAME &&
             current_frame && *current_frame >= 0 && topRect.Contains(io.MousePos) && io.MouseDown[0])
         {
-            MovingCurrentFrame = true;
+            moving_current_frame = true;
         }
-        if (MovingCurrentFrame)
+        if (moving_current_frame)
         {
-            if (frameCount)
+            if (frame_count)
             {
-                *current_frame = (int)((io.MousePos.x - topRect.Min.x) / framePixelWidth) + firstFrameUsed;
-                if (*current_frame < timeline->GetMinFrame()) *current_frame = timeline->GetMinFrame();
-                if (*current_frame >= timeline->GetMaxFrame()) *current_frame = timeline->GetMaxFrame();
+                *current_frame = static_cast<int>((io.MousePos.x - topRect.Min.x) / frame_pixel_width) + first_frame_used;
+                if (*current_frame < Timeline::GetMinFrame(data)) *current_frame = Timeline::GetMinFrame(data);
+                if (*current_frame >= Timeline::GetMaxFrame(data)) *current_frame = Timeline::GetMaxFrame(data);
             }
-            if (!io.MouseDown[0]) MovingCurrentFrame = false;
+            if (!io.MouseDown[0]) moving_current_frame = false;
         }
 
         // header
+        /* removed AddSequence here, because we do it in another place
         draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_size.x + canvas_pos.x, canvas_pos.y + ItemHeight), 0xFF3D3837, 0);
         if (timeliner_flags & TIMELINER_ADD_SEQUENCE)
         {
@@ -203,8 +204,8 @@ bool Timeliner(TimelineInterface* timeline,
 
             if (ImGui::BeginPopup("addEntry"))
             {
-                for (int i = 0; i < timeline->GetSequenceTypeCount(); i++)
-                    if (ImGui::Selectable(timeline->GetSequenceTypeName(i)))
+                for (int i = 0; i < Timeline::GetSequenceCount(data); i++)
+                    if (ImGui::Selectable(GEtSe timeline->GetSequenceTypeName(i)))
                     {
                         timeline->AddSequence(i);
                         *selected_sequence = timeline->GetSequenceCount() - 1;
@@ -214,66 +215,73 @@ bool Timeliner(TimelineInterface* timeline,
                 popupOpened = true;
             }
         }
+        */
 
         // header frame number and lines
-        int modFrameCount = 10;
-        int frameStep = 1;
-        while ((modFrameCount * framePixelWidth) < 150)
+        int mod_frame_count = 10;
+        int frame_step = 1;
+        while ((mod_frame_count * frame_pixel_width) < 150)
         {
-            modFrameCount *= 2;
-            frameStep *= 2;
-        };
-        int halfModFrameCount = modFrameCount / 2;
+            mod_frame_count *= 2;
+            frame_step *= 2;
+        }
+        int half_mod_frame_count = mod_frame_count / 2;
 
         auto drawLine = [&](int i, int regionHeight)
         {
-            bool baseIndex = ((i % modFrameCount) == 0) || (i == timeline->GetMaxFrame() || i == timeline->GetMinFrame());
-            bool halfIndex = (i % halfModFrameCount) == 0;
-            int px = (int)canvas_pos.x + int(i * framePixelWidth) + legendWidth - int(firstFrameUsed * framePixelWidth);
-            int tiretStart = baseIndex ? 4 : (halfIndex ? 10 : 14);
-            int tiretEnd = baseIndex ? regionHeight : ItemHeight;
+            const bool base_index =
+                ((i % mod_frame_count) == 0) || (i == Timeline::GetMaxFrame(data) || i == Timeline::GetMinFrame(data));
+            const bool half_index = (i % half_mod_frame_count) == 0;
+            const int px = static_cast<int>(canvas_pos.x) + static_cast<int>(i * frame_pixel_width) + legend_width -
+                           static_cast<int>(first_frame_used * frame_pixel_width);
+            const int tiret_start = base_index ? 4 : (half_index ? 10 : 14);
+            const int tiret_end = base_index ? regionHeight : item_height;
 
-            if (px <= (canvas_size.x + canvas_pos.x) && px >= (canvas_pos.x + legendWidth))
+            if (px <= (canvas_size.x + canvas_pos.x) && px >= (canvas_pos.x + legend_width))
             {
-                draw_list->AddLine(ImVec2((float)px, canvas_pos.y + (float)tiretStart),
-                                   ImVec2((float)px, canvas_pos.y + (float)tiretEnd - 1),
+                draw_list->AddLine(ImVec2(static_cast<float>(px), canvas_pos.y + static_cast<float>(tiret_start)),
+                                   ImVec2(static_cast<float>(px), canvas_pos.y + static_cast<float>(tiret_end) - 1),
                                    0xFF606060,
                                    1);
 
-                draw_list->AddLine(ImVec2((float)px, canvas_pos.y + (float)ItemHeight),
-                                   ImVec2((float)px, canvas_pos.y + (float)regionHeight - 1),
+                draw_list->AddLine(ImVec2(static_cast<float>(px), canvas_pos.y + static_cast<float>(item_height)),
+                                   ImVec2(static_cast<float>(px), canvas_pos.y + static_cast<float>(regionHeight) - 1),
                                    0x30606060,
                                    1);
             }
 
-            if (baseIndex && px > (canvas_pos.x + legendWidth))
+            if (base_index && px > (canvas_pos.x + legend_width))
             {
                 char tmps[512];
                 ImFormatString(tmps, IM_ARRAYSIZE(tmps), "%d", i);
-                draw_list->AddText(ImVec2((float)px + 3.f, canvas_pos.y), 0xFFBBBBBB, tmps);
+                draw_list->AddText(ImVec2(static_cast<float>(px) + 3.f, canvas_pos.y), 0xFFBBBBBB, tmps);
             }
         };
 
         auto drawLineContent = [&](int i, int /*regionHeight*/)
         {
-            int px = (int)canvas_pos.x + int(i * framePixelWidth) + legendWidth - int(firstFrameUsed * framePixelWidth);
-            int tiretStart = int(contentMin.y);
-            int tiretEnd = int(contentMax.y);
+            const int px = static_cast<int>(canvas_pos.x) + static_cast<int>(i * frame_pixel_width) + legend_width -
+                           static_cast<int>(first_frame_used * frame_pixel_width);
+            const int tiret_start = static_cast<int>(content_min.y);
+            const int tiret_end = static_cast<int>(content_max.y);
 
-            if (px <= (canvas_size.x + canvas_pos.x) && px >= (canvas_pos.x + legendWidth))
+            if (px <= (canvas_size.x + canvas_pos.x) && px >= (canvas_pos.x + legend_width))
             {
                 // draw_list->AddLine(ImVec2((float)px, canvas_pos.y + (float)tiretStart), ImVec2((float)px, canvas_pos.y +
                 // (float)tiretEnd - 1), 0xFF606060, 1);
 
-                draw_list->AddLine(ImVec2(float(px), float(tiretStart)), ImVec2(float(px), float(tiretEnd)), 0x30606060, 1);
+                draw_list->AddLine(ImVec2(static_cast<float>(px), static_cast<float>(tiret_start)),
+                                   ImVec2(static_cast<float>(px), static_cast<float>(tiret_end)),
+                                   0x30606060,
+                                   1);
             }
         };
-        for (int i = timeline->GetMinFrame(); i <= timeline->GetMaxFrame(); i += frameStep)
+        for (int i = Timeline::GetMinFrame(data); i <= Timeline::GetMaxFrame(data); i += frame_step)
         {
-            drawLine(i, ItemHeight);
+            drawLine(i, item_height);
         }
-        drawLine(timeline->GetMinFrame(), ItemHeight);
-        drawLine(timeline->GetMaxFrame(), ItemHeight);
+        drawLine(Timeline::GetMinFrame(data), item_height);
+        drawLine(Timeline::GetMaxFrame(data), item_height);
         /*
                  draw_list->AddLine(canvas_pos, ImVec2(canvas_pos.x, canvas_pos.y + controlHeight), 0xFF000000, 1);
                  draw_list->AddLine(ImVec2(canvas_pos.x, canvas_pos.y + ItemHeight), ImVec2(canvas_size.x, canvas_pos.y +
@@ -281,110 +289,114 @@ bool Timeliner(TimelineInterface* timeline,
                  */
         // clip content
 
-        draw_list->PushClipRect(childFramePos, childFramePos + childFrameSize, true);
+        draw_list->PushClipRect(child_frame_pos, child_frame_pos + child_frame_size, true);
 
         // draw item names in the legend rect on the left
-        size_t customHeight = 0;
-        for (int i = 0; i < sequenceCount; i++)
+        size_t custom_height = 0;
+        for (int i = 0; i < sequence_count; i++)
         {
-            int type;
-            timeline->MultiGet(i, NULL, NULL, &type, NULL);
-            ImVec2 tpos(contentMin.x + 3, contentMin.y + i * ItemHeight + 2 + customHeight);
-            draw_list->AddText(tpos, 0xFFFFFFFF, timeline->GetSequenceLabel(i));
+            ImVec2 tpos(content_min.x + 3, content_min.y + i * item_height + 2 + custom_height);
+            draw_list->AddText(tpos, 0xFFFFFFFF, Timeline::GetSequenceLabel(data, i));
 
             if (timeliner_flags & TIMELINER_DELETE_SEQUENCE)
             {
                 if (TimelinerAddDelButton(draw_list,
-                                          ImVec2(contentMin.x + legendWidth - ItemHeight + 2 - 10, tpos.y + 2),
+                                          ImVec2(content_min.x + legend_width - item_height + 2 - 10, tpos.y + 2),
                                           false))
-                    delEntry = i;
+                {
+                    del_entry = i;
+                }
 
                 if (TimelinerAddDelButton(draw_list,
-                                          ImVec2(contentMin.x + legendWidth - ItemHeight - ItemHeight + 2 - 10, tpos.y + 2),
+                                          ImVec2(content_min.x + legend_width - item_height - item_height + 2 - 10, tpos.y + 2),
                                           true))
-                    dupEntry = i;
+                {
+                    // dup_entry = i;
+                }
             }
-            customHeight += timeline->GetCustomHeight(i);
+            custom_height += Timeline::GetCustomHeight(data, i);
         }
 
         // slots background
-        customHeight = 0;
-        for (int i = 0; i < sequenceCount; i++)
+        custom_height = 0;
+        for (int i = 0; i < sequence_count; i++)
         {
             unsigned int col = (i & 1) ? 0xFF3A3636 : 0xFF413D3D;
 
-            size_t localCustomHeight = timeline->GetCustomHeight(i);
-            ImVec2 pos = ImVec2(contentMin.x + legendWidth, contentMin.y + ItemHeight * i + 1 + customHeight);
-            ImVec2 sz = ImVec2(canvas_size.x + canvas_pos.x, pos.y + ItemHeight - 1 + localCustomHeight);
-            if (!popupOpened && cy >= pos.y && cy < pos.y + (ItemHeight + localCustomHeight) && movingEntry == -1 &&
-                cx > contentMin.x && cx < contentMin.x + canvas_size.x)
+            size_t local_custom_height = Timeline::GetCustomHeight(data, i);
+            ImVec2 pos = ImVec2(content_min.x + legend_width, content_min.y + item_height * i + 1 + custom_height);
+            ImVec2 sz = ImVec2(canvas_size.x + canvas_pos.x, pos.y + item_height - 1 + local_custom_height);
+            if (!popup_opened && cy >= pos.y && cy < pos.y + (item_height + local_custom_height) && moving_entry == -1 &&
+                cx > content_min.x && cx < content_min.x + canvas_size.x)
             {
                 col += 0x80201008;
-                pos.x -= legendWidth;
+                pos.x -= legend_width;
             }
             draw_list->AddRectFilled(pos, sz, col, 0);
-            customHeight += localCustomHeight;
+            custom_height += local_custom_height;
         }
 
-        draw_list->PushClipRect(childFramePos + ImVec2(float(legendWidth), 0.f), childFramePos + childFrameSize, true);
+        draw_list->PushClipRect(child_frame_pos + ImVec2(static_cast<float>(legend_width), 0.f),
+                                child_frame_pos + child_frame_size,
+                                true);
 
         // vertical frame lines in content area
-        for (int i = timeline->GetMinFrame(); i <= timeline->GetMaxFrame(); i += frameStep)
+        for (int i = Timeline::GetMinFrame(data); i <= Timeline::GetMaxFrame(data); i += frame_step)
         {
-            drawLineContent(i, int(contentHeight));
+            drawLineContent(i, static_cast<int>(content_height));
         }
-        drawLineContent(timeline->GetMinFrame(), int(contentHeight));
-        drawLineContent(timeline->GetMaxFrame(), int(contentHeight));
+        drawLineContent(Timeline::GetMinFrame(data), static_cast<int>(content_height));
+        drawLineContent(Timeline::GetMaxFrame(data), static_cast<int>(content_height));
 
         // selection
         bool selected = selected_sequence && (*selected_sequence >= 0);
         if (selected)
         {
-            customHeight = 0;
-            for (int i = 0; i < *selected_sequence; i++) customHeight += timeline->GetCustomHeight(i);
+            custom_height = 0;
+            for (int i = 0; i < *selected_sequence; i++) custom_height += Timeline::GetCustomHeight(data, i);
             draw_list->AddRectFilled(
-                ImVec2(contentMin.x, contentMin.y + ItemHeight * *selected_sequence + customHeight),
-                ImVec2(contentMin.x + canvas_size.x, contentMin.y + ItemHeight * (*selected_sequence + 1) + customHeight),
+                ImVec2(content_min.x, content_min.y + item_height * *selected_sequence + custom_height),
+                ImVec2(content_min.x + canvas_size.x, content_min.y + item_height * (*selected_sequence + 1) + custom_height),
                 0x801080FF,
                 1.f);
         }
 
         // slots
-        customHeight = 0;
-        for (int i = 0; i < sequenceCount; i++)
+        custom_height = 0;
+        for (int i = 0; i < sequence_count; i++)
         {
-            int *start, *end;
-            unsigned int color;
-            timeline->MultiGet(i, &start, &end, NULL, &color);
-            size_t localCustomHeight = timeline->GetCustomHeight(i);
+            int start = Timeline::GetFirstFrame(data);
+            int end = Timeline::GetLastFrame(data);
+            unsigned int color = Timeline::GetColor(data);
+            size_t local_custom_height = Timeline::GetCustomHeight(data, i);
 
-            ImVec2 pos = ImVec2(contentMin.x + legendWidth - firstFrameUsed * framePixelWidth,
-                                contentMin.y + ItemHeight * i + 1 + customHeight);
-            ImVec2 slotP1(pos.x + *start * framePixelWidth, pos.y + 2);
-            ImVec2 slotP2(pos.x + *end * framePixelWidth + framePixelWidth, pos.y + ItemHeight - 2);
-            ImVec2 slotP3(pos.x + *end * framePixelWidth + framePixelWidth, pos.y + ItemHeight - 2 + localCustomHeight);
-            unsigned int slotColor = color | 0xFF000000;
-            unsigned int slotColorHalf = (color & 0xFFFFFF) | 0x40000000;
+            ImVec2 pos = ImVec2(content_min.x + legend_width - first_frame_used * frame_pixel_width,
+                                content_min.y + item_height * i + 1 + custom_height);
+            ImVec2 slot_p1(pos.x + start * frame_pixel_width, pos.y + 2);
+            ImVec2 slot_p2(pos.x + end * frame_pixel_width + frame_pixel_width, pos.y + item_height - 2);
+            ImVec2 slot_p3(pos.x + end * frame_pixel_width + frame_pixel_width, pos.y + item_height - 2 + local_custom_height);
+            unsigned int slot_color = color | 0xFF000000;
+            unsigned int slot_color_half = (color & 0xFFFFFF) | 0x40000000;
 
-            if (slotP1.x <= (canvas_size.x + contentMin.x) && slotP2.x >= (contentMin.x + legendWidth))
+            if (slot_p1.x <= (canvas_size.x + content_min.x) && slot_p2.x >= (content_min.x + legend_width))
             {
-                draw_list->AddRectFilled(slotP1, slotP3, slotColorHalf, 2);
-                draw_list->AddRectFilled(slotP1, slotP2, slotColor, 2);
+                draw_list->AddRectFilled(slot_p1, slot_p3, slot_color_half, 2);
+                draw_list->AddRectFilled(slot_p1, slot_p2, slot_color, 2);
             }
-            if (ImRect(slotP1, slotP2).Contains(io.MousePos) && io.MouseDoubleClicked[0])
+            if (ImRect(slot_p1, slot_p2).Contains(io.MousePos) && io.MouseDoubleClicked[0])
             {
-                timeline->DoubleClick(i);
+                Timeline::DoubleClick(data, i);
             }
             // Ensure grabbable handles
-            const float max_handle_width = slotP2.x - slotP1.x / 3.0f;
+            const float max_handle_width = slot_p2.x - slot_p1.x / 3.0f;
             const float min_handle_width = ImMin(10.0f, max_handle_width);
-            const float handle_width = ImClamp(framePixelWidth / 2.0f, min_handle_width, max_handle_width);
-            ImRect rects[3] = {ImRect(slotP1, ImVec2(slotP1.x + handle_width, slotP2.y)),
-                               ImRect(ImVec2(slotP2.x - handle_width, slotP1.y), slotP2),
-                               ImRect(slotP1, slotP2)};
+            const float handle_width = ImClamp(frame_pixel_width / 2.0f, min_handle_width, max_handle_width);
+            ImRect rects[3] = {ImRect(slot_p1, ImVec2(slot_p1.x + handle_width, slot_p2.y)),
+                               ImRect(ImVec2(slot_p2.x - handle_width, slot_p1.y), slot_p2),
+                               ImRect(slot_p1, slot_p2)};
 
-            const unsigned int quadColor[] = {0xFFFFFFFF, 0xFFFFFFFF, slotColor + (selected ? 0 : 0x202020)};
-            if (movingEntry == -1 &&
+            const unsigned int quadColor[] = {0xFFFFFFFF, 0xFFFFFFFF, slot_color + (selected ? 0 : 0x202020)};
+            if (moving_entry == -1 &&
                 (timeliner_flags & TIMELINER_EDIT_STARTEND))  // TODOFOCUS && backgroundRect.Contains(io.MousePos))
             {
                 for (int j = 2; j >= 0; j--)
@@ -398,110 +410,117 @@ bool Timeliner(TimelineInterface* timeline,
                 {
                     ImRect& rc = rects[j];
                     if (!rc.Contains(io.MousePos)) continue;
-                    if (!ImRect(childFramePos, childFramePos + childFrameSize).Contains(io.MousePos)) continue;
-                    if (ImGui::IsMouseClicked(0) && !MovingScrollBar && !MovingCurrentFrame)
+                    if (!ImRect(child_frame_pos, child_frame_pos + child_frame_size).Contains(io.MousePos)) continue;
+                    if (ImGui::IsMouseClicked(0) && !moving_scroll_bar && !moving_current_frame)
                     {
-                        movingEntry = i;
-                        movingPos = cx;
-                        movingPart = j + 1;
-                        timeline->BeginEdit(movingEntry);
+                        moving_entry = i;
+                        moving_pos = cx;
+                        moving_part = j + 1;
+                        Timeline::BeginEdit(data, moving_entry);
                         break;
                     }
                 }
             }
 
             // custom draw
-            if (localCustomHeight > 0)
+            if (local_custom_height > 0)
             {
-                ImVec2 rp(canvas_pos.x, contentMin.y + ItemHeight * i + 1 + customHeight);
-                ImRect customRect(
-                    rp + ImVec2(legendWidth - (firstFrameUsed - timeline->GetMinFrame() - 0.5f) * framePixelWidth,
-                                float(ItemHeight)),
-                    rp + ImVec2(legendWidth + (timeline->GetMaxFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
-                                float(localCustomHeight + ItemHeight)));
-                ImRect clippingRect(rp + ImVec2(float(legendWidth), float(ItemHeight)),
-                                    rp + ImVec2(canvas_size.x, float(localCustomHeight + ItemHeight)));
+                ImVec2 rp(canvas_pos.x, content_min.y + item_height * i + 1 + custom_height);
+                ImRect custom_rect(
+                    rp + ImVec2(legend_width - (first_frame_used - Timeline::GetMinFrame(data) - 0.5f) * frame_pixel_width,
+                                static_cast<float>(item_height)),
+                    rp +
+                        ImVec2(legend_width + (Timeline::GetMaxFrame(data) - first_frame_used - 0.5f + 2.f) * frame_pixel_width,
+                               static_cast<float>(local_custom_height + item_height)));
+                ImRect clipping_rect(rp + ImVec2(static_cast<float>(legend_width), static_cast<float>(item_height)),
+                                     rp + ImVec2(canvas_size.x, static_cast<float>(local_custom_height + item_height)));
 
-                ImRect legendRect(rp + ImVec2(0.f, float(ItemHeight)),
-                                  rp + ImVec2(float(legendWidth), float(localCustomHeight)));
-                ImRect legendClippingRect(canvas_pos + ImVec2(0.f, float(ItemHeight)),
-                                          canvas_pos + ImVec2(float(legendWidth), float(localCustomHeight + ItemHeight)));
-                customDraws.push_back({i, customRect, legendRect, clippingRect, legendClippingRect});
+                ImRect legend_rect(rp + ImVec2(0.f, static_cast<float>(item_height)),
+                                   rp + ImVec2(static_cast<float>(legend_width), static_cast<float>(local_custom_height)));
+                ImRect legend_clipping_rect(canvas_pos + ImVec2(0.f, static_cast<float>(item_height)),
+                                            canvas_pos + ImVec2(static_cast<float>(legend_width),
+                                                                static_cast<float>(local_custom_height + item_height)));
+                custom_draws.push_back({i, custom_rect, legend_rect, clipping_rect, legend_clipping_rect});
             }
             else
             {
-                ImVec2 rp(canvas_pos.x, contentMin.y + ItemHeight * i + customHeight);
-                ImRect customRect(
+                ImVec2 rp(canvas_pos.x, content_min.y + item_height * i + custom_height);
+                ImRect custom_rect(
+                    rp + ImVec2(legend_width - (first_frame_used - Timeline::GetMinFrame(data) - 0.5f) * frame_pixel_width,
+                                static_cast<float>(0.f)),
                     rp +
-                        ImVec2(legendWidth - (firstFrameUsed - timeline->GetMinFrame() - 0.5f) * framePixelWidth, float(0.f)),
-                    rp + ImVec2(legendWidth + (timeline->GetMaxFrame() - firstFrameUsed - 0.5f + 2.f) * framePixelWidth,
-                                float(ItemHeight)));
-                ImRect clippingRect(rp + ImVec2(float(legendWidth), float(0.f)), rp + ImVec2(canvas_size.x, float(ItemHeight)));
+                        ImVec2(legend_width + (Timeline::GetMaxFrame(data) - first_frame_used - 0.5f + 2.f) * frame_pixel_width,
+                               static_cast<float>(item_height)));
+                ImRect clipping_rect(rp + ImVec2(static_cast<float>(legend_width), static_cast<float>(0.f)),
+                                     rp + ImVec2(canvas_size.x, static_cast<float>(item_height)));
 
-                compactCustomDraws.push_back({i, customRect, ImRect(), clippingRect, ImRect()});
+                compact_custom_draws.push_back({i, custom_rect, ImRect(), clipping_rect, ImRect()});
             }
-            customHeight += localCustomHeight;
+            custom_height += local_custom_height;
         }
 
         // moving
-        if (/*backgroundRect.Contains(io.MousePos) && */ movingEntry >= 0)
+        if (/*backgroundRect.Contains(io.MousePos) && */ moving_entry >= 0)
         {
 #if IMGUI_VERSION_NUM >= 18723
             ImGui::SetNextFrameWantCaptureMouse(true);
 #else
             ImGui::CaptureMouseFromApp();
 #endif
-            int diffFrame = int((cx - movingPos) / framePixelWidth);
-            if (std::abs(diffFrame) > 0)
+            int diff_frame = static_cast<int>((cx - moving_pos) / frame_pixel_width);
+            if (std::abs(diff_frame) > 0)
             {
-                int *start, *end;
-                timeline->MultiGet(movingEntry, &start, &end, NULL, NULL);
-                int rOld = *end;
-                if (selected_sequence) *selected_sequence = movingEntry;
-                int& l = *start;
-                int& r = *end;
-                if (movingPart & 1) l += diffFrame;
-                if (movingPart & 2) r += diffFrame;
+                int start = Timeline::GetFirstFrame(data);
+                int end = Timeline::GetLastFrame(data);
+                int r_old = end;
+                if (selected_sequence) *selected_sequence = moving_entry;
+                int& l = start;
+                int& r = end;
+                if (moving_part & 1) l += diff_frame;
+                if (moving_part & 2) r += diff_frame;
                 if (l < 0)
                 {
-                    if (movingPart & 2) r -= l;
+                    if (moving_part & 2) r -= l;
                     l = 0;
                 }
-                if (movingPart & 1 && l > r) l = r;
-                if (movingPart & 2 && r < l) r = l;
+                if (moving_part & 1 && l > r) l = r;
+                if (moving_part & 2 && r < l) r = l;
 
                 // TanimAddition
                 // force the FrameStart to 0
                 l = 0;
                 // if FrameEnd has changed, report it to the sequence
-                if (rOld != r)
+                if (r_old != r)
                 {
-                    timeline->EditLastFrame(r);
+                    Timeline::EditLastFrame(data, r);
                 }
 
-                movingPos += int(diffFrame * framePixelWidth);
+                moving_pos += static_cast<int>(diff_frame * frame_pixel_width);
             }
             if (!io.MouseDown[0])
             {
                 // single select
-                if (!diffFrame && movingPart && selected_sequence)
+                if (!diff_frame && moving_part && selected_sequence)
                 {
-                    *selected_sequence = movingEntry;
+                    *selected_sequence = moving_entry;
                     ret = true;
                 }
 
-                movingEntry = -1;
-                timeline->EndEdit();
+                moving_entry = -1;
+                Timeline::EndEdit(data);
             }
         }
 
         // cursor
-        if (current_frame && first_frame && *current_frame >= *first_frame && *current_frame <= timeline->GetMaxFrame())
+        if (current_frame && first_frame && *current_frame >= *first_frame && *current_frame <= Timeline::GetMaxFrame(data))
         {
-            static const float cursorWidth = 8.f;
-            float cursorOffset = contentMin.x + legendWidth + (*current_frame - firstFrameUsed) * framePixelWidth +
-                                 framePixelWidth / 2 - cursorWidth * 0.5f;
-            draw_list->AddLine(ImVec2(cursorOffset, canvas_pos.y), ImVec2(cursorOffset, contentMax.y), 0xA02A2AFF, cursorWidth);
+            static constexpr float CURSOR_WIDTH = 8.f;
+            float cursorOffset = content_min.x + legend_width + (*current_frame - first_frame_used) * frame_pixel_width +
+                                 frame_pixel_width / 2 - CURSOR_WIDTH * 0.5f;
+            draw_list->AddLine(ImVec2(cursorOffset, canvas_pos.y),
+                               ImVec2(cursorOffset, content_max.y),
+                               0xA02A2AFF,
+                               CURSOR_WIDTH);
             char tmps[512];
             ImFormatString(tmps, IM_ARRAYSIZE(tmps), "%d", *current_frame);
             draw_list->AddText(ImVec2(cursorOffset + 10, canvas_pos.y + 2), 0xFF2A2AFF, tmps);
@@ -510,162 +529,184 @@ bool Timeliner(TimelineInterface* timeline,
         draw_list->PopClipRect();
         draw_list->PopClipRect();
 
-        for (auto& customDraw : customDraws)
-            timeline->CustomDraw(customDraw.index,
+        for (auto& custom_draw : custom_draws)
+        {
+            Timeline::CustomDraw(data,
+                                 custom_draw.m_index,
                                  draw_list,
-                                 customDraw.customRect,
-                                 customDraw.legendRect,
-                                 customDraw.clippingRect,
-                                 customDraw.legendClippingRect);
-        for (auto& customDraw : compactCustomDraws)
-            timeline->CustomDrawCompact(customDraw.index, draw_list, customDraw.customRect, customDraw.clippingRect);
+                                 custom_draw.m_custom_rect,
+                                 custom_draw.m_legend_rect,
+                                 custom_draw.m_clipping_rect,
+                                 custom_draw.m_legend_clipping_rect);
+        }
+
+        for (auto& custom_draw : compact_custom_draws)
+        {
+            Timeline::CustomDrawCompact(data,
+                                        custom_draw.m_index,
+                                        draw_list,
+                                        custom_draw.m_custom_rect,
+                                        custom_draw.m_clipping_rect);
+        }
 
         // copy paste
         if (timeliner_flags & TIMELINER_COPYPASTE)
         {
-            ImRect rectCopy(ImVec2(contentMin.x + 100, canvas_pos.y + 2),
-                            ImVec2(contentMin.x + 100 + 30, canvas_pos.y + ItemHeight - 2));
-            bool inRectCopy = rectCopy.Contains(io.MousePos);
-            unsigned int copyColor = inRectCopy ? 0xFF1080FF : 0xFF000000;
-            draw_list->AddText(rectCopy.Min, copyColor, "Copy");
+            ImRect rect_copy(ImVec2(content_min.x + 100, canvas_pos.y + 2),
+                             ImVec2(content_min.x + 100 + 30, canvas_pos.y + item_height - 2));
+            bool in_rect_copy = rect_copy.Contains(io.MousePos);
+            unsigned int copy_color = in_rect_copy ? 0xFF1080FF : 0xFF000000;
+            draw_list->AddText(rect_copy.Min, copy_color, "Copy");
 
-            ImRect rectPaste(ImVec2(contentMin.x + 140, canvas_pos.y + 2),
-                             ImVec2(contentMin.x + 140 + 30, canvas_pos.y + ItemHeight - 2));
-            bool inRectPaste = rectPaste.Contains(io.MousePos);
-            unsigned int pasteColor = inRectPaste ? 0xFF1080FF : 0xFF000000;
-            draw_list->AddText(rectPaste.Min, pasteColor, "Paste");
+            ImRect rect_paste(ImVec2(content_min.x + 140, canvas_pos.y + 2),
+                              ImVec2(content_min.x + 140 + 30, canvas_pos.y + item_height - 2));
+            bool in_rect_paste = rect_paste.Contains(io.MousePos);
+            unsigned int paste_color = in_rect_paste ? 0xFF1080FF : 0xFF000000;
+            draw_list->AddText(rect_paste.Min, paste_color, "Paste");
 
-            if (inRectCopy && io.MouseReleased[0])
+            if (in_rect_copy && io.MouseReleased[0])
             {
-                timeline->Copy();
+                Timeline::Copy(data);
             }
-            if (inRectPaste && io.MouseReleased[0])
+            if (in_rect_paste && io.MouseReleased[0])
             {
-                timeline->Paste();
+                Timeline::Paste(data);
             }
         }
         //
 
         ImGui::EndChild();
         ImGui::PopStyleColor();
-        if (hasScrollBar)
+        if (has_scroll_bar)
         {
-            ImGui::InvisibleButton("scrollBar", scrollBarSize);
-            ImVec2 scrollBarMin = ImGui::GetItemRectMin();
-            ImVec2 scrollBarMax = ImGui::GetItemRectMax();
+            ImGui::InvisibleButton("scrollBar", scroll_bar_size);
+            ImVec2 scroll_bar_min = ImGui::GetItemRectMin();
+            ImVec2 scroll_bar_max = ImGui::GetItemRectMax();
 
             // ratio = number of frames visible in control / number to total frames
 
-            float startFrameOffset =
-                ((float)(firstFrameUsed - timeline->GetMinFrame()) / (float)frameCount) * (canvas_size.x - legendWidth);
-            ImVec2 scrollBarA(scrollBarMin.x + legendWidth, scrollBarMin.y - 2);
-            ImVec2 scrollBarB(scrollBarMin.x + canvas_size.x, scrollBarMax.y - 1);
-            draw_list->AddRectFilled(scrollBarA, scrollBarB, 0xFF222222, 0);
+            float start_frame_offset =
+                (static_cast<float>(first_frame_used - Timeline::GetMinFrame(data)) / static_cast<float>(frame_count)) *
+                (canvas_size.x - legend_width);
+            ImVec2 scroll_bar_a(scroll_bar_min.x + legend_width, scroll_bar_min.y - 2);
+            ImVec2 scroll_bar_b(scroll_bar_min.x + canvas_size.x, scroll_bar_max.y - 1);
+            draw_list->AddRectFilled(scroll_bar_a, scroll_bar_b, 0xFF222222, 0);
 
-            ImRect scrollBarRect(scrollBarA, scrollBarB);
-            bool inScrollBar = scrollBarRect.Contains(io.MousePos);
+            ImRect scroll_bar_rect(scroll_bar_a, scroll_bar_b);
+            bool in_scroll_bar = scroll_bar_rect.Contains(io.MousePos);
 
-            draw_list->AddRectFilled(scrollBarA, scrollBarB, 0xFF101010, 8);
+            draw_list->AddRectFilled(scroll_bar_a, scroll_bar_b, 0xFF101010, 8);
 
-            ImVec2 scrollBarC(scrollBarMin.x + legendWidth + startFrameOffset, scrollBarMin.y);
-            ImVec2 scrollBarD(scrollBarMin.x + legendWidth + barWidthInPixels + startFrameOffset, scrollBarMax.y - 2);
-            draw_list->AddRectFilled(scrollBarC, scrollBarD, (inScrollBar || MovingScrollBar) ? 0xFF606060 : 0xFF505050, 6);
-
-            ImRect barHandleLeft(scrollBarC, ImVec2(scrollBarC.x + 14, scrollBarD.y));
-            ImRect barHandleRight(ImVec2(scrollBarD.x - 14, scrollBarC.y), scrollBarD);
-
-            bool onLeft = barHandleLeft.Contains(io.MousePos);
-            bool onRight = barHandleRight.Contains(io.MousePos);
-
-            static bool sizingRBar = false;
-            static bool sizingLBar = false;
-
-            draw_list->AddRectFilled(barHandleLeft.Min, barHandleLeft.Max, (onLeft || sizingLBar) ? 0xFFAAAAAA : 0xFF666666, 6);
-            draw_list->AddRectFilled(barHandleRight.Min,
-                                     barHandleRight.Max,
-                                     (onRight || sizingRBar) ? 0xFFAAAAAA : 0xFF666666,
+            ImVec2 scroll_bar_c(scroll_bar_min.x + legend_width + start_frame_offset, scroll_bar_min.y);
+            ImVec2 scroll_bar_d(scroll_bar_min.x + legend_width + bar_width_in_pixels + start_frame_offset,
+                                scroll_bar_max.y - 2);
+            draw_list->AddRectFilled(scroll_bar_c,
+                                     scroll_bar_d,
+                                     (in_scroll_bar || moving_scroll_bar) ? 0xFF606060 : 0xFF505050,
                                      6);
 
-            ImRect scrollBarThumb(scrollBarC, scrollBarD);
-            static const float MinBarWidth = 44.f;
-            if (sizingRBar)
+            ImRect bar_handle_left(scroll_bar_c, ImVec2(scroll_bar_c.x + 14, scroll_bar_d.y));
+            ImRect bar_handle_right(ImVec2(scroll_bar_d.x - 14, scroll_bar_c.y), scroll_bar_d);
+
+            bool on_left = bar_handle_left.Contains(io.MousePos);
+            bool on_right = bar_handle_right.Contains(io.MousePos);
+
+            static bool sizing_r_bar = false;
+            static bool sizing_l_bar = false;
+
+            draw_list->AddRectFilled(bar_handle_left.Min,
+                                     bar_handle_left.Max,
+                                     (on_left || sizing_l_bar) ? 0xFFAAAAAA : 0xFF666666,
+                                     6);
+
+            draw_list->AddRectFilled(bar_handle_right.Min,
+                                     bar_handle_right.Max,
+                                     (on_right || sizing_r_bar) ? 0xFFAAAAAA : 0xFF666666,
+                                     6);
+
+            ImRect scrollBarThumb(scroll_bar_c, scroll_bar_d);
+            static constexpr float MIN_BAR_WIDTH = 44.f;
+            if (sizing_r_bar)
             {
                 if (!io.MouseDown[0])
                 {
-                    sizingRBar = false;
+                    sizing_r_bar = false;
                 }
                 else
                 {
-                    float barNewWidth = ImMax(barWidthInPixels + io.MouseDelta.x, MinBarWidth);
-                    float barRatio = barNewWidth / barWidthInPixels;
-                    framePixelWidthTarget = framePixelWidth = framePixelWidth / barRatio;
-                    int newVisibleFrameCount = int((canvas_size.x - legendWidth) / framePixelWidthTarget);
-                    int lastFrame = *first_frame + newVisibleFrameCount;
-                    if (lastFrame > timeline->GetMaxFrame())
+                    float bar_new_width = ImMax(bar_width_in_pixels + io.MouseDelta.x, MIN_BAR_WIDTH);
+                    float bar_ratio = bar_new_width / bar_width_in_pixels;
+                    frame_pixel_width_target = frame_pixel_width = frame_pixel_width / bar_ratio;
+                    int new_visible_frame_count = static_cast<int>((canvas_size.x - legend_width) / frame_pixel_width_target);
+                    int last_frame = *first_frame + new_visible_frame_count;
+                    if (last_frame > Timeline::GetMaxFrame(data))
                     {
-                        framePixelWidthTarget = framePixelWidth =
-                            (canvas_size.x - legendWidth) / float(timeline->GetMaxFrame() - *first_frame);
+                        frame_pixel_width_target = frame_pixel_width =
+                            (canvas_size.x - legend_width) / static_cast<float>(Timeline::GetMaxFrame(data) - *first_frame);
                     }
                 }
             }
-            else if (sizingLBar)
+            else if (sizing_l_bar)
             {
                 if (!io.MouseDown[0])
                 {
-                    sizingLBar = false;
+                    sizing_l_bar = false;
                 }
                 else
                 {
                     if (fabsf(io.MouseDelta.x) > FLT_EPSILON)
                     {
-                        float barNewWidth = ImMax(barWidthInPixels - io.MouseDelta.x, MinBarWidth);
-                        float barRatio = barNewWidth / barWidthInPixels;
-                        float previousFramePixelWidthTarget = framePixelWidthTarget;
-                        framePixelWidthTarget = framePixelWidth = framePixelWidth / barRatio;
-                        int newVisibleFrameCount = int(visibleFrameCount / barRatio);
-                        int newFirstFrame = *first_frame + newVisibleFrameCount - visibleFrameCount;
-                        newFirstFrame = ImClamp(newFirstFrame,
-                                                timeline->GetMinFrame(),
-                                                ImMax(timeline->GetMaxFrame() - visibleFrameCount, timeline->GetMinFrame()));
-                        if (newFirstFrame == *first_frame)
+                        float bar_new_width = ImMax(bar_width_in_pixels - io.MouseDelta.x, MIN_BAR_WIDTH);
+                        float bar_ratio = bar_new_width / bar_width_in_pixels;
+                        float previous_frame_pixel_width_target = frame_pixel_width_target;
+                        frame_pixel_width_target = frame_pixel_width = frame_pixel_width / bar_ratio;
+                        int new_visible_frame_count = static_cast<int>(visible_frame_count / bar_ratio);
+                        int new_first_frame = *first_frame + new_visible_frame_count - visible_frame_count;
+                        new_first_frame =
+                            ImClamp(new_first_frame,
+                                    Timeline::GetMinFrame(data),
+                                    ImMax(Timeline::GetMaxFrame(data) - visible_frame_count, Timeline::GetMinFrame(data)));
+                        if (new_first_frame == *first_frame)
                         {
-                            framePixelWidth = framePixelWidthTarget = previousFramePixelWidthTarget;
+                            frame_pixel_width = frame_pixel_width_target = previous_frame_pixel_width_target;
                         }
                         else
                         {
-                            *first_frame = newFirstFrame;
+                            *first_frame = new_first_frame;
                         }
                     }
                 }
             }
             else
             {
-                if (MovingScrollBar)
+                if (moving_scroll_bar)
                 {
                     if (!io.MouseDown[0])
                     {
-                        MovingScrollBar = false;
+                        moving_scroll_bar = false;
                     }
                     else
                     {
-                        float framesPerPixelInBar = barWidthInPixels / (float)visibleFrameCount;
-                        *first_frame = int((io.MousePos.x - panningViewSource.x) / framesPerPixelInBar) - panningViewFrame;
-                        *first_frame = ImClamp(*first_frame,
-                                               timeline->GetMinFrame(),
-                                               ImMax(timeline->GetMaxFrame() - visibleFrameCount, timeline->GetMinFrame()));
+                        float frames_per_pixel_in_bar = bar_width_in_pixels / static_cast<float>(visible_frame_count);
+                        *first_frame = static_cast<int>((io.MousePos.x - panning_view_source.x) / frames_per_pixel_in_bar) -
+                                       panning_view_frame;
+                        *first_frame =
+                            ImClamp(*first_frame,
+                                    Timeline::GetMinFrame(data),
+                                    ImMax(Timeline::GetMaxFrame(data) - visible_frame_count, Timeline::GetMinFrame(data)));
                     }
                 }
                 else
                 {
                     if (scrollBarThumb.Contains(io.MousePos) && ImGui::IsMouseClicked(0) && first_frame &&
-                        !MovingCurrentFrame && movingEntry == -1)
+                        !moving_current_frame && moving_entry == -1)
                     {
-                        MovingScrollBar = true;
-                        panningViewSource = io.MousePos;
-                        panningViewFrame = -*first_frame;
+                        moving_scroll_bar = true;
+                        panning_view_source = io.MousePos;
+                        panning_view_frame = -*first_frame;
                     }
-                    if (!sizingRBar && onRight && ImGui::IsMouseClicked(0)) sizingRBar = true;
-                    if (!sizingLBar && onLeft && ImGui::IsMouseClicked(0)) sizingLBar = true;
+                    if (!sizing_r_bar && on_right && ImGui::IsMouseClicked(0)) sizing_r_bar = true;
+                    if (!sizing_l_bar && on_left && ImGui::IsMouseClicked(0)) sizing_l_bar = true;
                 }
             }
         }
@@ -673,12 +714,12 @@ bool Timeliner(TimelineInterface* timeline,
 
     ImGui::EndGroup();
 
-    if (regionRect.Contains(io.MousePos))
+    if (region_rect.Contains(io.MousePos))
     {
         bool overCustomDraw = false;
-        for (auto& custom : customDraws)
+        for (auto& custom : custom_draws)
         {
-            if (custom.customRect.Contains(io.MousePos))
+            if (custom.m_custom_rect.Contains(io.MousePos))
             {
                 overCustomDraw = true;
             }
@@ -689,7 +730,7 @@ bool Timeliner(TimelineInterface* timeline,
         else
         {
 #if 0
-            frameOverCursor = *first_frame + (int)(visibleFrameCount * ((io.MousePos.x - (float)legendWidth - canvas_pos.x) / (canvas_size.x - legendWidth)));
+            frameOverCursor = *first_frame + (int)(visible_frame_count * ((io.MousePos.x - (float)legend_width - canvas_pos.x) / (canvas_size.x - legend_width)));
             //frameOverCursor = max(min(*firstFrame - visibleFrameCount / 2, frameCount - visibleFrameCount), 0);
 
             /**firstFrame -= frameOverCursor;
@@ -699,7 +740,7 @@ bool Timeliner(TimelineInterface* timeline,
             {
                *first_frame -= frameOverCursor;
                *first_frame = int(*first_frame * 1.1f);
-               framePixelWidthTarget *= 0.9f;
+               frame_pixel_width_target *= 0.9f;
                *first_frame += frameOverCursor;
             }
 
@@ -707,7 +748,7 @@ bool Timeliner(TimelineInterface* timeline,
             {
                *first_frame -= frameOverCursor;
                *first_frame = int(*first_frame * 0.9f);
-               framePixelWidthTarget *= 1.1f;
+               frame_pixel_width_target *= 1.1f;
                *first_frame += frameOverCursor;
             }
 #endif
@@ -719,17 +760,21 @@ bool Timeliner(TimelineInterface* timeline,
         if (TimelinerAddDelButton(draw_list, ImVec2(canvas_pos.x + 2, canvas_pos.y + 2), !*expanded)) *expanded = !*expanded;
     }
 
-    if (delEntry != -1)
+    if (del_entry != -1)
     {
-        timeline->DeleteSequence(delEntry);
-        if (selected_sequence && (*selected_sequence == delEntry || *selected_sequence >= timeline->GetSequenceCount()))
+        Timeline::DeleteSequence(data, del_entry);
+        if (selected_sequence && (*selected_sequence == del_entry || *selected_sequence >= Timeline::GetSequenceCount(data)))
             *selected_sequence = -1;
     }
 
-    if (dupEntry != -1)
+    /*
+    if (dup_entry != -1)
     {
-        timeline->Duplicate(dupEntry);
+        timeline->Duplicate(dup_entry);
     }
+    */
+
     return ret;
 }
+
 }  // namespace tanim::timeliner

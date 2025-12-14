@@ -21,10 +21,10 @@ struct RegisteredComponent
     std::string m_struct_name{};
     std::vector<std::string> m_field_names{};
     std::vector<std::string> m_full_names{};  // m_struct_name + "::" + m_field_name
-    std::function<void(Timeline& timeline, const std::string& seq_name)> m_add_sequence;
-    std::function<void(Timeline& timeline, float sample_time, Sequence& seq)> m_sample;
-    std::function<void(Timeline& timeline, Sequence& seq)> m_inspect;
-    std::function<void(Timeline& timeline, Sequence& seq)> m_record;
+    std::function<void(TimelineData& timeline_data, const std::string& seq_name)> m_add_sequence;
+    std::function<void(const TimelineData& timeline_data, float sample_time, Sequence& seq)> m_sample;
+    std::function<void(TimelineData& timeline_data, Sequence& seq)> m_inspect;
+    std::function<void(TimelineData& timeline_data, Sequence& seq)> m_record;
     std::function<bool(entt::entity entity)> m_entity_has;
     bool HasSequence(const std::string& seq_name) const
     {
@@ -36,10 +36,10 @@ namespace reflection
 {
 
 template <typename T>
-static void AddSequence(T& ecs_component, Timeline& timeline, const std::string& seq_name)
+static void AddSequence(T& ecs_component, TimelineData& timeline_data, const std::string& seq_name)
 {
     visit_struct::context<VSContext>::for_each(ecs_component,
-                                               [&timeline, &seq_name](const char* field_name, auto& field)
+                                               [&timeline_data, &seq_name](const char* field_name, auto& field)
                                                {
                                                    using FieldType = std::decay_t<decltype(field)>;
                                                    const std::string field_name_str = field_name;
@@ -48,8 +48,7 @@ static void AddSequence(T& ecs_component, Timeline& timeline, const std::string&
                                                        const std::string struct_name = visit_struct::get_name<T>();
                                                        const std::string full_name = struct_name + "::" + field_name;
 
-                                                       timeline.AddSequence(0);
-                                                       Sequence& seq = timeline.GetSequence(timeline.GetSequenceCount() - 1);
+                                                       Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
                                                        seq.m_name = full_name;
 
                                                        if constexpr (std::is_same_v<FieldType, float>)
@@ -282,11 +281,11 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
 }
 
 template <typename T>
-static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
+static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
 {
     visit_struct::context<VSContext>::for_each(
         ecs_component,
-        [&seq, &timeline](const char* field_name, auto& field)
+        [&seq, &timeline_data](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
@@ -294,11 +293,13 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
             const std::string full_name = struct_name + "::" + field_name;
             if (seq.m_name == full_name)
             {
-                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, timeline.GetPlayerFrame());
-                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, timeline.GetPlayerFrame());
-                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, timeline.GetPlayerFrame());
-                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, timeline.GetPlayerFrame());
-                const auto& curve_4_optional_point_idx = seq.GetPointIdx(4, timeline.GetPlayerFrame());
+                const int player_frame = Timeline::GetPlayerFrame(timeline_data);
+                const float player_frame_f = static_cast<float>(player_frame);
+                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, player_frame);
+                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, player_frame);
+                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, player_frame);
+                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, player_frame);
+                const auto& curve_4_optional_point_idx = seq.GetPointIdx(4, player_frame);
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -312,7 +313,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 
                     if (ImGui::InputFloat(field_name, &field))
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field});
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field});
                     }
 
                     if (!curve_0_optional_point_idx.has_value())
@@ -332,7 +333,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 
                     if (ImGui::InputInt(field_name, &field))
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), (float)field});
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, static_cast<float>(field)});
                     }
 
                     if (!curve_0_optional_point_idx.has_value())
@@ -349,9 +350,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 
                     if (ImGui::Checkbox(field_name, &field))
                     {
-                        seq.EditPoint(0,
-                                      curve_0_optional_point_idx.value(),
-                                      {(float)timeline.GetPlayerFrame(), field == true ? 1.0f : 0.0f});
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field == true ? 1.0f : 0.0f});
                     }
 
                     if (!curve_0_optional_point_idx.has_value())
@@ -375,7 +374,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                     }
                     if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
+                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
                     }
                     if (!curve_0_optional_point_idx.has_value())
                     {
@@ -388,7 +387,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                     }
                     if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
                     {
-                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                     }
                     if (!curve_1_optional_point_idx.has_value())
                     {
@@ -421,9 +420,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
                             {
-                                seq.EditPoint(0,
-                                              curve_0_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.x});
+                                seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
                             }
                             if (!curve_0_optional_point_idx.has_value())
                             {
@@ -436,9 +433,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
                             {
-                                seq.EditPoint(1,
-                                              curve_1_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.y});
+                                seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                             }
                             if (!curve_1_optional_point_idx.has_value())
                             {
@@ -451,9 +446,7 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
                             {
-                                seq.EditPoint(2,
-                                              curve_2_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.z});
+                                seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.z});
                             }
                             if (!curve_2_optional_point_idx.has_value())
                             {
@@ -482,17 +475,9 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 
                             if (ImGui::ColorEdit3(field_name, &field.r) && !disabled)
                             {
-                                seq.EditPoint(0,
-                                              curve_0_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.r});
-
-                                seq.EditPoint(1,
-                                              curve_1_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.g});
-
-                                seq.EditPoint(2,
-                                              curve_2_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.b});
+                                seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
+                                seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
+                                seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
                             }
 
                             if (disabled)
@@ -570,21 +555,10 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 
                             if (ImGui::ColorEdit4(field_name, &field.r) && !disabled)
                             {
-                                seq.EditPoint(0,
-                                              curve_0_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.r});
-
-                                seq.EditPoint(1,
-                                              curve_1_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.g});
-
-                                seq.EditPoint(2,
-                                              curve_2_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.b});
-
-                                seq.EditPoint(3,
-                                              curve_3_optional_point_idx.value(),
-                                              {(float)timeline.GetPlayerFrame(), field.a});
+                                seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
+                                seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
+                                seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
+                                seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
                             }
 
                             if (disabled)
@@ -631,14 +605,14 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
                         if (ImGui::InputInt("Spins", &spins_int))
                         {
                             spins = (float)spins_int;
-                            seq.EditPoint(4, curve_4_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), spins});
+                            seq.EditPoint(4, curve_4_optional_point_idx.value(), {player_frame_f, spins});
 
-                            field = sequencer::SampleQuatForAnimation(seq, (float)timeline.GetPlayerFrame());
+                            field = sequencer::SampleQuatForAnimation(seq, player_frame_f);
 
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
                         }
                     }
                 }
@@ -651,11 +625,11 @@ static void Inspect(T& ecs_component, Timeline& timeline, Sequence& seq)
 }
 
 template <typename T>
-static void Record(T& ecs_component, Timeline& timeline, Sequence& seq)
+static void Record(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
 {
     visit_struct::context<VSContext>::for_each(
         ecs_component,
-        [&seq, &timeline](const char* field_name, auto& field)
+        [&seq, &timeline_data](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
@@ -663,51 +637,52 @@ static void Record(T& ecs_component, Timeline& timeline, Sequence& seq)
             const std::string full_name = struct_name + "::" + field_name;
             if (seq.m_name == full_name)
             {
-                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, timeline.GetPlayerFrame());
-                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, timeline.GetPlayerFrame());
-                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, timeline.GetPlayerFrame());
-                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, timeline.GetPlayerFrame());
+                const int player_frame = Timeline::GetPlayerFrame(timeline_data);
+                const float player_frame_f = static_cast<float>(player_frame);
+
+                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, player_frame_f);
+                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, player_frame_f);
+                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, player_frame_f);
+                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, player_frame_f);
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field});
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), (float)field});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, (float)field});
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
-                    seq.EditPoint(0,
-                                  curve_0_optional_point_idx.value(),
-                                  {(float)timeline.GetPlayerFrame(), field == true ? 1.0f : 0.0f});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field == true ? 1.0f : 0.0f});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
-                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
+                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.z});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
                     switch (seq.m_representation_meta)
                     {
                         case RepresentationMeta::COLOR:
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.r});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.g});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.b});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.a});
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
                             break;
                         case RepresentationMeta::QUAT:
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
                             break;
                         case RepresentationMeta::VECTOR:
                         case RepresentationMeta::NONE:
@@ -717,10 +692,10 @@ static void Record(T& ecs_component, Timeline& timeline, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.w});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.x});
-                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.y});
-                    seq.EditPoint(3, curve_3_optional_point_idx.value(), {(float)timeline.GetPlayerFrame(), field.z});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
+                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
+                    seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
                 }
                 else
                 {
@@ -755,17 +730,17 @@ public:
                 registered_component.m_full_names.emplace_back(registered_component.m_struct_name + "::" + field_name);
             });
 
-        registered_component.m_add_sequence = [&registry](Timeline& timeline, const std::string& seq_name)
-        { reflection::AddSequence(registry.get<T>(timeline.m_data->m_entity), timeline, seq_name); };
+        registered_component.m_add_sequence = [&registry](TimelineData& timeline_data, const std::string& seq_name)
+        { reflection::AddSequence(registry.get<T>(timeline_data.m_entity), timeline_data, seq_name); };
 
-        registered_component.m_sample = [&registry](Timeline& timeline, float sample_time, Sequence& seq)
-        { reflection::Sample(registry.get<T>(timeline.m_data->m_entity), sample_time, seq); };
+        registered_component.m_sample = [&registry](const TimelineData& timeline_data, float sample_time, Sequence& seq)
+        { reflection::Sample(registry.get<T>(timeline_data.m_entity), sample_time, seq); };
 
-        registered_component.m_inspect = [&registry](Timeline& timeline, Sequence& seq)
-        { reflection::Inspect(registry.get<T>(timeline.m_data->m_entity), timeline, seq); };
+        registered_component.m_inspect = [&registry](TimelineData& timeline_data, Sequence& seq)
+        { reflection::Inspect(registry.get<T>(timeline_data.m_entity), timeline_data, seq); };
 
-        registered_component.m_record = [&registry](Timeline& timeline, Sequence& seq)
-        { reflection::Record(registry.get<T>(timeline.m_data->m_entity), timeline, seq); };
+        registered_component.m_record = [&registry](TimelineData& timeline_data, Sequence& seq)
+        { reflection::Record(registry.get<T>(timeline_data.m_entity), timeline_data, seq); };
 
         registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.all_of<T>(entity); };
 
@@ -777,7 +752,7 @@ public:
 private:
     std::vector<RegisteredComponent> m_components;
 
-    bool IsRegisteredOnce(const std::string& name)
+    bool IsRegisteredOnce(const std::string& name) const
     {
         for (const auto& component : m_components)
         {

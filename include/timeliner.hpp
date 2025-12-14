@@ -30,6 +30,11 @@
 
 #include <cstddef>
 
+namespace tanim
+{
+struct TimelineData;
+}
+
 struct ImDrawList;
 struct ImRect;
 
@@ -50,54 +55,11 @@ enum TimelineEditorFlags
 
 struct TimelineInterface
 {
-    bool focused = false;
-    virtual int GetMinFrame() const = 0;
-    virtual int GetMaxFrame() const = 0;
-    virtual int GetSequenceCount() const = 0;
-
-    virtual void BeginEdit(int /*index*/) {}
-    virtual void EndEdit() {}
-    virtual int GetSequenceTypeCount() const { return 0; }
-    virtual const char* GetSequenceTypeName(int /*typeIndex*/) const { return ""; }
-    virtual const char* GetSequenceLabel(int /*index*/) const { return ""; }
-    virtual const char* GetCollapseFmt() const { return "%d Frames / %d entries"; }
-
-    virtual void MultiGet(int index, int** start, int** end, int* type, unsigned int* color) = 0;
-    virtual void AddSequence(int /*type*/) {}
-    virtual void DeleteSequence(int /*index*/) {}
-    virtual void Duplicate(int /*index*/) {}
-
-    virtual void EditFirstFrame(int newStart) = 0;
-    virtual void EditLastFrame(int newEnd) = 0;
-
-    virtual void Copy() {}
-    virtual void Paste() {}
-
-    virtual size_t GetCustomHeight(int /*index*/) { return 0; }
-
-    virtual void DoubleClick(int /*index*/) {}
-
-    virtual void CustomDraw(int /*index*/,
-                            ImDrawList* /*draw_list*/,
-                            const ImRect& /*rc*/,
-                            const ImRect& /*legendRect*/,
-                            const ImRect& /*clippingRect*/,
-                            const ImRect& /*legendClippingRect*/)
-    {
-    }
-
-    virtual void CustomDrawCompact(int /*index*/,
-                                   ImDrawList* /*draw_list*/,
-                                   const ImRect& /*rc*/,
-                                   const ImRect& /*clippingRect*/)
-    {
-    }
-
     virtual ~TimelineInterface() = default;
 };
 
 // return true if selection is made
-bool Timeliner(TimelineInterface* timeline,
+bool Timeliner(TimelineData& timeline_data,
                int* current_frame,
                bool* expanded,
                int* selected_sequence,

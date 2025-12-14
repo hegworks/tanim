@@ -14,140 +14,59 @@
 namespace tanim
 {
 
-static const char* SequenceTypeNames[] = {"Position"};
-
-struct Timeline : public timeliner::TimelineInterface
+class Timeline : public timeliner::TimelineInterface
 {
-    TimelineData* m_data{nullptr};
+public:
+    //...................<<< Overrides >>>...................
 
-    bool HasData() const { return m_data != nullptr; }
+    static int GetMinFrame(const TimelineData& /*data*/) { return 0; }
 
-    int GetMinFrame() const override { return 0; }
+    static int GetMaxFrame(const TimelineData& data) { return data.m_max_frame; }
 
-    int GetMaxFrame() const override { return m_data->m_max_frame; }
+    static int GetSequenceCount(const TimelineData& data) { return static_cast<int>(data.m_sequences.size()); }
 
-    int GetFirstFrame() const { return 0; }
-
-    int GetLastFrame() const { return m_data->m_last_frame; }
-
-    void SetMaxFrame(int max_frame) { m_data->m_max_frame = max_frame; }
-
-    int GetPlayerFrame() const { return m_data->PlayerFrame(); }
-
-    const std::string& GetName() const { return m_data->m_name; }
-
-    void SetName(const std::string& name) { m_data->m_name = name; }
-
-    const std::string& GetName() { return m_data->m_name; }
-
-    bool HasSequenceWithName(const std::string& seq_name) const
-    {
-        for (const auto& sequence : m_data->m_sequences)
-        {
-            if (seq_name == sequence.m_name)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    int GetSequenceCount() const override { return (int)m_data->m_sequences.size(); }
-
-    void Play() { m_data->m_player_playing = true; }
-
-    void Pause() { m_data->m_player_playing = false; }
-
-    void Stop()
-    {
-        m_data->m_player_playing = false;
-        m_data->SetPlayerTimeFromSeconds(0);
-    }
-
-    bool GetPlayerPlaying() const { return m_data->m_player_playing; }
-
-    void TickTime(float dt)
-    {
-        m_data->m_player_time += dt;
-        if (IsPassedLastFrame())
-        {
-            switch (m_data->m_playback_type)
-            {
-                case PlaybackType::HOLD:
-                    m_data->SetPlayerTimeFromFrame(GetLastFrame());
-                    Pause();
-                    break;
-                case PlaybackType::RESET:
-                    Stop();
-                    break;
-                case PlaybackType::LOOP:
-                    m_data->SetPlayerTimeFromSeconds(0);
-                    break;
-                default:
-                    assert(0);  // unhandled PlaybackType
-            }
-        }
-    }
-
-    bool IsPassedLastFrame() const { return m_data->m_player_time > m_data->LastFrameTime(); }
-
-    // TODO(tanim) change after reflection
-    int GetSequenceTypeCount() const override { return sizeof(SequenceTypeNames) / sizeof(char*); }
-
-    const char* GetSequenceTypeName(int typeIndex) const override { return SequenceTypeNames[typeIndex]; }
-
-    // TODO(tanim) change after reflection
-    const char* GetSequenceLabel(int index) const override
+    static const char* GetSequenceLabel(const TimelineData& data, int seq_idx)
     {
         static char tmps[512];
-        snprintf(tmps, 512, "%s", m_data->m_sequences.at(index).GetNameWithLessColumns().c_str());
+        snprintf(tmps, 512, "%s", data.m_sequences.at(seq_idx).GetNameWithLessColumns().c_str());
         return tmps;
     }
 
-    // TODO(tanim) replace this abomination with separate getters & setters
-    void MultiGet(int /*index*/, int** start, int** end, int* type, unsigned int* color) override
+    static void AddSequence(TimelineData& data) { data.m_sequences.emplace_back(&data.m_last_frame); }
+
+    static void DeleteSequence(TimelineData& data, int seq_idx) { data.m_sequences.erase(data.m_sequences.begin() + seq_idx); }
+
+    static size_t GetCustomHeight(const TimelineData& data, int index)
     {
-        if (color) *color = 0xFFAA8080;  // same color for everyone, return color based on type
-        if (start) *start = &m_data->m_first_frame;
-        if (end) *end = &m_data->m_last_frame;
-        if (type) *type = 0;
+        return data.m_sequences.at(index).m_expanded ? 200 : 0;
     }
 
-    void AddSequence(int /*type*/) override { m_data->m_sequences.emplace_back(&m_data->m_last_frame); }
-
-    void DeleteSequence(int index) override { m_data->m_sequences.erase(m_data->m_sequences.begin() + index); }
-
-    // TanimAddition
-    // duplicate didn't make sense in my case, so I removed the functionality
-    void Duplicate(int /*index*/) override { /*m_sequence_datas.push_back(m_sequence_datas[index]);*/ }
-
-    size_t GetCustomHeight(int index) override { return m_data->m_sequences[index].m_expanded ? 200 : 0; }
-
-    void DoubleClick(int index) override
+    static void DoubleClick(TimelineData& data, int seq_idx)
     {
-        if (m_data->m_sequences[index].m_expanded)
+        if (data.m_sequences.at(seq_idx).m_expanded)
         {
-            m_data->m_sequences[index].m_expanded = false;
+            data.m_sequences.at(seq_idx).m_expanded = false;
             return;
         }
-        for (auto& item : m_data->m_sequences) item.m_expanded = false;
-        m_data->m_sequences[index].m_expanded = !m_data->m_sequences[index].m_expanded;
+        for (auto& item : data.m_sequences) item.m_expanded = false;
+        data.m_sequences.at(seq_idx).m_expanded = !data.m_sequences.at(seq_idx).m_expanded;
     }
 
-    void CustomDraw(int seq_idx,
-                    ImDrawList* draw_list,
-                    const ImRect& rc,
-                    const ImRect& legendRect,
-                    const ImRect& clippingRect,
-                    const ImRect& legendClippingRect) override
+    static void CustomDraw(TimelineData& data,
+                           int seq_idx,
+                           ImDrawList* draw_list,
+                           const ImRect& rc,
+                           const ImRect& legend_rect,
+                           const ImRect& clipping_rect,
+                           const ImRect& legend_clipping_rect)
     {
-        draw_list->PushClipRect(legendClippingRect.Min, legendClippingRect.Max, true);
+        draw_list->PushClipRect(legend_clipping_rect.Min, legend_clipping_rect.Max, true);
 
-        Sequence& seq = m_data->m_sequences.at(seq_idx);
+        Sequence& seq = data.m_sequences.at(seq_idx);
         for (int curve_idx = 0; curve_idx < seq.GetCurveCount(); curve_idx++)
         {
-            ImVec2 pta(legendRect.Min.x + 30, legendRect.Min.y + (float)curve_idx * 14.f);
-            ImVec2 ptb(legendRect.Max.x, legendRect.Min.y + (float)(curve_idx + 1) * 14.f);
+            ImVec2 pta(legend_rect.Min.x + 30, legend_rect.Min.y + (float)curve_idx * 14.f);
+            ImVec2 ptb(legend_rect.Max.x, legend_rect.Min.y + (float)(curve_idx + 1) * 14.f);
             draw_list->AddText(pta,
                                seq.GetCurveVisibility(curve_idx) ? 0xFFFFFFFF : 0x80FFFFFF,
                                seq.m_curves.at(curve_idx).m_name.c_str());
@@ -158,20 +77,24 @@ struct Timeline : public timeliner::TimelineInterface
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        sequencer::Edit(m_data->m_sequences.at(seq_idx), rcSize, 137 + seq_idx, &clippingRect);
+        sequencer::Edit(data.m_sequences.at(seq_idx), rcSize, 137 + seq_idx, &clipping_rect);
     }
 
-    void CustomDrawCompact(int index, ImDrawList* draw_list, const ImRect& rc, const ImRect& clippingRect) override
+    static void CustomDrawCompact(TimelineData& data,
+                                  int index,
+                                  ImDrawList* draw_list,
+                                  const ImRect& rc,
+                                  const ImRect& clipping_rect)
     {
-        draw_list->PushClipRect(clippingRect.Min, clippingRect.Max, true);
-        Sequence& seq = m_data->m_sequences.at(index);
+        draw_list->PushClipRect(clipping_rect.Min, clipping_rect.Max, true);
+        Sequence& seq = data.m_sequences.at(index);
         for (int curve_index = 0; curve_index < seq.GetCurveCount(); curve_index++)
         {
             for (int point_idx = 0; point_idx < seq.GetCurvePointCount(curve_index); point_idx++)
             {
                 float p = seq.m_curves.at(curve_index).m_points.at(point_idx).x;
-                if (p < (float)m_data->m_first_frame || p > (float)m_data->m_last_frame) continue;
-                float r = (p - (float)m_data->m_min_frame) / float(m_data->m_max_frame - m_data->m_min_frame);
+                if (p < (float)data.m_first_frame || p > (float)data.m_last_frame) continue;
+                float r = (p - (float)data.m_min_frame) / float(data.m_max_frame - data.m_min_frame);
                 float x = ImLerp(rc.Min.x, rc.Max.x, r);
                 draw_list->AddLine(ImVec2(x, rc.Min.y + 6), ImVec2(x, rc.Max.y - 4), 0xAA000000, 4.f);
             }
@@ -179,19 +102,153 @@ struct Timeline : public timeliner::TimelineInterface
         draw_list->PopClipRect();
     }
 
-    void EditSnapY(float value)
+    static void BeginEdit(TimelineData& /*data*/, int /*seq_idx*/) { /*TODO(tanim)*/ }
+
+    static void EndEdit(TimelineData& /*data*/) { /*TODO(tanim)*/ }
+
+    static void Copy(TimelineData& /*data*/) { /*TODO(tanim)*/ }
+
+    static void Paste(TimelineData& /*data*/) { /*TODO(tanim)*/ }
+
+    static void EditFirstFrame(TimelineData& /*data*/, int /*new_start*/) { /*TODO(tanim)*/ }
+
+    // TODO(tanim) call the function on the expanded sequence
+    static void EditLastFrame(TimelineData& data, int new_end)
     {
-        if (const auto seq = GetExpandedSequenceIdx())
+        data.m_last_frame = new_end;
+        for (int i = 0; i < GetSequenceCount(data); ++i)
         {
-            m_data->m_sequences.at(seq.value()).EditSnapY(value);
+            data.m_sequences.at(i).EditTimelineLastFrame();
         }
     }
 
-    std::optional<int> GetExpandedSequenceIdx() const
+    static unsigned int GetColor(const TimelineData& /*data*/) { return 0xFFAA8080; }
+
+    // TODO(tanim) replace this abomination with separate getters & setters
+    // void MultiGet(int /*index*/, int** start, int** end, int* type, unsigned int* color) override
+    //{
+    //    if (color) *color = 0xFFAA8080;  // same color for everyone, return color based on type
+    //    if (start) *start = nullptr;
+    //     if (end) *end = &m_data->m_last_frame;
+    //    if (type) *type = 0;
+    //}
+
+    // duplicate didn't make sense in my case, so I removed the functionality
+    // void Duplicate(int /*index*/) override { /*m_sequence_datas.push_back(m_sequence_datas[index]);*/ }
+
+    //...................<<< Helpers >>>...................
+
+    //................<<< Helpers->Getters >>>...................
+
+    static int GetFirstFrame(const TimelineData& /*data*/) { return 0; }
+
+    static int GetLastFrame(const TimelineData& data) { return data.m_last_frame; }
+
+    static int GetPlayImmediately(const TimelineData& data) { return data.m_play_immediately; }
+
+    static int GetPlayerFrame(const TimelineData& data)
     {
-        for (int i = 0; i < (int)m_data->m_sequences.size(); ++i)
+        return helpers::SecondsToFrame(data.m_player_time, data.m_player_samples);
+    }
+
+    static float GetPlayerRealTime(const TimelineData& data) { return data.m_player_time; }
+
+    static float GetPlayerSampleTime(const TimelineData& data)
+    {
+        return helpers::SecondsToSampleTime(data.m_player_time, data.m_player_samples);
+    }
+
+    static float GetLastFrameSampleTime(const TimelineData& data)
+    {
+        return helpers::FrameToSeconds(data.m_last_frame, data.m_player_samples);
+    }
+
+    static const std::string& GetName(const TimelineData& data) { return data.m_name; }
+
+    static bool GetPlayerPlaying(const TimelineData& data) { return data.m_player_playing; }
+
+    static Sequence& GetSequence(TimelineData& data, int seq_idx) { return data.m_sequences.at(seq_idx); }
+
+    //................<<< Helpers->Setters >>>...................
+
+    static void SetMaxFrame(TimelineData& data, int max_frame) { data.m_max_frame = max_frame; }
+
+    static void SetDrawMaxX(TimelineData& data, int seq_idx, float max_x) { data.m_sequences.at(seq_idx).m_draw_max.x = max_x; }
+
+    static void SetPlayerTimeFromFrame(TimelineData& data, int frame_num)
+    {
+        data.m_player_time = helpers::FrameToSeconds(frame_num, data.m_player_samples);
+    }
+
+    static void SetPlayerTimeFromSeconds(TimelineData& data, float time) { data.m_player_time = time; }
+
+    static void SetName(TimelineData& data, const std::string& name) { data.m_name = name; }
+
+    //................<<< Helpers->Others >>>...................
+
+    static bool HasSequenceWithName(const TimelineData& data, const std::string& seq_name)
+    {
+        for (const auto& sequence : data.m_sequences)
         {
-            if (m_data->m_sequences.at(i).m_expanded)
+            if (seq_name == sequence.m_name)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static void Play(TimelineData& data) { data.m_player_playing = true; }
+
+    static void Pause(TimelineData& data) { data.m_player_playing = false; }
+
+    static void Stop(TimelineData& data)
+    {
+        data.m_player_playing = false;
+        ResetPlayerTime(data);
+    }
+
+    static void ResetPlayerTime(TimelineData& data) { data.m_player_time = 0; }
+
+    static void TickTime(TimelineData& data, float dt)
+    {
+        data.m_player_time += dt;
+        if (HasPassedLastFrame(data))
+        {
+            switch (data.m_playback_type)
+            {
+                case PlaybackType::HOLD:
+
+                    SetPlayerTimeFromFrame(data, GetLastFrame(data));
+                    Pause(data);
+                    break;
+                case PlaybackType::RESET:
+                    Stop(data);
+                    break;
+                case PlaybackType::LOOP:
+                    ResetPlayerTime(data);
+                    break;
+                default:
+                    assert(0);  // unhandled PlaybackType
+            }
+        }
+    }
+
+    static bool HasPassedLastFrame(const TimelineData& data) { return GetPlayerFrame(data) > GetLastFrame(data); }
+
+    static void EditSnapY(TimelineData& data, float value)
+    {
+        if (const auto seq = GetExpandedSequenceIdx(data))
+        {
+            data.m_sequences.at(seq.value()).EditSnapY(value);
+        }
+    }
+
+    static std::optional<int> GetExpandedSequenceIdx(const TimelineData& data)
+    {
+        for (int i = 0; i < GetSequenceCount(data); ++i)
+        {
+            if (data.m_sequences.at(i).m_expanded)
             {
                 return i;
             }
@@ -199,27 +256,7 @@ struct Timeline : public timeliner::TimelineInterface
         return std::nullopt;
     }
 
-    Sequence& GetSequence(int sequence_idx) { return m_data->m_sequences.at(sequence_idx); }
-
-    void BeginEdit(int /* sequence_idx */) override { /*TODO(tanim)*/ }
-
-    void EndEdit() override { /*TODO(tanim)*/ }
-
-    void Copy() override { /*TODO(tanim)*/ }
-
-    void Paste() override { /*TODO(tanim)*/ }
-
-    void EditFirstFrame(int /* new_first_frame */) override { /*TODO(tanim)*/ }
-
-    // TODO(tanim) call the function on the expanded sequence
-    void EditLastFrame(int new_last_frame) override
-    {
-        m_data->m_last_frame = new_last_frame;
-        for (int i = 0; i < (int)m_data->m_sequences.size(); ++i)
-        {
-            m_data->m_sequences.at(i).EditTimelineLastFrame();
-        }
-    }
+    static Sequence& AddSequenceStatic(TimelineData& data) { return data.m_sequences.emplace_back(&data.m_last_frame); }
 };
 
 }  // namespace tanim
