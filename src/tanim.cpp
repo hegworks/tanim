@@ -204,14 +204,11 @@ void Tanim::Draw()
 
     ImGui::Begin("timeliner");
 
-    const int player_frame_before = player_frame;
-    timeliner::Timeliner(data,
-                         &player_frame,
-                         &data.m_expanded,
-                         &data.m_selected_sequence,
-                         &data.m_first_frame,
-                         timeliner::TIMELINER_ALL);
+    constexpr int flags =
+        timeliner::TIMELINER_CHANGE_FRAME | timeliner::TIMELINER_DELETE_SEQUENCE | timeliner::TIMELINER_EDIT_STARTEND;
 
+    const int player_frame_before = player_frame;
+    timeliner::Timeliner(data, &player_frame, &data.m_expanded, &data.m_selected_sequence, &data.m_first_frame, flags);
     const int player_frame_after = player_frame;
 
     if ((!m_is_engine_in_play_mode && !Timeline::GetPlayerPlaying(data)) || (player_frame_before != player_frame_after))

@@ -307,12 +307,14 @@ bool Timeliner(TimelineData& data,
                     del_entry = i;
                 }
 
+                /*
                 if (TimelinerAddDelButton(draw_list,
                                           ImVec2(content_min.x + legend_width - item_height - item_height + 2 - 10, tpos.y + 2),
                                           true))
                 {
-                    // dup_entry = i;
+                    dup_entry = i;
                 }
+                */
             }
             custom_height += Timeline::GetCustomHeight(data, i);
         }
@@ -755,10 +757,12 @@ bool Timeliner(TimelineData& data,
         }
     }
 
+    /*
     if (expanded)
     {
         if (TimelinerAddDelButton(draw_list, ImVec2(canvas_pos.x + 2, canvas_pos.y + 2), !*expanded)) *expanded = !*expanded;
     }
+    */
 
     if (del_entry != -1)
     {
