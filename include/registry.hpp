@@ -21,11 +21,28 @@ struct RegisteredComponent
     std::string m_struct_name{};
     std::vector<std::string> m_field_names{};
     std::vector<std::string> m_full_names{};  // m_struct_name + "::" + m_field_name
-    std::function<void(TimelineData& timeline_data, const std::string& seq_name)> m_add_sequence;
-    std::function<void(const TimelineData& timeline_data, float sample_time, Sequence& seq)> m_sample;
-    std::function<void(TimelineData& timeline_data, Sequence& seq)> m_inspect;
-    std::function<void(TimelineData& timeline_data, Sequence& seq)> m_record;
-    std::function<bool(entt::entity entity)> m_entity_has;
+
+    std::function<void(const entt::registry& entt_registry,
+                       entt::entity entity,
+                       TimelineData& timeline_data,
+                       const std::string& seq_name)>
+        m_add_sequence;
+
+    std::function<void(entt::registry& entt_registry,
+                       entt::entity entity,
+                       const TimelineData& timeline_data,
+                       float sample_time,
+                       Sequence& seq)>
+        m_sample;
+
+    std::function<void(entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)>
+        m_inspect;
+
+    std::function<void(const entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)>
+        m_record;
+
+    std::function<bool(const entt::registry& entt_registry, entt::entity entity)> m_entity_has;
+
     bool HasSequence(const std::string& seq_name) const
     {
         return std::find(m_full_names.begin(), m_full_names.end(), seq_name) != m_full_names.end();
@@ -713,7 +730,7 @@ public:
     Registry() = default;
 
     template <typename T>
-    void RegisterComponent(entt::registry& registry)
+    void RegisterComponent()
     {
         const std::string type_name = visit_struct::get_name<T>();
         if (IsRegisteredOnce(type_name)) return;
@@ -730,19 +747,29 @@ public:
                 registered_component.m_full_names.emplace_back(registered_component.m_struct_name + "::" + field_name);
             });
 
-        registered_component.m_add_sequence = [&registry](TimelineData& timeline_data, const std::string& seq_name)
-        { reflection::AddSequence(registry.get<T>(timeline_data.m_entity), timeline_data, seq_name); };
+        registered_component.m_add_sequence = [](const entt::registry& entt_registry,
+                                                 entt::entity entity,
+                                                 TimelineData& timeline_data,
+                                                 const std::string& seq_name)
+        { reflection::AddSequence(entt_registry.get<T>(entity), timeline_data, seq_name); };
 
-        registered_component.m_sample = [&registry](const TimelineData& timeline_data, float sample_time, Sequence& seq)
-        { reflection::Sample(registry.get<T>(timeline_data.m_entity), sample_time, seq); };
+        registered_component.m_sample = [](entt::registry& entt_registry,
+                                           entt::entity entity,
+                                           const TimelineData& timeline_data,
+                                           float sample_time,
+                                           Sequence& seq)
+        { reflection::Sample(entt_registry.get<T>(entity), sample_time, seq); };
 
-        registered_component.m_inspect = [&registry](TimelineData& timeline_data, Sequence& seq)
-        { reflection::Inspect(registry.get<T>(timeline_data.m_entity), timeline_data, seq); };
+        registered_component.m_inspect =
+            [](entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)
+        { reflection::Inspect(entt_registry.get<T>(entity), timeline_data, seq); };
 
-        registered_component.m_record = [&registry](TimelineData& timeline_data, Sequence& seq)
-        { reflection::Record(registry.get<T>(timeline_data.m_entity), timeline_data, seq); };
+        registered_component.m_record =
+            [](const entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)
+        { reflection::Record(entt_registry.get<T>(entity), timeline_data, seq); };
 
-        registered_component.m_entity_has = [&registry](entt::entity entity) { return registry.all_of<T>(entity); };
+        registered_component.m_entity_has = [](const entt::registry& entt_registry, entt::entity entity)
+        { return entt_registry.all_of<T>(entity); };
 
         m_components.push_back(std::move(registered_component));
     }
