@@ -19,7 +19,7 @@ struct TimelineData
     int m_player_samples{60};  // SamplesPerSecond
     float m_player_time{0};
     bool m_player_playing{false};
-    PlaybackType m_playback_type{PlaybackType::HOLD};
+    PlaybackType m_playback_type{PlaybackType::LOOP};
     bool m_focused{false};
     bool m_expanded{true};
     int m_selected_sequence{-1};

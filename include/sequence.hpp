@@ -40,7 +40,7 @@ struct Sequence : public sequencer::SequenceInterface
     struct Curve
     {
         std::vector<Point> m_points{{0, 0}, {10, 0}};
-        sequencer::LerpType m_lerp_type{sequencer::LerpType::SMOOTH};
+        sequencer::LerpType m_lerp_type{sequencer::LerpType::LINEAR};
         bool m_visibility{true};
         std::string m_name{"new_curve"};
     };
