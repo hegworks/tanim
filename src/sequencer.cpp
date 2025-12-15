@@ -178,6 +178,10 @@ int Edit(SequenceInterface& delegate,
             delegate.SetDrawMin(min);
             delegate.SetDrawMax(max);
         }
+        else if (ImGui::IsKeyPressed(ImGuiKey_F))
+        {
+            delegate.Fit();
+        }
         if (!scrollingV && ImGui::IsMouseDown(2))
         {
             scrollingV = true;

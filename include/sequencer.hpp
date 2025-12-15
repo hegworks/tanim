@@ -77,6 +77,7 @@ struct SequenceInterface
     virtual ImVec2 GetDrawMax() = 0;
     virtual void SetDrawMin(ImVec2 min) = 0;
     virtual void SetDrawMax(ImVec2 max) = 0;
+    virtual void Fit() = 0;
     virtual int GetCurvePointCount(int curve_index) = 0;
     virtual uint32_t GetCurveColor(int curve_index) = 0;
     virtual const std::vector<ImVec2>& GetCurvePointsList(int curve_index) = 0;

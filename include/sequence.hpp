@@ -260,6 +260,34 @@ struct Sequence : public sequencer::SequenceInterface
 
     void EditSnapY(float value) { m_snap_y_value = value; }
 
+    void Fit() override
+    {
+        m_draw_min.x = 0;
+
+        float min_y = std::numeric_limits<float>::max();
+        float max_y = std::numeric_limits<float>::min();
+
+        for (const auto& curve : m_curves)
+        {
+            for (const auto& point : curve.m_points)
+            {
+                if (point.y > max_y)
+                {
+                    max_y = point.y;
+                }
+                if (point.y < min_y)
+                {
+                    min_y = point.y;
+                }
+            }
+        }
+
+        const float range = max_y - min_y;
+        const float padding = (range > 0.1f) ? range * 0.15f : 0.2f;
+        m_draw_min.y = min_y - padding;
+        m_draw_max.y = max_y + padding;
+    }
+
 private:
     void SortCurvePoints(int curve_index)
     {
