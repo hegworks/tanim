@@ -121,118 +121,123 @@ void Tanim::Draw()
 
     //*****************************************************
 
-    ImGui::Begin("controls");
-
-    if (!Timeline::GetPlayerPlaying(data))
     {
-        if (ImGui::Button("Play", {50, 0}))
+        ImGui::Begin("controls");
+
+        if (!Timeline::GetPlayerPlaying(data))
         {
-            Timeline::ResetPlayerTime(data);
-            Timeline::Play(data);
+            if (ImGui::Button("Play", {50, 0}))
+            {
+                Timeline::ResetPlayerTime(data);
+                Timeline::Play(data);
+            }
         }
-    }
-    else
-    {
-        if (ImGui::Button("Pause", {50, 0}))
+        else
         {
-            Timeline::Pause(data);
+            if (ImGui::Button("Pause", {50, 0}))
+            {
+                Timeline::Pause(data);
+            }
         }
-    }
 
-    ImGui::SameLine();
-    ImGui::Text(" | ");
-    ImGui::SameLine();
+        ImGui::SameLine();
+        ImGui::Text(" | ");
+        ImGui::SameLine();
 
-    ImGui::PushItemWidth(100);
+        ImGui::PushItemWidth(100);
 
-    const bool disabled = Timeline::GetPlayerPlaying(data);
-    if (disabled)
-    {
-        ImGui::BeginDisabled();
-        m_preview = true;
-    }
-    if (ImGui::Checkbox("Preview", &m_preview))
-    {
-        if (m_preview == false)
+        const bool disabled = Timeline::GetPlayerPlaying(data);
+        if (disabled)
         {
+            ImGui::BeginDisabled();
             m_preview = true;
-            const int frame_before = Timeline::GetPlayerFrame(data);
-            Timeline::ResetPlayerTime(data);
-            Sample(*m_editing_timeline_registry, m_editing_timeline_entity, data);
-            m_preview = false;
-            Timeline::SetPlayerTimeFromFrame(data, frame_before);
         }
-    }
-    if (disabled)
-    {
-        ImGui::EndDisabled();
-    }
-
-    ImGui::SameLine();
-    ImGui::Text(" | ");
-    ImGui::SameLine();
-
-    ImGui::DragInt("Samples", &data.m_player_samples, 0.1f, Timeline::GetMinFrame(data));
-    data.m_player_samples = ImMax(1, data.m_player_samples);
-
-    ImGui::SameLine();
-    ImGui::Text(" | ");
-    ImGui::SameLine();
-
-    int player_frame = Timeline::GetPlayerFrame(data);
-    if (ImGui::InputInt("Frame", &player_frame))
-    {
-        player_frame = ImMax(0, player_frame);
-        Timeline::SetPlayerTimeFromFrame(data, player_frame);
-        if (m_preview)
+        if (ImGui::Checkbox("Preview", &m_preview))
         {
-            Sample(*m_editing_timeline_registry, m_editing_timeline_entity, data);
+            if (m_preview == false)
+            {
+                m_preview = true;
+                const int frame_before = Timeline::GetPlayerFrame(data);
+                Timeline::ResetPlayerTime(data);
+                Sample(*m_editing_timeline_registry, m_editing_timeline_entity, data);
+                m_preview = false;
+                Timeline::SetPlayerTimeFromFrame(data, frame_before);
+            }
         }
+        if (disabled)
+        {
+            ImGui::EndDisabled();
+        }
+
+        ImGui::SameLine();
+        ImGui::Text(" | ");
+        ImGui::SameLine();
+
+        ImGui::DragInt("Samples", &data.m_player_samples, 0.1f, Timeline::GetMinFrame(data));
+        data.m_player_samples = ImMax(1, data.m_player_samples);
+
+        ImGui::SameLine();
+        ImGui::Text(" | ");
+        ImGui::SameLine();
+
+        int player_frame = Timeline::GetPlayerFrame(data);
+        if (ImGui::InputInt("Frame", &player_frame))
+        {
+            player_frame = ImMax(0, player_frame);
+            Timeline::SetPlayerTimeFromFrame(data, player_frame);
+            if (m_preview)
+            {
+                Sample(*m_editing_timeline_registry, m_editing_timeline_entity, data);
+            }
+        }
+
+        ImGui::SameLine();
+        ImGui::Text(" | ");
+        ImGui::SameLine();
+
+        ImGui::DragInt("MaxFrame", &data.m_max_frame, 0.1f, Timeline::GetMinFrame(data));
+        data.m_max_frame = ImMax(1, data.m_max_frame);
+
+        ImGui::SameLine();
+        ImGui::Text(" | ");
+        ImGui::SameLine();
+
+        ImGui::SameLine();
+        if (ImGui::DragFloat("SnapY", &m_snap_y_value, 0.01f))
+        {
+            m_snap_y_value = ImMax(0.0f, m_snap_y_value);
+            Timeline::EditSnapY(data, m_snap_y_value);
+        }
+
+        ImGui::PopItemWidth();
+
+        ImGui::End();
     }
-
-    ImGui::SameLine();
-    ImGui::Text(" | ");
-    ImGui::SameLine();
-
-    ImGui::DragInt("MaxFrame", &data.m_max_frame, 0.1f, Timeline::GetMinFrame(data));
-    data.m_max_frame = ImMax(1, data.m_max_frame);
-
-    ImGui::SameLine();
-    ImGui::Text(" | ");
-    ImGui::SameLine();
-
-    ImGui::SameLine();
-    if (ImGui::DragFloat("SnapY", &m_snap_y_value, 0.01f))
-    {
-        m_snap_y_value = ImMax(0.0f, m_snap_y_value);
-        Timeline::EditSnapY(data, m_snap_y_value);
-    }
-
-    ImGui::PopItemWidth();
-
-    ImGui::End();
 
     //*****************************************************
 
-    ImGui::Begin("timeliner");
-
-    constexpr int flags =
-        timeliner::TIMELINER_CHANGE_FRAME | timeliner::TIMELINER_DELETE_SEQUENCE | timeliner::TIMELINER_EDIT_STARTEND;
-
-    const int player_frame_before = player_frame;
-    timeliner::Timeliner(data, &player_frame, &data.m_expanded, &data.m_selected_sequence, &data.m_first_frame, flags);
-    const int player_frame_after = player_frame;
-
-    if ((!m_is_engine_in_play_mode && !Timeline::GetPlayerPlaying(data)) || (player_frame_before != player_frame_after))
     {
-        Timeline::SetPlayerTimeFromFrame(data, player_frame_after);
-        if (m_preview)
-        {
-            Sample(*m_editing_timeline_registry, m_editing_timeline_entity, data);
-        }
-    }
+        ImGui::Begin("timeliner");
 
-    ImGui::End();
+        constexpr int flags =
+            timeliner::TIMELINER_CHANGE_FRAME | timeliner::TIMELINER_DELETE_SEQUENCE | timeliner::TIMELINER_EDIT_STARTEND;
+
+        int player_frame = Timeline::GetPlayerFrame(data);
+        const int player_frame_before = player_frame;
+        timeliner::Timeliner(data, &player_frame, &data.m_expanded, &data.m_selected_sequence, &data.m_first_frame, flags);
+        const int player_frame_after = player_frame;
+
+        if ((!m_is_engine_in_play_mode && !Timeline::GetPlayerPlaying(data)) || (player_frame_before != player_frame_after))
+        {
+            Timeline::SetPlayerTimeFromFrame(data, player_frame_after);
+            if (m_preview)
+            {
+                Sample(*m_editing_timeline_registry, m_editing_timeline_entity, data);
+            }
+        }
+
+        ImGui::End();
+    }
 
     //*****************************************************
 
@@ -292,16 +297,18 @@ void Tanim::Draw()
     if (has_expanded_seq)
     {
         Sequence& seq = Timeline::GetSequence(data, expanded_seq_idx);
-
-        const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(Timeline::GetPlayerFrame(data));
-        if (is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(data))
+        const int player_frame = Timeline::GetPlayerFrame(data);
+        const bool is_in_bounds = player_frame >= 0 && player_frame <= Timeline::GetLastFrame(data);
+        const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(player_frame);
+        const bool disabled_new_keyframe = !is_in_bounds || is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(data);
+        if (disabled_new_keyframe)
         {
             ImGui::BeginDisabled();
         }
         if (ImGui::Button("+Keyframe"))
         {
-            seq.AddNewKeyframe(Timeline::GetPlayerFrame(data));
-            seq.StartRecording(Timeline::GetPlayerFrame(data));
+            seq.AddNewKeyframe(player_frame);
+            seq.StartRecording(player_frame);
 
             const auto& components = GetRegistry().GetComponents();
             for (const auto& component : components)
@@ -314,7 +321,7 @@ void Tanim::Draw()
 
             seq.StopRecording();
         }
-        if (is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(data))
+        if (disabled_new_keyframe)
         {
             ImGui::EndDisabled();
         }
@@ -342,7 +349,8 @@ void Tanim::Draw()
         }
         else
         {
-            if (Timeline::GetPlayerPlaying(data))
+            const bool disabled_recording = !is_in_bounds || Timeline::GetPlayerPlaying(data);
+            if (disabled_recording)
             {
                 ImGui::BeginDisabled();
             }
@@ -351,7 +359,7 @@ void Tanim::Draw()
                 seq.AddNewKeyframe(Timeline::GetPlayerFrame(data));
                 seq.StartRecording(Timeline::GetPlayerFrame(data));
             }
-            if (Timeline::GetPlayerPlaying(data))
+            if (disabled_recording)
             {
                 ImGui::EndDisabled();
             }
