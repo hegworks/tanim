@@ -421,8 +421,9 @@ void Tanim::Draw()
 
     ImGui::Begin("curves");
 
-    for (auto& seq : data.m_sequences)
+    if (has_expanded_seq)
     {
+        Sequence& seq = Timeline::GetSequence(data, expanded_seq_idx);
         const bool is_recording = seq.IsRecording();
         if (!seq.IsRecording())
         {
