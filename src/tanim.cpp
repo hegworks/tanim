@@ -544,6 +544,7 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
     const std::string playback_type_str = timeline_js["m_playback_type"].get<std::string>();
     data.m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
 
+    data.m_sequences.clear();
     for (const auto& seq_js : timeline_js["m_sequences"])
     {
         Sequence& seq = data.m_sequences.emplace_back(&data.m_last_frame);
