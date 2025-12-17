@@ -4,3 +4,4 @@
 #include "tanim/include/registry.hpp"
 #include "tanim/include/timeline_data.hpp"
 #include "tanim/include/entity_data.hpp"
+#include "tanim/include/user_override.hpp"

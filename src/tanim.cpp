@@ -6,6 +6,7 @@
 #include "tanim/include/registry.hpp"
 #include "tanim/include/timeliner.hpp"
 #include "tanim/include/sequence.hpp"
+#include "tanim/include/user_override.hpp"
 
 namespace tanim
 {
@@ -483,7 +484,14 @@ std::string Tanim::Serialize(TimelineData& data)
         nlohmann::ordered_json seq_js{};
 
         Sequence& seq = data.m_sequences.at(seq_idx);
-        // seq_js["m_name"] = seq.m_name; TODO(tanim)
+
+        nlohmann::ordered_json seq_id_js{};
+        seq_id_js["m_entity_data"]["m_uid"] = seq.m_seq_id.m_entity_data.m_uid;
+        seq_id_js["m_entity_data"]["m_display"] = seq.m_seq_id.m_entity_data.m_display;
+        seq_id_js["m_struct_name"] = seq.m_seq_id.m_struct_name;
+        seq_id_js["m_field_name"] = seq.m_seq_id.m_field_name;
+        seq_js["m_seq_id"] = seq_id_js;
+
         seq_js["m_type_meta"] = std::string(magic_enum::enum_name(seq.m_type_meta));
         seq_js["m_representation_meta"] = std::string(magic_enum::enum_name(seq.m_representation_meta));
 
@@ -539,7 +547,14 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
     {
         Sequence& seq = data.m_sequences.emplace_back(&data.m_last_frame);
 
-        // seq.m_name = seq_js["m_name"].get<std::string>(); TODO(tanim)
+        const auto& seq_id_js = seq_js["m_seq_id"];
+
+        const std::string uid = seq_id_js["m_entity_data"]["m_uid"];
+        seq.m_seq_id.m_entity_data.m_uid = uid;
+        seq.m_seq_id.m_entity_data.m_entity = GetEntityOfUID(uid);
+        seq.m_seq_id.m_entity_data.m_display = seq_id_js["m_entity_data"]["m_display"];
+        seq.m_seq_id.m_struct_name = seq_id_js["m_struct_name"];
+        seq.m_seq_id.m_field_name = seq_id_js["m_field_name"];
 
         const std::string type_meta_str = seq_js["m_type_meta"].get<std::string>();
         seq.m_type_meta = magic_enum::enum_cast<Sequence::TypeMeta>(type_meta_str).value_or(Sequence::TypeMeta::NONE);
