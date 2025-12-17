@@ -27,8 +27,10 @@ public:
 
     static const char* GetSequenceLabel(const TimelineData& data, int seq_idx)
     {
+        const std::string name = data.m_sequences.at(seq_idx).m_seq_id.m_entity_data.m_display +
+                                 "::" + data.m_sequences.at(seq_idx).GetNameWithLessColumns();
         static char tmps[512];
-        snprintf(tmps, 512, "%s", data.m_sequences.at(seq_idx).GetNameWithLessColumns().c_str());
+        snprintf(tmps, 512, "%s", name.c_str());
         return tmps;
     }
 
