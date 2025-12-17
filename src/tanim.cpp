@@ -121,19 +121,6 @@ void Tanim::Draw()
 
     TimelineData& data = *m_editor_timeline_data;
 
-    bool has_expanded_seq = false;
-    int expanded_seq_idx = -1;
-    if (const auto idx = Timeline::GetExpandedSequenceIdx(data))
-    {
-        has_expanded_seq = true;
-        expanded_seq_idx = idx.value();
-    }
-
-    if (has_expanded_seq)
-    {
-        Timeline::SetDrawMaxX(data, expanded_seq_idx, static_cast<float>(Timeline::GetMaxFrame(data)));
-    }
-
     //*****************************************************
 
     ImGui::Begin("Tanim");
@@ -245,6 +232,7 @@ void Tanim::Draw()
 
         int player_frame = Timeline::GetPlayerFrame(data);
         const int player_frame_before = player_frame;
+
         timeliner::Timeliner(data, &player_frame, &data.m_expanded, &data.m_selected_sequence, &data.m_first_frame, flags);
         const int player_frame_after = player_frame;
 
@@ -323,6 +311,19 @@ void Tanim::Draw()
     //*****************************************************
 
     ImGui::Begin("expanded sequence");
+
+    bool has_expanded_seq = false;
+    int expanded_seq_idx = -1;
+    if (const auto idx = Timeline::GetExpandedSequenceIdx(data))
+    {
+        has_expanded_seq = true;
+        expanded_seq_idx = idx.value();
+    }
+
+    if (has_expanded_seq)
+    {
+        Timeline::SetDrawMaxX(data, expanded_seq_idx, static_cast<float>(Timeline::GetMaxFrame(data)));
+    }
 
     if (has_expanded_seq)
     {
