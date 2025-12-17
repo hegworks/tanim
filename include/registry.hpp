@@ -61,13 +61,14 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                    {
                                                        Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
                                                        seq.m_seq_id = seq_id;
+                                                       const float last_frame = (float)Timeline::GetLastFrame(timeline_data);
 
                                                        if constexpr (std::is_same_v<FieldType, float>)
                                                        {
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = field_name_str;
-                                                               curve.m_points = {{0, field}, {10, field}};
+                                                               curve.m_points = {{0.0f, field}, {last_frame, field}};
                                                            }
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, int>)
@@ -78,7 +79,7 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = field_name_str;
                                                                curve.m_points = {{0.0f, static_cast<float>(field)},
-                                                                                 {10.0f, static_cast<float>(field)}};
+                                                                                 {last_frame, static_cast<float>(field)}};
                                                                curve.m_lerp_type = sequencer::LerpType::LINEAR;
                                                            }
                                                        }
@@ -90,7 +91,7 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = field_name_str;
                                                                float f = field == true ? 1.0f : 0.0f;
-                                                               curve.m_points = {{0.0f, f}, {10.0f, f}};
+                                                               curve.m_points = {{0.0f, f}, {last_frame, f}};
                                                                curve.m_lerp_type = sequencer::LerpType::DISCRETE;
                                                            }
                                                        }
@@ -99,12 +100,12 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "X";
-                                                               curve.m_points = {{0, field.x}, {10, field.x}};
+                                                               curve.m_points = {{0, field.x}, {last_frame, field.x}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Y";
-                                                               curve.m_points = {{0, field.y}, {10, field.y}};
+                                                               curve.m_points = {{0, field.y}, {last_frame, field.y}};
                                                            }
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::vec3>)
@@ -114,17 +115,17 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "X";
-                                                               curve.m_points = {{0, field.x}, {10, field.x}};
+                                                               curve.m_points = {{0, field.x}, {last_frame, field.x}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Y";
-                                                               curve.m_points = {{0, field.y}, {10, field.y}};
+                                                               curve.m_points = {{0, field.y}, {last_frame, field.y}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Z";
-                                                               curve.m_points = {{0, field.z}, {10, field.z}};
+                                                               curve.m_points = {{0, field.z}, {last_frame, field.z}};
                                                            }
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::vec4>)
@@ -134,27 +135,27 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "R";
-                                                               curve.m_points = {{0, field.r}, {10, field.r}};
+                                                               curve.m_points = {{0, field.r}, {last_frame, field.r}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "G";
-                                                               curve.m_points = {{0, field.g}, {10, field.g}};
+                                                               curve.m_points = {{0, field.g}, {last_frame, field.g}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "B";
-                                                               curve.m_points = {{0, field.b}, {10, field.b}};
+                                                               curve.m_points = {{0, field.b}, {last_frame, field.b}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "A";
-                                                               curve.m_points = {{0, field.a}, {10, field.a}};
+                                                               curve.m_points = {{0, field.a}, {last_frame, field.a}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Spins";
-                                                               curve.m_points = {{0, 0}, {10, 0}};
+                                                               curve.m_points = {{0, 0}, {last_frame, 0}};
                                                            }
                                                        }
                                                        else if constexpr (std::is_same_v<FieldType, glm::quat>)
@@ -164,27 +165,27 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "W";
-                                                               curve.m_points = {{0, field.w}, {10, field.w}};
+                                                               curve.m_points = {{0, field.w}, {last_frame, field.w}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "X";
-                                                               curve.m_points = {{0, field.x}, {10, field.x}};
+                                                               curve.m_points = {{0, field.x}, {last_frame, field.x}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Y";
-                                                               curve.m_points = {{0, field.y}, {10, field.y}};
+                                                               curve.m_points = {{0, field.y}, {last_frame, field.y}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Z";
-                                                               curve.m_points = {{0, field.z}, {10, field.z}};
+                                                               curve.m_points = {{0, field.z}, {last_frame, field.z}};
                                                            }
                                                            {
                                                                Sequence::Curve& curve = seq.AddCurve();
                                                                curve.m_name = "Spins";
-                                                               curve.m_points = {{0, 0}, {10, 0}};
+                                                               curve.m_points = {{0, 0}, {last_frame, 0}};
                                                                curve.m_lerp_type = sequencer::LerpType::DISCRETE;
                                                            }
                                                        }
