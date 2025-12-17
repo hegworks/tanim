@@ -2,6 +2,7 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
+#include "entity_data.hpp"
 #include "tanim/include/enums.hpp"
 #include "tanim/include/sequencer.hpp"
 
@@ -51,7 +52,7 @@ struct Sequence : public sequencer::SequenceInterface
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
     bool m_expanded{false};
-    std::string m_name{"new_sequence"};
+    SequenceId m_seq_id{};
     bool m_recording{false};
     int m_recording_frame{-1};
 
@@ -91,22 +92,23 @@ struct Sequence : public sequencer::SequenceInterface
     /// turns "a::b::c::d" into "c::d"
     std::string GetNameWithLessColumns() const
     {
-        if (m_name.empty()) return m_name;
+        std::string name = m_seq_id.StructFieldName();
+        if (name.empty()) return name;
 
-        const size_t last_column_pos = m_name.find_last_of("::");
-        if (last_column_pos == std::string::npos) return m_name;  // No :: found
+        const size_t last_column_pos = name.find_last_of("::");
+        if (last_column_pos == std::string::npos) return name;  // No :: found
 
-        if (last_column_pos < 2) return m_name;  // Not enough characters before ::
+        if (last_column_pos < 2) return name;  // Not enough characters before ::
 
-        const std::string before_last_column_str = m_name.substr(0, last_column_pos - 1);
-        if (before_last_column_str.empty()) return m_name;
+        const std::string before_last_column_str = name.substr(0, last_column_pos - 1);
+        if (before_last_column_str.empty()) return name;
 
         const size_t second_last_column_pos = before_last_column_str.find_last_of("::");
-        if (second_last_column_pos == std::string::npos) return m_name;  // Only one :: pair found
+        if (second_last_column_pos == std::string::npos) return name;  // Only one :: pair found
 
-        if (second_last_column_pos + 1 >= m_name.length()) return m_name;  // Not enough characters after second ::
+        if (second_last_column_pos + 1 >= name.length()) return name;  // Not enough characters after second ::
 
-        std::string after_second_last_column_str = m_name.substr(second_last_column_pos + 1);
+        std::string after_second_last_column_str = name.substr(second_last_column_pos + 1);
         return after_second_last_column_str;
     }
 

@@ -20,13 +20,9 @@ struct RegisteredComponent
 {
     std::string m_struct_name{};
     std::vector<std::string> m_field_names{};
-    std::vector<std::string> m_full_names{};  // m_struct_name + "::" + m_field_name
+    std::vector<std::string> m_struct_field_names{};
 
-    std::function<void(const entt::registry& entt_registry,
-                       entt::entity entity,
-                       TimelineData& timeline_data,
-                       const std::string& seq_name)>
-        m_add_sequence;
+    std::function<void(const entt::registry& entt_registry, TimelineData& timeline_data, SequenceId& seq_id)> m_add_sequence;
 
     std::function<void(entt::registry& entt_registry,
                        entt::entity entity,
@@ -43,9 +39,10 @@ struct RegisteredComponent
 
     std::function<bool(const entt::registry& entt_registry, entt::entity entity)> m_entity_has;
 
-    bool HasSequence(const std::string& seq_name) const
+    bool HasStructFieldName(const std::string& struct_field_name) const
     {
-        return std::find(m_full_names.begin(), m_full_names.end(), seq_name) != m_full_names.end();
+        return std::find(m_struct_field_names.begin(), m_struct_field_names.end(), struct_field_name) !=
+               m_struct_field_names.end();
     }
 };
 
@@ -53,20 +50,17 @@ namespace reflection
 {
 
 template <typename T>
-static void AddSequence(T& ecs_component, TimelineData& timeline_data, const std::string& seq_name)
+static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceId& seq_id)
 {
     visit_struct::context<VSContext>::for_each(ecs_component,
-                                               [&timeline_data, &seq_name](const char* field_name, auto& field)
+                                               [&timeline_data, &seq_id](const char* field_name, auto& field)
                                                {
                                                    using FieldType = std::decay_t<decltype(field)>;
                                                    const std::string field_name_str = field_name;
-                                                   if (field_name_str == seq_name)
+                                                   if (field_name_str == seq_id.m_field_name)
                                                    {
-                                                       const std::string struct_name = visit_struct::get_name<T>();
-                                                       const std::string full_name = struct_name + "::" + field_name;
-
                                                        Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
-                                                       seq.m_name = full_name;
+                                                       seq.m_seq_id = seq_id;
 
                                                        if constexpr (std::is_same_v<FieldType, float>)
                                                        {
@@ -212,8 +206,8 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
             const std::string struct_name = visit_struct::get_name<T>();
-            const std::string full_name = struct_name + "::" + field_name;
-            if (seq.m_name == full_name)
+            const std::string struct_field_name = helpers::MakeStructFieldName(struct_name, field_name_str);
+            if (struct_field_name == seq.m_seq_id.StructFieldName())
             {
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -307,8 +301,8 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
             const std::string struct_name = visit_struct::get_name<T>();
-            const std::string full_name = struct_name + "::" + field_name;
-            if (seq.m_name == full_name)
+            const std::string struct_field_name = helpers::MakeStructFieldName(struct_name, field_name_str);
+            if (struct_field_name == seq.m_seq_id.StructFieldName())
             {
                 const int player_frame = Timeline::GetPlayerFrame(timeline_data);
                 const float player_frame_f = static_cast<float>(player_frame);
@@ -318,22 +312,28 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
                 const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, player_frame);
                 const auto& curve_4_optional_point_idx = seq.GetPointIdx(4, player_frame);
 
+                const bool curve_0_disabled = !curve_0_optional_point_idx.has_value();
+                const bool curve_1_disabled = !curve_1_optional_point_idx.has_value();
+                const bool curve_2_disabled = !curve_2_optional_point_idx.has_value();
+                const bool curve_3_disabled = !curve_3_optional_point_idx.has_value();
+                const bool curve_4_disabled = !curve_4_optional_point_idx.has_value();
+
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
                     helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
                                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
 
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::BeginDisabled();
                     }
 
-                    if (ImGui::InputFloat(field_name, &field))
+                    if (ImGui::InputFloat(field_name, &field) && !curve_0_disabled)
                     {
                         seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field});
                     }
 
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::EndDisabled();
                     }
@@ -343,34 +343,34 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
                     helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
                                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
 
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::BeginDisabled();
                     }
 
-                    if (ImGui::InputInt(field_name, &field))
+                    if (ImGui::InputInt(field_name, &field) && !curve_0_disabled)
                     {
                         seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, static_cast<float>(field)});
                     }
 
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::EndDisabled();
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::BeginDisabled();
                     }
 
-                    if (ImGui::Checkbox(field_name, &field))
+                    if (ImGui::Checkbox(field_name, &field) && !curve_0_disabled)
                     {
                         seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field == true ? 1.0f : 0.0f});
                     }
 
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::EndDisabled();
                     }
@@ -385,28 +385,28 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
                                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
                                          "Y LerpType");
 
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::BeginDisabled();
                     }
-                    if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
+                    if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x) && !curve_0_disabled)
                     {
                         seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
                     }
-                    if (!curve_0_optional_point_idx.has_value())
+                    if (curve_0_disabled)
                     {
                         ImGui::EndDisabled();
                     }
 
-                    if (!curve_1_optional_point_idx.has_value())
+                    if (curve_1_disabled)
                     {
                         ImGui::BeginDisabled();
                     }
-                    if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
+                    if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y) && !curve_1_disabled)
                     {
                         seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                     }
-                    if (!curve_1_optional_point_idx.has_value())
+                    if (curve_1_disabled)
                     {
                         ImGui::EndDisabled();
                     }
@@ -431,41 +431,41 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
                                                  {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
                                                  "Z LerpType");
 
-                            if (!curve_0_optional_point_idx.has_value())
+                            if (curve_0_disabled)
                             {
                                 ImGui::BeginDisabled();
                             }
-                            if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x))
+                            if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x) && !curve_0_disabled)
                             {
                                 seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
                             }
-                            if (!curve_0_optional_point_idx.has_value())
+                            if (curve_0_disabled)
                             {
                                 ImGui::EndDisabled();
                             }
 
-                            if (!curve_1_optional_point_idx.has_value())
+                            if (curve_1_disabled)
                             {
                                 ImGui::BeginDisabled();
                             }
-                            if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y))
+                            if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y) && !curve_1_disabled)
                             {
                                 seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                             }
-                            if (!curve_1_optional_point_idx.has_value())
+                            if (curve_1_disabled)
                             {
                                 ImGui::EndDisabled();
                             }
 
-                            if (!curve_2_optional_point_idx.has_value())
+                            if (curve_2_disabled)
                             {
                                 ImGui::BeginDisabled();
                             }
-                            if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z))
+                            if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z) && !curve_2_disabled)
                             {
                                 seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.z});
                             }
-                            if (!curve_2_optional_point_idx.has_value())
+                            if (curve_2_disabled)
                             {
                                 ImGui::EndDisabled();
                             }
@@ -474,9 +474,7 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
                         }
                         case RepresentationMeta::COLOR:
                         {
-                            const bool disabled = !curve_0_optional_point_idx.has_value() ||
-                                                  !curve_1_optional_point_idx.has_value() ||
-                                                  !curve_2_optional_point_idx.has_value();
+                            const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled;
 
                             if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
                                                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
@@ -561,9 +559,7 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
                         }
                         case RepresentationMeta::COLOR:
                         {
-                            const bool disabled =
-                                !curve_0_optional_point_idx.has_value() || !curve_1_optional_point_idx.has_value() ||
-                                !curve_2_optional_point_idx.has_value() || !curve_3_optional_point_idx.has_value();
+                            const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled || curve_3_disabled;
 
                             if (disabled)
                             {
@@ -651,8 +647,8 @@ static void Record(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
             const std::string struct_name = visit_struct::get_name<T>();
-            const std::string full_name = struct_name + "::" + field_name;
-            if (seq.m_name == full_name)
+            const std::string struct_field_name = helpers::MakeStructFieldName(struct_name, field_name_str);
+            if (struct_field_name == seq.m_seq_id.StructFieldName())
             {
                 const int player_frame = Timeline::GetPlayerFrame(timeline_data);
                 const float player_frame_f = static_cast<float>(player_frame);
@@ -744,14 +740,13 @@ public:
             [&](const char* field_name, auto&& field)
             {
                 registered_component.m_field_names.emplace_back(field_name);
-                registered_component.m_full_names.emplace_back(registered_component.m_struct_name + "::" + field_name);
+
+                registered_component.m_struct_field_names.emplace_back(helpers::MakeStructFieldName(type_name, field_name));
             });
 
-        registered_component.m_add_sequence = [](const entt::registry& entt_registry,
-                                                 entt::entity entity,
-                                                 TimelineData& timeline_data,
-                                                 const std::string& seq_name)
-        { reflection::AddSequence(entt_registry.get<T>(entity), timeline_data, seq_name); };
+        registered_component.m_add_sequence =
+            [](const entt::registry& entt_registry, TimelineData& timeline_data, SequenceId& seq_id)
+        { reflection::AddSequence(entt_registry.get<T>(seq_id.m_entity_data.m_entity), timeline_data, seq_id); };
 
         registered_component.m_sample = [](entt::registry& entt_registry,
                                            entt::entity entity,

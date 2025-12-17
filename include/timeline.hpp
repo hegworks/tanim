@@ -186,16 +186,22 @@ public:
 
     //................<<< Helpers->Others >>>...................
 
-    static bool HasSequenceWithName(const TimelineData& data, const std::string& seq_name)
+    static std::optional<std::reference_wrapper<const Sequence>> FindSequenceWithFullName(const TimelineData& data,
+                                                                                          const std::string& full_name)
     {
-        for (const auto& sequence : data.m_sequences)
+        for (const auto& seq : data.m_sequences)
         {
-            if (seq_name == sequence.m_name)
+            if (full_name == seq.m_seq_id.FullName())
             {
-                return true;
+                return std::ref(seq);
             }
         }
-        return false;
+        return std::nullopt;
+    }
+
+    static bool HasSequenceWithFullName(const TimelineData& data, const std::string& full_name)
+    {
+        return FindSequenceWithFullName(data, full_name).has_value();
     }
 
     static void Play(TimelineData& data) { data.m_player_playing = true; }

@@ -18,6 +18,21 @@ inline float FrameToSeconds(int frame, int samples)
     return static_cast<float>(frame) * (1.0f / static_cast<float>(samples));
 }
 
+inline std::string MakeFullName(const std::string& uid, const std::string& struct_name, const std::string& field_name)
+{
+    return uid + "::" + struct_name + "::" + field_name;
+}
+
+inline std::string MakeFullName(const std::string& uid, const std::string& struct_field_name)
+{
+    return uid + "::" + struct_field_name;
+}
+
+inline std::string MakeStructFieldName(const std::string& struct_name, const std::string& field_name)
+{
+    return struct_name + "::" + field_name;
+}
+
 template <typename EnumType>
 static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions = {}, const std::string& custom_name = {})
 {

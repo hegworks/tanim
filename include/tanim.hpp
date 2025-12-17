@@ -1,5 +1,7 @@
 #pragma once
+#include "registry.hpp"
 #include "tanim/include/timeline.hpp"
+#include "tanim/include/entity_data.hpp"
 
 namespace tanim
 {
@@ -12,13 +14,18 @@ public:
     static void Init();
     static void Draw();
     static void UpdateEditor(float dt);
-    static void OpenForEditing(entt::registry& registry, entt::entity entity, TimelineData& timeline_data);
+    static void OpenForEditing(entt::registry& registry,
+                               const std::vector<EntityData>& entity_datas,
+                               TimelineData& timeline_data);
     static void CloseEditor();
     static inline float m_snap_y_value = 0.1f;
 
     static void StartTimeline(TimelineData& timeline_data);
 
-    static void UpdateTimeline(entt::registry& registry, entt::entity entity, TimelineData& timeline_data, float delta_time);
+    static void UpdateTimeline(entt::registry& registry,
+                               const std::vector<EntityData>& entity_datas,
+                               TimelineData& timeline_data,
+                               float delta_time);
 
     static void StopTimeline(TimelineData& timeline_data);
 
@@ -27,6 +34,10 @@ public:
     static void Pause(TimelineData& timeline_data);
     static void Stop(TimelineData& timeline_data);
 
+    static std::optional<std::reference_wrapper<const RegisteredComponent>> FindMatchingComponent(
+        const Sequence& seq,
+        const std::vector<EntityData>& entity_datas);
+
     [[nodiscard]] static std::string Serialize(TimelineData& data);
     static void Deserialize(TimelineData& data, const std::string& serialized_string);
 
@@ -34,13 +45,14 @@ public:
     static void ExitPlayMode() { m_is_engine_in_play_mode = false; }
 
 private:
-    static inline TimelineData* m_editing_timeline_data{nullptr};
-    static inline entt::entity m_editing_timeline_entity{entt::null};
-    static inline entt::registry* m_editing_timeline_registry{nullptr};
+    static inline TimelineData* m_editor_timeline_data{nullptr};
+    static inline std::vector<EntityData> m_editor_entity_datas{};
+    static inline entt::registry* m_editor_registry{nullptr};
+
     static inline bool m_is_engine_in_play_mode{};
     static inline bool m_preview{true};
 
-    static void Sample(entt::registry& registry, entt::entity entity, TimelineData& timeline_data);
+    static void Sample(entt::registry& registry, const std::vector<EntityData>& entity_datas, TimelineData& timeline_data);
 };
 
 }  // namespace tanim
