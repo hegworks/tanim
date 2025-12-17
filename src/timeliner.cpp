@@ -70,7 +70,7 @@ bool Timeliner(TimelineData& data,
     int cy = static_cast<int>(io.MousePos.y);
     static float frame_pixel_width = 10.f;
     static float frame_pixel_width_target = 10.f;
-    int legend_width = 200;
+    int legend_width = 300;
 
     static int moving_entry = -1;
     static int moving_pos = -1;
