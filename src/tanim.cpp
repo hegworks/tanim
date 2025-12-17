@@ -354,6 +354,21 @@ void Tanim::Draw()
             ImGui::EndDisabled();
         }
 
+        bool disabled_delete_keyframe = player_frame <= 0 || player_frame >= Timeline::GetLastFrame(data) ||
+                                        Timeline::GetPlayerPlaying(data) || !seq.IsKeyframeInAnyCurve(player_frame);
+        if (disabled_delete_keyframe)
+        {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("-keyframe"))
+        {
+            seq.DeleteKeyframe(player_frame);
+        }
+        if (disabled_delete_keyframe)
+        {
+            ImGui::EndDisabled();
+        }
+
         if (seq.IsRecording())
         {
             const bool clicked_on_stop_recording = ImGui::Button("Stop Recording");

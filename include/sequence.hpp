@@ -70,6 +70,18 @@ struct Sequence : public sequencer::SequenceInterface
         return true;
     }
 
+    bool IsKeyframeInAnyCurve(int frame_num) const
+    {
+        for (int curve_idx = 0; curve_idx < GetCurveCount(); ++curve_idx)
+        {
+            if (GetPointIdx(curve_idx, frame_num).has_value())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void AddNewKeyframe(int frame_num)
     {
         for (int curve_idx = 0; curve_idx < GetCurveCount(); ++curve_idx)
@@ -77,6 +89,17 @@ struct Sequence : public sequencer::SequenceInterface
             if (!GetPointIdx(curve_idx, frame_num).has_value())
             {
                 AddPoint(curve_idx, {(float)frame_num, 0.0f});
+            }
+        }
+    }
+
+    void DeleteKeyframe(int frame_num)
+    {
+        for (int curve_idx = 0; curve_idx < GetCurveCount(); ++curve_idx)
+        {
+            if (auto opt_pt_idx = GetPointIdx(curve_idx, frame_num); opt_pt_idx.has_value())
+            {
+                RemovePoint(curve_idx, opt_pt_idx.value());
             }
         }
     }
