@@ -116,7 +116,18 @@ public:
 
     static void EditSequenceLastFrame(TimelineData& data, int seq_idx, int new_end)
     {
-        data.m_sequences.at(seq_idx).EditTimelineLastFrame(new_end);
+        data.m_sequences.at(seq_idx).EditLastFrame(new_end);
+        RefreshTimelineLastFrame(data);
+    }
+
+    static void EditSequenceFirstFrame(TimelineData& data, int seq_idx, int new_end)
+    {
+        data.m_sequences.at(seq_idx).EditFirstFrame(new_end);
+    }
+
+    static void MoveSequence(TimelineData& data, int moving_entry, int diff)
+    {
+        data.m_sequences.at(moving_entry).MoveFrames(diff);
         RefreshTimelineLastFrame(data);
     }
 
@@ -157,7 +168,10 @@ public:
 
     static int GetTimelineLastFrame(const TimelineData& data) { return data.m_last_frame; }
 
-    static int GetSequenceFirstFrame([[maybe_unused]] const TimelineData& data, [[maybe_unused]] int seq_idx) { return 0; }
+    static int GetSequenceFirstFrame([[maybe_unused]] const TimelineData& data, [[maybe_unused]] int seq_idx)
+    {
+        return data.m_sequences.at(seq_idx).m_first_frame;
+    }
 
     static int GetSequenceLastFrame(const TimelineData& data, int seq_idx) { return data.m_sequences.at(seq_idx).m_last_frame; }
 

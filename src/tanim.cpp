@@ -45,11 +45,12 @@ void Tanim::CloseEditor()
 
 void Tanim::Sample(entt::registry& registry, const std::vector<EntityData>& entity_datas, TimelineData& data)
 {
-    const float sample_time = Timeline::GetPlayerPlaying(data) ? Timeline::GetPlayerSampleTime(data)
-                                                               : static_cast<float>(Timeline::GetPlayerFrame(data));
+    const int player_frame = Timeline::GetPlayerFrame(data);
+    const float sample_time =
+        Timeline::GetPlayerPlaying(data) ? Timeline::GetPlayerSampleTime(data) : static_cast<float>(player_frame);
     for (auto& seq : data.m_sequences)
     {
-        if (!seq.IsRecording())
+        if (!seq.IsRecording() && seq.IsBetweenFirstAndLastFrame(player_frame))
         {
             const auto opt_comp = FindMatchingComponent(seq, entity_datas);
             if (opt_comp.has_value())
@@ -327,7 +328,8 @@ void Tanim::Draw()
     {
         Sequence& seq = Timeline::GetSequence(data, expanded_seq_idx);
         const int player_frame = Timeline::GetPlayerFrame(data);
-        const bool is_in_bounds = player_frame >= 0 && player_frame <= Timeline::GetTimelineLastFrame(data);
+        const bool is_in_bounds = player_frame >= Timeline::GetSequenceFirstFrame(data, expanded_seq_idx) &&
+                                  player_frame <= Timeline::GetSequenceLastFrame(data, expanded_seq_idx);
         const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(player_frame);
         const bool disabled_new_keyframe = !is_in_bounds || is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(data);
         if (disabled_new_keyframe)
@@ -411,11 +413,12 @@ void Tanim::Draw()
         ImGui::EndDisabled();
         ImGui::PopItemWidth();
 
-        ImGui::Text("seq last frame: %d", Timeline::GetSequenceLastFrame(data, expanded_seq_idx));
-        ImGui::Text("entity:         %llu", static_cast<uint64_t>(seq.m_seq_id.m_entity_data.m_entity));
-        ImGui::Text("uid:            %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
-        ImGui::Text("display:        %s", seq.m_seq_id.m_entity_data.m_display.c_str());
-        ImGui::Text("full name:      %s", seq.m_seq_id.FullName().c_str());
+        ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(data, expanded_seq_idx));
+        ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(data, expanded_seq_idx));
+        ImGui::Text("entity:          %llu", static_cast<uint64_t>(seq.m_seq_id.m_entity_data.m_entity));
+        ImGui::Text("uid:             %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
+        ImGui::Text("display:         %s", seq.m_seq_id.m_entity_data.m_display.c_str());
+        ImGui::Text("full name:       %s", seq.m_seq_id.FullName().c_str());
 
         for (int i = 0; i < seq.GetCurveCount(); ++i)
         {

@@ -77,4 +77,16 @@ static bool InspectEnum(EnumType& enum_, const std::vector<EnumType>& exclusions
     return changed;
 }
 
+/// <param name="i_f">input from</param>
+/// <param name="i_t">input to</param>
+/// <param name="o_f">output from</param>
+/// <param name="o_t">output to</param>
+/// <param name="v">vale</param>
+/// <returns>v mapped from the range [i_f,i_t] to [o_f,o_t]</returns>
+template <typename T>
+T Remap(T i_f, T i_t, T o_f, T o_t, T v)
+{
+    return static_cast<T>(static_cast<float>(v - i_f) / static_cast<float>(i_t - i_f) * static_cast<float>(o_t - o_f) + o_f);
+}
+
 }  // namespace tanim::helpers

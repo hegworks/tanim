@@ -367,7 +367,7 @@ bool Timeliner(TimelineData& data,
         custom_height = 0;
         for (int i = 0; i < sequence_count; i++)
         {
-            int start = Timeline::GetTimelineFirstFrame(data);
+            int start = Timeline::GetSequenceFirstFrame(data, i);
             int end = Timeline::GetSequenceLastFrame(data, i);
             unsigned int color = Timeline::GetColor(data);
             size_t local_custom_height = Timeline::GetCustomHeight(data, i);
@@ -472,8 +472,9 @@ bool Timeliner(TimelineData& data,
             int diff_frame = static_cast<int>((cx - moving_pos) / frame_pixel_width);
             if (std::abs(diff_frame) > 0)
             {
-                int start = Timeline::GetTimelineFirstFrame(data);
+                int start = Timeline::GetSequenceFirstFrame(data, moving_entry);
                 int end = Timeline::GetSequenceLastFrame(data, moving_entry);
+                int l_old = start;
                 int r_old = end;
                 if (selected_sequence) *selected_sequence = moving_entry;
                 int& l = start;
@@ -488,13 +489,23 @@ bool Timeliner(TimelineData& data,
                 if (moving_part & 1 && l > r) l = r;
                 if (moving_part & 2 && r < l) r = l;
 
-                // TanimAddition
-                // force the FrameStart to 0
-                l = 0;
-                // if FrameEnd has changed, report it to the sequence
-                if (r_old != r)
+                const bool start_changed = l_old != l;
+                const bool end_changed = r_old != r;
+                if (start_changed && end_changed)
                 {
-                    Timeline::EditSequenceLastFrame(data, moving_entry, r);
+                    int diff = r - r_old;
+                    Timeline::MoveSequence(data, moving_entry, diff);
+                }
+                else
+                {
+                    if (r_old != r)
+                    {
+                        Timeline::EditSequenceLastFrame(data, moving_entry, r);
+                    }
+                    else if (l_old != l)
+                    {
+                        Timeline::EditSequenceFirstFrame(data, moving_entry, l);
+                    }
                 }
 
                 moving_pos += static_cast<int>(diff_frame * frame_pixel_width);

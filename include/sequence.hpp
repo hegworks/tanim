@@ -51,6 +51,7 @@ struct Sequence : public sequencer::SequenceInterface
     std::vector<Curve> m_curves{};
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
+    int m_first_frame{0};
     int m_last_frame{10};
     bool m_expanded{false};
     SequenceId m_seq_id{};
@@ -153,6 +154,8 @@ struct Sequence : public sequencer::SequenceInterface
 
     bool IsRecording() const { return m_recording; }
 
+    bool IsBetweenFirstAndLastFrame(int frame_num) const { return frame_num >= m_first_frame && frame_num <= m_last_frame; }
+
     int GetRecordingFrame() const { return m_recording_frame; }
 
     void StartRecording(int frame_num)
@@ -210,11 +213,10 @@ struct Sequence : public sequencer::SequenceInterface
         m_curves.at(curve_index).m_points.at(point_index) = ImVec2(value.x, value.y);
         SortCurvePoints(curve_index);
 
-        // TanimAddition
-        // force the first keyframe time (x) to 0
-        m_curves.at(curve_index).m_points.at(0).x = 0;
+        // force the first keyframe time (x) to the sequence's first frame
+        m_curves.at(curve_index).m_points.at(0).x = static_cast<float>(m_first_frame);
         // force the last keyframe time (x) to the sequence's last frame
-        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = (float)m_last_frame;
+        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = static_cast<float>(m_last_frame);
 
         for (int i = 0; i < GetCurvePointCount(curve_index); i++)
         {
@@ -275,10 +277,53 @@ struct Sequence : public sequencer::SequenceInterface
     // TODO(tanim) replace hardcoded value (maybe?)
     unsigned int GetBackgroundColor() override { return 0x00000000; }
 
-    void EditTimelineLastFrame(int new_last_frame)
+    void EditLastFrame(int new_last_frame)
     {
+        for (auto& curve : m_curves)
+        {
+            for (auto& point : curve.m_points)
+            {
+                point.x = helpers::Remap(static_cast<float>(m_first_frame),
+                                         static_cast<float>(m_last_frame),
+                                         static_cast<float>(m_first_frame),
+                                         static_cast<float>(new_last_frame),
+                                         point.x);
+            }
+        }
+
         m_last_frame = new_last_frame;
-        ClampLastPointsToTimelineLastFrame();
+        ClampLastPointsToLastFrame();
+    }
+
+    void EditFirstFrame(int new_first_frame)
+    {
+        for (auto& curve : m_curves)
+        {
+            for (auto& point : curve.m_points)
+            {
+                point.x = helpers::Remap(static_cast<float>(m_first_frame),
+                                         static_cast<float>(m_last_frame),
+                                         static_cast<float>(new_first_frame),
+                                         static_cast<float>(m_last_frame),
+                                         point.x);
+            }
+        }
+
+        m_first_frame = new_first_frame;
+        ClampFirstPointsToFirstFrame();
+    }
+
+    void MoveFrames(int frame_diff)
+    {
+        m_last_frame += frame_diff;
+        m_first_frame += frame_diff;
+        for (auto& curve : m_curves)
+        {
+            for (auto& point : curve.m_points)
+            {
+                point.x += frame_diff;
+            }
+        }
     }
 
     void EditSnapY(float value) { m_snap_y_value = value; }
@@ -319,11 +364,20 @@ private:
         std::sort(begin, end, [](ImVec2 a, ImVec2 b) { return a.x < b.x; });
     }
 
-    void ClampLastPointsToTimelineLastFrame()
+    void ClampLastPointsToLastFrame()
     {
         for (int i = 0; i < GetCurveCount(); i++)
         {
             m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)m_last_frame;
+            SortCurvePoints(i);
+        }
+    }
+
+    void ClampFirstPointsToFirstFrame()
+    {
+        for (int i = 0; i < GetCurveCount(); i++)
+        {
+            m_curves.at(i).m_points.at(0).x = (float)m_first_frame;
             SortCurvePoints(i);
         }
     }
