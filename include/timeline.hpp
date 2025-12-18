@@ -34,7 +34,7 @@ public:
         return tmps;
     }
 
-    static void AddSequence(TimelineData& data) { data.m_sequences.emplace_back(&data.m_last_frame); }
+    static void AddSequence(TimelineData& data) { data.m_sequences.emplace_back(); }
 
     static void DeleteSequence(TimelineData& data, int seq_idx) { data.m_sequences.erase(data.m_sequences.begin() + seq_idx); }
 
@@ -95,7 +95,7 @@ public:
             for (int point_idx = 0; point_idx < seq.GetCurvePointCount(curve_index); point_idx++)
             {
                 float p = seq.m_curves.at(curve_index).m_points.at(point_idx).x;
-                if (p < (float)data.m_first_frame || p > (float)data.m_last_frame) continue;
+                if (p < (float)data.m_first_frame || p > (float)seq.m_last_frame) continue;
                 float r = (p - (float)data.m_min_frame) / float(data.m_max_frame - data.m_min_frame);
                 float x = ImLerp(rc.Min.x, rc.Max.x, r);
                 draw_list->AddLine(ImVec2(x, rc.Min.y + 6), ImVec2(x, rc.Max.y - 4), 0xAA000000, 4.f);
@@ -114,15 +114,26 @@ public:
 
     static void EditFirstFrame(TimelineData& /*data*/, int /*new_start*/) { /*TODO(tanim)*/ }
 
-    // TODO(tanim) call the function on the expanded sequence
-    static void EditLastFrame(TimelineData& data, int new_end)
+    static void EditSequenceLastFrame(TimelineData& data, int seq_idx, int new_end)
     {
-        data.m_last_frame = new_end;
-        for (int i = 0; i < GetSequenceCount(data); ++i)
-        {
-            data.m_sequences.at(i).EditTimelineLastFrame();
-        }
+        data.m_sequences.at(seq_idx).EditTimelineLastFrame(new_end);
+        RefreshTimelineLastFrame(data);
     }
+
+    static void RefreshTimelineLastFrame(TimelineData& data)
+    {
+        int biggest_seq_last_frame = 0;
+        for (const auto& seq : data.m_sequences)
+        {
+            if (seq.m_last_frame > biggest_seq_last_frame)
+            {
+                biggest_seq_last_frame = seq.m_last_frame;
+            }
+        }
+        SetTimelineLastFrame(data, biggest_seq_last_frame);
+    }
+
+    static void SetTimelineLastFrame(TimelineData& data, int new_end) { data.m_last_frame = new_end; }
 
     static unsigned int GetColor(const TimelineData& /*data*/) { return 0xFFAA8080; }
 
@@ -142,9 +153,13 @@ public:
 
     //................<<< Helpers->Getters >>>...................
 
-    static int GetFirstFrame(const TimelineData& /*data*/) { return 0; }
+    static int GetTimelineFirstFrame(const TimelineData& [[maybe_unused]] data) { return 0; }
 
-    static int GetLastFrame(const TimelineData& data) { return data.m_last_frame; }
+    static int GetTimelineLastFrame(const TimelineData& data) { return data.m_last_frame; }
+
+    static int GetSequenceFirstFrame([[maybe_unused]] const TimelineData& data, [[maybe_unused]] int seq_idx) { return 0; }
+
+    static int GetSequenceLastFrame(const TimelineData& data, int seq_idx) { return data.m_sequences.at(seq_idx).m_last_frame; }
 
     static int GetPlayImmediately(const TimelineData& data) { return data.m_play_immediately; }
 
@@ -227,7 +242,7 @@ public:
             {
                 case PlaybackType::HOLD:
 
-                    SetPlayerTimeFromFrame(data, GetLastFrame(data));
+                    SetPlayerTimeFromFrame(data, GetTimelineLastFrame(data));
                     Pause(data);
                     break;
                 case PlaybackType::RESET:
@@ -242,7 +257,7 @@ public:
         }
     }
 
-    static bool HasPassedLastFrame(const TimelineData& data) { return GetPlayerFrame(data) > GetLastFrame(data); }
+    static bool HasPassedLastFrame(const TimelineData& data) { return GetPlayerFrame(data) > GetTimelineLastFrame(data); }
 
     static void EditSnapY(TimelineData& data, float value)
     {
@@ -264,7 +279,7 @@ public:
         return std::nullopt;
     }
 
-    static Sequence& AddSequenceStatic(TimelineData& data) { return data.m_sequences.emplace_back(&data.m_last_frame); }
+    static Sequence& AddSequenceStatic(TimelineData& data) { return data.m_sequences.emplace_back(); }
 };
 
 }  // namespace tanim

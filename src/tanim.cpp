@@ -301,10 +301,8 @@ void Tanim::Draw()
 
     ImGui::Checkbox("Play Immediately", &data.m_play_immediately);
 
-    ImGui::Text("max frame:   %d", Timeline::GetMinFrame(data));
-    ImGui::Text("last frame:  %d", Timeline::GetLastFrame(data));
-    // ImGui::Text("entity:      %llu", static_cast<uint64_t>(m_editor_entity_datas));
-    // ImGui::Text("id:          %llu", data.m_id);
+    ImGui::Text("max frame:            %d", Timeline::GetMinFrame(data));
+    ImGui::Text("timeline last frame:  %d", Timeline::GetTimelineLastFrame(data));
 
     ImGui::End();
 
@@ -329,7 +327,7 @@ void Tanim::Draw()
     {
         Sequence& seq = Timeline::GetSequence(data, expanded_seq_idx);
         const int player_frame = Timeline::GetPlayerFrame(data);
-        const bool is_in_bounds = player_frame >= 0 && player_frame <= Timeline::GetLastFrame(data);
+        const bool is_in_bounds = player_frame >= 0 && player_frame <= Timeline::GetTimelineLastFrame(data);
         const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(player_frame);
         const bool disabled_new_keyframe = !is_in_bounds || is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(data);
         if (disabled_new_keyframe)
@@ -354,7 +352,7 @@ void Tanim::Draw()
             ImGui::EndDisabled();
         }
 
-        bool disabled_delete_keyframe = player_frame <= 0 || player_frame >= Timeline::GetLastFrame(data) ||
+        bool disabled_delete_keyframe = player_frame <= 0 || player_frame >= Timeline::GetTimelineLastFrame(data) ||
                                         Timeline::GetPlayerPlaying(data) || !seq.IsKeyframeInAnyCurve(player_frame);
         if (disabled_delete_keyframe)
         {
@@ -413,7 +411,11 @@ void Tanim::Draw()
         ImGui::EndDisabled();
         ImGui::PopItemWidth();
 
-        ImGui::Text("expanded:    %i", seq.m_expanded);
+        ImGui::Text("seq last frame: %d", Timeline::GetSequenceLastFrame(data, expanded_seq_idx));
+        ImGui::Text("entity:         %llu", static_cast<uint64_t>(seq.m_seq_id.m_entity_data.m_entity));
+        ImGui::Text("uid:            %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
+        ImGui::Text("display:        %s", seq.m_seq_id.m_entity_data.m_display.c_str());
+        ImGui::Text("full name:      %s", seq.m_seq_id.FullName().c_str());
 
         for (int i = 0; i < seq.GetCurveCount(); ++i)
         {
@@ -511,6 +513,7 @@ std::string Tanim::Serialize(TimelineData& data)
 
         seq_js["m_type_meta"] = std::string(magic_enum::enum_name(seq.m_type_meta));
         seq_js["m_representation_meta"] = std::string(magic_enum::enum_name(seq.m_representation_meta));
+        seq_js["m_last_frame"] = seq.m_last_frame;
 
         nlohmann::ordered_json curves_js_array = nlohmann::ordered_json::array();
         for (int curve_idx = 0; curve_idx < seq.GetCurveCount(); ++curve_idx)
@@ -563,7 +566,7 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
     data.m_sequences.clear();
     for (const auto& seq_js : timeline_js["m_sequences"])
     {
-        Sequence& seq = data.m_sequences.emplace_back(&data.m_last_frame);
+        Sequence& seq = data.m_sequences.emplace_back();
 
         const auto& seq_id_js = seq_js["m_seq_id"];
 
@@ -580,6 +583,8 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
         const std::string representation_meta_str = seq_js["m_representation_meta"].get<std::string>();
         seq.m_representation_meta =
             magic_enum::enum_cast<RepresentationMeta>(representation_meta_str).value_or(RepresentationMeta::NONE);
+
+        seq.m_last_frame = seq_js["m_last_frame"];
 
         seq.m_curves.clear();
         for (const auto& curve_js : seq_js["m_curves"])
@@ -600,6 +605,8 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
             }
         }
     }
+
+    Timeline::RefreshTimelineLastFrame(data);
 }
 
 }  // namespace tanim

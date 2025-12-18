@@ -367,8 +367,8 @@ bool Timeliner(TimelineData& data,
         custom_height = 0;
         for (int i = 0; i < sequence_count; i++)
         {
-            int start = Timeline::GetFirstFrame(data);
-            int end = Timeline::GetLastFrame(data);
+            int start = Timeline::GetTimelineFirstFrame(data);
+            int end = Timeline::GetSequenceLastFrame(data, i);
             unsigned int color = Timeline::GetColor(data);
             size_t local_custom_height = Timeline::GetCustomHeight(data, i);
 
@@ -472,8 +472,8 @@ bool Timeliner(TimelineData& data,
             int diff_frame = static_cast<int>((cx - moving_pos) / frame_pixel_width);
             if (std::abs(diff_frame) > 0)
             {
-                int start = Timeline::GetFirstFrame(data);
-                int end = Timeline::GetLastFrame(data);
+                int start = Timeline::GetTimelineFirstFrame(data);
+                int end = Timeline::GetSequenceLastFrame(data, moving_entry);
                 int r_old = end;
                 if (selected_sequence) *selected_sequence = moving_entry;
                 int& l = start;
@@ -494,7 +494,7 @@ bool Timeliner(TimelineData& data,
                 // if FrameEnd has changed, report it to the sequence
                 if (r_old != r)
                 {
-                    Timeline::EditLastFrame(data, r);
+                    Timeline::EditSequenceLastFrame(data, moving_entry, r);
                 }
 
                 moving_pos += static_cast<int>(diff_frame * frame_pixel_width);

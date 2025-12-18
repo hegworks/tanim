@@ -51,10 +51,12 @@ struct Sequence : public sequencer::SequenceInterface
     std::vector<Curve> m_curves{};
     ImVec2 m_draw_min{0, -1.5f};
     ImVec2 m_draw_max{500, 1.5f};
+    int m_last_frame{10};
     bool m_expanded{false};
     SequenceId m_seq_id{};
     bool m_recording{false};
     int m_recording_frame{-1};
+    float m_snap_y_value = 0.1f;
 
     Curve& AddCurve() { return m_curves.emplace_back(); }
 
@@ -103,14 +105,6 @@ struct Sequence : public sequencer::SequenceInterface
             }
         }
     }
-
-    // TODO(tanim) this has to be removed after we use ECS maybe
-    const int* m_timeline_last_frame{nullptr};
-
-    float m_snap_y_value = 0.1f;
-
-    // TODO(tanim) the int* has to be removed after we use ECS maybe
-    Sequence(const int* timeline_last_frame) { m_timeline_last_frame = timeline_last_frame; }
 
     /// turns "a::b::c::d" into "c::d"
     std::string GetNameWithLessColumns() const
@@ -220,7 +214,7 @@ struct Sequence : public sequencer::SequenceInterface
         // force the first keyframe time (x) to 0
         m_curves.at(curve_index).m_points.at(0).x = 0;
         // force the last keyframe time (x) to the sequence's last frame
-        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = (float)*m_timeline_last_frame;
+        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = (float)m_last_frame;
 
         for (int i = 0; i < GetCurvePointCount(curve_index); i++)
         {
@@ -281,7 +275,11 @@ struct Sequence : public sequencer::SequenceInterface
     // TODO(tanim) replace hardcoded value (maybe?)
     unsigned int GetBackgroundColor() override { return 0x00000000; }
 
-    void EditTimelineLastFrame() { ClampLastPointsToTimelineLastFrame(); }
+    void EditTimelineLastFrame(int new_last_frame)
+    {
+        m_last_frame = new_last_frame;
+        ClampLastPointsToTimelineLastFrame();
+    }
 
     void EditSnapY(float value) { m_snap_y_value = value; }
 
@@ -325,7 +323,7 @@ private:
     {
         for (int i = 0; i < GetCurveCount(); i++)
         {
-            m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)*m_timeline_last_frame;
+            m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)m_last_frame;
             SortCurvePoints(i);
         }
     }
