@@ -2,6 +2,7 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
+#include "user_override.hpp"
 #include "tanim/include/timeline_data.hpp"
 #include "tanim/include/sequence.hpp"
 #include "tanim/include/timeliner.hpp"
@@ -243,6 +244,21 @@ public:
     {
         data.m_player_playing = false;
         ResetPlayerTime(data);
+    }
+
+    [[nodiscard]] static entt::entity FindEntity(const TimelineData& data, const Sequence& seq)
+    {
+        return GetNestedEntityOfUID(data.m_root_entity, seq.m_seq_id.m_entity_data.m_uid);
+    }
+
+    [[nodiscard]] static entt::entity FindEntity(const TimelineData& data, int seq_idx)
+    {
+        return FindEntity(data, data.m_sequences.at(seq_idx));
+    }
+
+    [[nodiscard]] static entt::entity FindEntity(const TimelineData& data, const std::string& uid)
+    {
+        return GetNestedEntityOfUID(data.m_root_entity, uid);
     }
 
     static void ResetPlayerTime(TimelineData& data) { data.m_player_time = 0; }

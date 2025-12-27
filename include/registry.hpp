@@ -52,149 +52,149 @@ namespace reflection
 template <typename T>
 static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceId& seq_id)
 {
-    visit_struct::context<VSContext>::for_each(ecs_component,
-                                               [&timeline_data, &seq_id](const char* field_name, auto& field)
-                                               {
-                                                   using FieldType = std::decay_t<decltype(field)>;
-                                                   const std::string field_name_str = field_name;
-                                                   if (field_name_str == seq_id.m_field_name)
-                                                   {
-                                                       Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
-                                                       seq.m_seq_id = seq_id;
-                                                       const float last_frame = (float)Timeline::GetTimelineLastFrame(timeline_data);
+    visit_struct::context<VSContext>::for_each(
+        ecs_component,
+        [&timeline_data, &seq_id](const char* field_name, auto& field)
+        {
+            using FieldType = std::decay_t<decltype(field)>;
+            const std::string field_name_str = field_name;
+            if (field_name_str == seq_id.m_field_name)
+            {
+                Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
+                seq.m_seq_id = seq_id;
+                const float last_frame = (float)Timeline::GetTimelineLastFrame(timeline_data);
 
-                                                       if constexpr (std::is_same_v<FieldType, float>)
-                                                       {
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = field_name_str;
-                                                               curve.m_points = {{0.0f, field}, {last_frame, field}};
-                                                           }
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, int>)
-                                                       {
-                                                           seq.m_type_meta = Sequence::TypeMeta::INT;
+                if constexpr (std::is_same_v<FieldType, float>)
+                {
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = field_name_str;
+                        curve.m_points = {{0.0f, field}, {last_frame, field}};
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, int>)
+                {
+                    seq.m_type_meta = Sequence::TypeMeta::INT;
 
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = field_name_str;
-                                                               curve.m_points = {{0.0f, static_cast<float>(field)},
-                                                                                 {last_frame, static_cast<float>(field)}};
-                                                               curve.m_lerp_type = sequencer::LerpType::LINEAR;
-                                                           }
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, bool>)
-                                                       {
-                                                           seq.m_type_meta = Sequence::TypeMeta::BOOL;
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = field_name_str;
+                        curve.m_points = {{0.0f, static_cast<float>(field)}, {last_frame, static_cast<float>(field)}};
+                        curve.m_lerp_type = sequencer::LerpType::LINEAR;
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, bool>)
+                {
+                    seq.m_type_meta = Sequence::TypeMeta::BOOL;
 
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = field_name_str;
-                                                               float f = field == true ? 1.0f : 0.0f;
-                                                               curve.m_points = {{0.0f, f}, {last_frame, f}};
-                                                               curve.m_lerp_type = sequencer::LerpType::DISCRETE;
-                                                           }
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, glm::vec2>)
-                                                       {
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "X";
-                                                               curve.m_points = {{0, field.x}, {last_frame, field.x}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Y";
-                                                               curve.m_points = {{0, field.y}, {last_frame, field.y}};
-                                                           }
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, glm::vec3>)
-                                                       {
-                                                           seq.m_representation_meta = RepresentationMeta::VECTOR;
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = field_name_str;
+                        float f = field == true ? 1.0f : 0.0f;
+                        curve.m_points = {{0.0f, f}, {last_frame, f}};
+                        curve.m_lerp_type = sequencer::LerpType::DISCRETE;
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec2>)
+                {
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "X";
+                        curve.m_points = {{0, field.x}, {last_frame, field.x}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Y";
+                        curve.m_points = {{0, field.y}, {last_frame, field.y}};
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec3>)
+                {
+                    seq.m_representation_meta = RepresentationMeta::VECTOR;
 
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "X";
-                                                               curve.m_points = {{0, field.x}, {last_frame, field.x}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Y";
-                                                               curve.m_points = {{0, field.y}, {last_frame, field.y}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Z";
-                                                               curve.m_points = {{0, field.z}, {last_frame, field.z}};
-                                                           }
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, glm::vec4>)
-                                                       {
-                                                           seq.m_representation_meta = RepresentationMeta::COLOR;
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "X";
+                        curve.m_points = {{0, field.x}, {last_frame, field.x}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Y";
+                        curve.m_points = {{0, field.y}, {last_frame, field.y}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Z";
+                        curve.m_points = {{0, field.z}, {last_frame, field.z}};
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::vec4>)
+                {
+                    seq.m_representation_meta = RepresentationMeta::COLOR;
 
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "R";
-                                                               curve.m_points = {{0, field.r}, {last_frame, field.r}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "G";
-                                                               curve.m_points = {{0, field.g}, {last_frame, field.g}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "B";
-                                                               curve.m_points = {{0, field.b}, {last_frame, field.b}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "A";
-                                                               curve.m_points = {{0, field.a}, {last_frame, field.a}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Spins";
-                                                               curve.m_points = {{0, 0}, {last_frame, 0}};
-                                                           }
-                                                       }
-                                                       else if constexpr (std::is_same_v<FieldType, glm::quat>)
-                                                       {
-                                                           seq.m_representation_meta = RepresentationMeta::QUAT;
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "R";
+                        curve.m_points = {{0, field.r}, {last_frame, field.r}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "G";
+                        curve.m_points = {{0, field.g}, {last_frame, field.g}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "B";
+                        curve.m_points = {{0, field.b}, {last_frame, field.b}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "A";
+                        curve.m_points = {{0, field.a}, {last_frame, field.a}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Spins";
+                        curve.m_points = {{0, 0}, {last_frame, 0}};
+                    }
+                }
+                else if constexpr (std::is_same_v<FieldType, glm::quat>)
+                {
+                    seq.m_representation_meta = RepresentationMeta::QUAT;
 
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "W";
-                                                               curve.m_points = {{0, field.w}, {last_frame, field.w}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "X";
-                                                               curve.m_points = {{0, field.x}, {last_frame, field.x}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Y";
-                                                               curve.m_points = {{0, field.y}, {last_frame, field.y}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Z";
-                                                               curve.m_points = {{0, field.z}, {last_frame, field.z}};
-                                                           }
-                                                           {
-                                                               Sequence::Curve& curve = seq.AddCurve();
-                                                               curve.m_name = "Spins";
-                                                               curve.m_points = {{0, 0}, {last_frame, 0}};
-                                                               curve.m_lerp_type = sequencer::LerpType::DISCRETE;
-                                                           }
-                                                       }
-                                                       else
-                                                       {
-                                                           static_assert(false, "Unsupported Type");
-                                                       }
-                                                   }
-                                               });
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "W";
+                        curve.m_points = {{0, field.w}, {last_frame, field.w}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "X";
+                        curve.m_points = {{0, field.x}, {last_frame, field.x}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Y";
+                        curve.m_points = {{0, field.y}, {last_frame, field.y}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Z";
+                        curve.m_points = {{0, field.z}, {last_frame, field.z}};
+                    }
+                    {
+                        Sequence::Curve& curve = seq.AddCurve();
+                        curve.m_name = "Spins";
+                        curve.m_points = {{0, 0}, {last_frame, 0}};
+                        curve.m_lerp_type = sequencer::LerpType::DISCRETE;
+                    }
+                }
+                else
+                {
+                    static_assert(false, "Unsupported Type");
+                }
+            }
+        });
 }
 
 template <typename T>
@@ -747,7 +747,11 @@ public:
 
         registered_component.m_add_sequence =
             [](const entt::registry& entt_registry, TimelineData& timeline_data, SequenceId& seq_id)
-        { reflection::AddSequence(entt_registry.get<T>(seq_id.m_entity_data.m_entity), timeline_data, seq_id); };
+        {
+            reflection::AddSequence(entt_registry.get<T>(Timeline::FindEntity(timeline_data, seq_id.m_entity_data.m_uid)),
+                                    timeline_data,
+                                    seq_id);
+        };
 
         registered_component.m_sample = [](entt::registry& entt_registry,
                                            entt::entity entity,

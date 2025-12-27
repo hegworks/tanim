@@ -9,7 +9,7 @@ namespace tanim
 
 struct EntityData
 {
-    entt::entity m_entity{entt::null};
+    // entt::entity m_entity{entt::null};
     std::string m_uid{};      // unique identifier
     std::string m_display{};  // optional
 

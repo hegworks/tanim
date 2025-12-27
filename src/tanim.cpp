@@ -55,7 +55,7 @@ void Tanim::Sample(entt::registry& registry, const std::vector<EntityData>& enti
             const auto opt_comp = FindMatchingComponent(seq, entity_datas);
             if (opt_comp.has_value())
             {
-                opt_comp.value().get().m_sample(registry, seq.m_seq_id.m_entity_data.m_entity, data, sample_time, seq);
+                opt_comp.value().get().m_sample(registry, Timeline::FindEntity(data, seq), data, sample_time, seq);
             }
         }
     }
@@ -267,7 +267,7 @@ void Tanim::Draw()
         {
             for (const auto& component : components)
             {
-                if (component.m_entity_has(*m_editor_registry, entity_data.m_entity))
+                if (component.m_entity_has(*m_editor_registry, Timeline::FindEntity(data, entity_data.m_uid)))
                 {
                     for (const auto& field_name : component.m_field_names)
                     {
@@ -313,10 +313,12 @@ void Tanim::Draw()
 
     bool has_expanded_seq = false;
     int expanded_seq_idx = -1;
+    entt::entity expanded_seq_entity{entt::null};
     if (const auto idx = Timeline::GetExpandedSequenceIdx(data))
     {
         has_expanded_seq = true;
         expanded_seq_idx = idx.value();
+        expanded_seq_entity = Timeline::FindEntity(data, expanded_seq_idx);
     }
 
     if (has_expanded_seq)
@@ -344,7 +346,7 @@ void Tanim::Draw()
             const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
             if (opt_comp.has_value())
             {
-                opt_comp.value().get().m_record(*m_editor_registry, seq.m_seq_id.m_entity_data.m_entity, data, seq);
+                opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, data, seq);
             }
 
             seq.StopRecording();
@@ -383,7 +385,7 @@ void Tanim::Draw()
                 const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
                 if (opt_comp.has_value())
                 {
-                    opt_comp.value().get().m_record(*m_editor_registry, seq.m_seq_id.m_entity_data.m_entity, data, seq);
+                    opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, data, seq);
                 }
             }
         }
@@ -415,7 +417,7 @@ void Tanim::Draw()
 
         ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(data, expanded_seq_idx));
         ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(data, expanded_seq_idx));
-        ImGui::Text("entity:          %llu", static_cast<uint64_t>(seq.m_seq_id.m_entity_data.m_entity));
+        ImGui::Text("entity:          %llu", static_cast<uint64_t>(expanded_seq_entity));
         ImGui::Text("uid:             %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
         ImGui::Text("display:         %s", seq.m_seq_id.m_entity_data.m_display.c_str());
         ImGui::Text("full name:       %s", seq.m_seq_id.FullName().c_str());
@@ -457,7 +459,7 @@ void Tanim::Draw()
                 }
 
                 ImGui::Text("%s", opt_comp.value().get().m_struct_name.c_str());
-                opt_comp.value().get().m_inspect(*m_editor_registry, seq.m_seq_id.m_entity_data.m_entity, data, seq);
+                opt_comp.value().get().m_inspect(*m_editor_registry, expanded_seq_entity, data, seq);
                 ImGui::Separator();
 
                 if (is_recording)
@@ -498,6 +500,7 @@ std::string Tanim::Serialize(TimelineData& data)
     timeline_js["m_max_frame"] = data.m_max_frame;
     timeline_js["m_play_immediately"] = data.m_play_immediately;
     timeline_js["m_player_samples"] = data.m_player_samples;
+    // timeline_js["m_uid"] = data.m_uid;
     timeline_js["m_playback_type"] = std::string(magic_enum::enum_name(data.m_playback_type));
 
     nlohmann::ordered_json sequences_js_array = nlohmann::ordered_json::array();
@@ -548,7 +551,7 @@ std::string Tanim::Serialize(TimelineData& data)
     return json.dump(4);
 }
 
-void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string)
+void Tanim::Deserialize(entt::entity root_entity, TimelineData& data, const std::string& serialized_string)
 {
     assert(!serialized_string.empty());
     const nlohmann::ordered_json json = nlohmann::ordered_json::parse(serialized_string);
@@ -562,6 +565,8 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
     data.m_max_frame = timeline_js["m_max_frame"].get<int>();
     data.m_play_immediately = timeline_js["m_play_immediately"].get<bool>();
     data.m_player_samples = timeline_js["m_player_samples"].get<int>();
+    // data.m_uid = timeline_js["m_uid"].get<std::string>();
+    data.m_root_entity = root_entity;
 
     const std::string playback_type_str = timeline_js["m_playback_type"].get<std::string>();
     data.m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
@@ -575,7 +580,7 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
 
         const std::string uid = seq_id_js["m_entity_data"]["m_uid"];
         seq.m_seq_id.m_entity_data.m_uid = uid;
-        seq.m_seq_id.m_entity_data.m_entity = GetEntityOfUID(uid);
+        // seq.m_seq_id.m_entity_data.m_entity = GetNestedEntityOfUID(root_entity, uid);
         seq.m_seq_id.m_entity_data.m_display = seq_id_js["m_entity_data"]["m_display"];
         seq.m_seq_id.m_struct_name = seq_id_js["m_struct_name"];
         seq.m_seq_id.m_field_name = seq_id_js["m_field_name"];

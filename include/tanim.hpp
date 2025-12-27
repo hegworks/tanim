@@ -39,7 +39,7 @@ public:
         const std::vector<EntityData>& entity_datas);
 
     [[nodiscard]] static std::string Serialize(TimelineData& data);
-    static void Deserialize(TimelineData& data, const std::string& serialized_string);
+    static void Deserialize(entt::entity root_entity, TimelineData& data, const std::string& serialized_string);
 
     static void EnterPlayMode() { m_is_engine_in_play_mode = true; }
     static void ExitPlayMode() { m_is_engine_in_play_mode = false; }
