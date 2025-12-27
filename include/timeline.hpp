@@ -167,7 +167,7 @@ public:
 
     static int GetTimelineFirstFrame(const TimelineData& [[maybe_unused]] data) { return 0; }
 
-    static int GetTimelineLastFrame(const TimelineData& data) { return data.m_last_frame; }
+    static int GetTimelineLastFrame(const TimelineData& tdata) { return tdata.m_last_frame; }
 
     static int GetSequenceFirstFrame([[maybe_unused]] const TimelineData& data, [[maybe_unused]] int seq_idx)
     {
@@ -176,18 +176,18 @@ public:
 
     static int GetSequenceLastFrame(const TimelineData& data, int seq_idx) { return data.m_sequences.at(seq_idx).m_last_frame; }
 
-    static int GetPlayImmediately(const TimelineData& data) { return data.m_play_immediately; }
+    static int GetPlayImmediately(const TimelineData& tdata) { return tdata.m_play_immediately; }
 
-    static int GetPlayerFrame(const TimelineData& data)
+    static int GetPlayerFrame(const TimelineData& tdata, const ComponentData& cdata)
     {
-        return helpers::SecondsToFrame(data.m_player_time, data.m_player_samples);
+        return helpers::SecondsToFrame(cdata.m_player_time, tdata.m_player_samples);
     }
 
-    static float GetPlayerRealTime(const TimelineData& data) { return data.m_player_time; }
+    static float GetPlayerRealTime(const ComponentData& cdata) { return cdata.m_player_time; }
 
-    static float GetPlayerSampleTime(const TimelineData& data)
+    static float GetPlayerSampleTime(const TimelineData& tdata, const ComponentData& cdata)
     {
-        return helpers::SecondsToSampleTime(data.m_player_time, data.m_player_samples);
+        return helpers::SecondsToSampleTime(cdata.m_player_time, tdata.m_player_samples);
     }
 
     static float GetLastFrameSampleTime(const TimelineData& data)
@@ -197,7 +197,7 @@ public:
 
     static const std::string& GetName(const TimelineData& data) { return data.m_name; }
 
-    static bool GetPlayerPlaying(const TimelineData& data) { return data.m_player_playing; }
+    static bool GetPlayerPlaying(const ComponentData& cdata) { return cdata.m_player_playing; }
 
     static Sequence& GetSequence(TimelineData& data, int seq_idx) { return data.m_sequences.at(seq_idx); }
 
@@ -207,12 +207,12 @@ public:
 
     static void SetDrawMaxX(TimelineData& data, int seq_idx, float max_x) { data.m_sequences.at(seq_idx).m_draw_max.x = max_x; }
 
-    static void SetPlayerTimeFromFrame(TimelineData& data, int frame_num)
+    static void SetPlayerTimeFromFrame(const TimelineData& tdata, ComponentData& cdata, int frame_num)
     {
-        data.m_player_time = helpers::FrameToSeconds(frame_num, data.m_player_samples);
+        cdata.m_player_time = helpers::FrameToSeconds(frame_num, tdata.m_player_samples);
     }
 
-    static void SetPlayerTimeFromSeconds(TimelineData& data, float time) { data.m_player_time = time; }
+    static void SetPlayerTimeFromSeconds(ComponentData& cdata, float time) { cdata.m_player_time = time; }
 
     static void SetName(TimelineData& data, const std::string& name) { data.m_name = name; }
 
@@ -236,58 +236,61 @@ public:
         return FindSequenceWithFullName(data, full_name).has_value();
     }
 
-    static void Play(TimelineData& data) { data.m_player_playing = true; }
+    static void Play(ComponentData& cdata) { cdata.m_player_playing = true; }
 
-    static void Pause(TimelineData& data) { data.m_player_playing = false; }
+    static void Pause(ComponentData& cdata) { cdata.m_player_playing = false; }
 
-    static void Stop(TimelineData& data)
+    static void Stop(ComponentData& cdata)
     {
-        data.m_player_playing = false;
-        ResetPlayerTime(data);
+        cdata.m_player_playing = false;
+        ResetPlayerTime(cdata);
     }
 
-    [[nodiscard]] static entt::entity FindEntity(const TimelineData& data, const Sequence& seq)
+    [[nodiscard]] static entt::entity FindEntity(const ComponentData& cdata, const Sequence& seq)
     {
-        return GetNestedEntityOfUID(data.m_root_entity, seq.m_seq_id.m_entity_data.m_uid);
+        return GetNestedEntityOfUID(cdata.m_root_entity, seq.m_seq_id.m_entity_data.m_uid);
     }
 
-    [[nodiscard]] static entt::entity FindEntity(const TimelineData& data, int seq_idx)
+    [[nodiscard]] static entt::entity FindEntity(const TimelineData& tdata, const ComponentData& cdata, int seq_idx)
     {
-        return FindEntity(data, data.m_sequences.at(seq_idx));
+        return FindEntity(cdata, tdata.m_sequences.at(seq_idx));
     }
 
-    [[nodiscard]] static entt::entity FindEntity(const TimelineData& data, const std::string& uid)
+    [[nodiscard]] static entt::entity FindEntity(const ComponentData& cdata, const std::string& uid)
     {
-        return GetNestedEntityOfUID(data.m_root_entity, uid);
+        return GetNestedEntityOfUID(cdata.m_root_entity, uid);
     }
 
-    static void ResetPlayerTime(TimelineData& data) { data.m_player_time = 0; }
+    static void ResetPlayerTime(ComponentData& cdata) { cdata.m_player_time = 0; }
 
-    static void TickTime(TimelineData& data, float dt)
+    static void TickTime(const TimelineData& tdata, ComponentData& cdata, float dt)
     {
-        data.m_player_time += dt;
-        if (HasPassedLastFrame(data))
+        cdata.m_player_time += dt;
+        if (HasPassedLastFrame(tdata, cdata))
         {
-            switch (data.m_playback_type)
+            switch (tdata.m_playback_type)
             {
                 case PlaybackType::HOLD:
 
-                    SetPlayerTimeFromFrame(data, GetTimelineLastFrame(data));
-                    Pause(data);
+                    SetPlayerTimeFromFrame(tdata, cdata, GetTimelineLastFrame(tdata));
+                    Pause(cdata);
                     break;
                 case PlaybackType::RESET:
-                    Stop(data);
+                    Stop(cdata);
                     break;
                 case PlaybackType::LOOP:
-                    ResetPlayerTime(data);
+                    ResetPlayerTime(cdata);
                     break;
                 default:
-                    assert(0);  // unhandled PlaybackType
+                    assert(0 && "unhandled PlaybackType");
             }
         }
     }
 
-    static bool HasPassedLastFrame(const TimelineData& data) { return GetPlayerFrame(data) > GetTimelineLastFrame(data); }
+    static bool HasPassedLastFrame(const TimelineData& tdata, const ComponentData& cdata)
+    {
+        return GetPlayerFrame(tdata, cdata) > GetTimelineLastFrame(tdata);
+    }
 
     static void EditSnapY(TimelineData& data, float value)
     {

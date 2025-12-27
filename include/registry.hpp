@@ -22,20 +22,17 @@ struct RegisteredComponent
     std::vector<std::string> m_field_names{};
     std::vector<std::string> m_struct_field_names{};
 
-    std::function<void(const entt::registry& entt_registry, TimelineData& timeline_data, SequenceId& seq_id)> m_add_sequence;
+    std::function<void(const entt::registry& entt_registry,
+                       TimelineData& timeline_data,
+                       const ComponentData& component_data,
+                       SequenceId& seq_id)>
+        m_add_sequence;
 
-    std::function<void(entt::registry& entt_registry,
-                       entt::entity entity,
-                       const TimelineData& timeline_data,
-                       float sample_time,
-                       Sequence& seq)>
-        m_sample;
+    std::function<void(entt::registry& entt_registry, entt::entity entity, float sample_time, Sequence& seq)> m_sample;
 
-    std::function<void(entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)>
-        m_inspect;
+    std::function<void(entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq)> m_inspect;
 
-    std::function<void(const entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)>
-        m_record;
+    std::function<void(const entt::registry& entt_registry, entt::entity entity, int recording_frame, Sequence& seq)> m_record;
 
     std::function<bool(const entt::registry& entt_registry, entt::entity entity)> m_entity_has;
 
@@ -293,11 +290,11 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
 }
 
 template <typename T>
-static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
+static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 {
     visit_struct::context<VSContext>::for_each(
         ecs_component,
-        [&seq, &timeline_data](const char* field_name, auto& field)
+        [&seq, &player_frame](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
@@ -305,7 +302,6 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
             const std::string struct_field_name = helpers::MakeStructFieldName(struct_name, field_name_str);
             if (struct_field_name == seq.m_seq_id.StructFieldName())
             {
-                const int player_frame = Timeline::GetPlayerFrame(timeline_data);
                 const float player_frame_f = static_cast<float>(player_frame);
                 const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, player_frame);
                 const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, player_frame);
@@ -639,11 +635,11 @@ static void Inspect(T& ecs_component, TimelineData& timeline_data, Sequence& seq
 }
 
 template <typename T>
-static void Record(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
+static void Record(T& ecs_component, int recording_frame, Sequence& seq)
 {
     visit_struct::context<VSContext>::for_each(
         ecs_component,
-        [&seq, &timeline_data](const char* field_name, auto& field)
+        [&seq, &recording_frame](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
@@ -651,52 +647,51 @@ static void Record(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
             const std::string struct_field_name = helpers::MakeStructFieldName(struct_name, field_name_str);
             if (struct_field_name == seq.m_seq_id.StructFieldName())
             {
-                const int player_frame = Timeline::GetPlayerFrame(timeline_data);
-                const float player_frame_f = static_cast<float>(player_frame);
+                const float recording_frame_f = static_cast<float>(recording_frame);
 
-                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, player_frame_f);
-                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, player_frame_f);
-                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, player_frame_f);
-                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, player_frame_f);
+                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, recording_frame_f);
+                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, recording_frame_f);
+                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, recording_frame_f);
+                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, recording_frame_f);
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field});
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, (float)field});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, (float)field});
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field == true ? 1.0f : 0.0f});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field == true ? 1.0f : 0.0f});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.x});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.y});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
-                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.z});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.x});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.y});
+                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.z});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
                     switch (seq.m_representation_meta)
                     {
                         case RepresentationMeta::COLOR:
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.r});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.g});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.b});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.a});
                             break;
                         case RepresentationMeta::QUAT:
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
+                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
+                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
+                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
+                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
                             break;
                         case RepresentationMeta::VECTOR:
                         case RepresentationMeta::NONE:
@@ -706,10 +701,10 @@ static void Record(T& ecs_component, TimelineData& timeline_data, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
-                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
-                    seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
+                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
+                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
+                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
+                    seq.EditPoint(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
                 }
                 else
                 {
@@ -745,28 +740,25 @@ public:
                 registered_component.m_struct_field_names.emplace_back(helpers::MakeStructFieldName(type_name, field_name));
             });
 
-        registered_component.m_add_sequence =
-            [](const entt::registry& entt_registry, TimelineData& timeline_data, SequenceId& seq_id)
+        registered_component.m_add_sequence = [](const entt::registry& entt_registry,
+                                                 TimelineData& timeline_data,
+                                                 const ComponentData& component_data,
+                                                 SequenceId& seq_id)
         {
-            reflection::AddSequence(entt_registry.get<T>(Timeline::FindEntity(timeline_data, seq_id.m_entity_data.m_uid)),
+            reflection::AddSequence(entt_registry.get<T>(Timeline::FindEntity(component_data, seq_id.m_entity_data.m_uid)),
                                     timeline_data,
                                     seq_id);
         };
 
-        registered_component.m_sample = [](entt::registry& entt_registry,
-                                           entt::entity entity,
-                                           const TimelineData& timeline_data,
-                                           float sample_time,
-                                           Sequence& seq)
+        registered_component.m_sample = [](entt::registry& entt_registry, entt::entity entity, float sample_time, Sequence& seq)
         { reflection::Sample(entt_registry.get<T>(entity), sample_time, seq); };
 
-        registered_component.m_inspect =
-            [](entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)
-        { reflection::Inspect(entt_registry.get<T>(entity), timeline_data, seq); };
+        registered_component.m_inspect = [](entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq)
+        { reflection::Inspect(entt_registry.get<T>(entity), player_frame, seq); };
 
         registered_component.m_record =
-            [](const entt::registry& entt_registry, entt::entity entity, TimelineData& timeline_data, Sequence& seq)
-        { reflection::Record(entt_registry.get<T>(entity), timeline_data, seq); };
+            [](const entt::registry& entt_registry, entt::entity entity, int recording_frame, Sequence& seq)
+        { reflection::Record(entt_registry.get<T>(entity), recording_frame, seq); };
 
         registered_component.m_entity_has = [](const entt::registry& entt_registry, entt::entity entity)
         { return entt_registry.all_of<T>(entity); };

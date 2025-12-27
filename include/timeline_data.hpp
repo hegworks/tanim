@@ -7,19 +7,14 @@ namespace tanim
 
 struct TimelineData
 {
-    entt::entity m_root_entity{entt::null};
     int m_first_frame{0};
     int m_last_frame{10};
     int m_min_frame{0};
     int m_max_frame{500};
     std::string m_name{"New Timeline"};
     std::vector<Sequence> m_sequences{};
-    // uint64_t m_id{0};
-    // std::string m_uid{};
     bool m_play_immediately{true};
     int m_player_samples{60};  // SamplesPerSecond
-    float m_player_time{0};
-    bool m_player_playing{false};
     PlaybackType m_playback_type{PlaybackType::LOOP};
     bool m_focused{false};
     bool m_expanded{true};
@@ -41,6 +36,13 @@ struct TimelineData
           m_sequences(sequences)
     {
     }
+};
+
+struct ComponentData
+{
+    entt::entity m_root_entity{entt::null};
+    float m_player_time{0};
+    bool m_player_playing{false};
 };
 
 }  // namespace tanim

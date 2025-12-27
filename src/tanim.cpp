@@ -17,80 +17,90 @@ void Tanim::UpdateEditor(float dt)
 {
     if (!m_is_engine_in_play_mode)
     {
-        if (m_editor_timeline_data != nullptr)
+        if (m_editor_timeline_data != nullptr && m_editor_component_data != nullptr)
         {
-            TimelineData& data = *m_editor_timeline_data;
-            if (Timeline::GetPlayerPlaying(data))
+            TimelineData& tdata = *m_editor_timeline_data;
+            ComponentData& cdata = *m_editor_component_data;
+            if (Timeline::GetPlayerPlaying(cdata))
             {
-                Timeline::TickTime(data, dt);
-                Sample(*m_editor_registry, m_editor_entity_datas, data);
+                Timeline::TickTime(tdata, cdata, dt);
+                Sample(*m_editor_registry, m_editor_entity_datas, tdata, cdata);
             }
         }
     }
 }
 
-void Tanim::OpenForEditing(entt::registry& registry, const std::vector<EntityData>& entity_datas, TimelineData& timeline_data)
+void Tanim::OpenForEditing(entt::registry& registry,
+                           const std::vector<EntityData>& entity_datas,
+                           TimelineData& timeline_data,
+                           ComponentData& component_data)
 {
     m_editor_timeline_data = &timeline_data;
     m_editor_registry = &registry;
     m_editor_entity_datas = entity_datas;
+    m_editor_component_data = &component_data;
 }
 
 void Tanim::CloseEditor()
 {
     m_editor_timeline_data = nullptr;
+    m_editor_component_data = nullptr;
     m_editor_registry = nullptr;
     m_editor_entity_datas.clear();
 }
 
-void Tanim::Sample(entt::registry& registry, const std::vector<EntityData>& entity_datas, TimelineData& data)
+void Tanim::Sample(entt::registry& registry,
+                   const std::vector<EntityData>& entity_datas,
+                   TimelineData& tdata,
+                   ComponentData& cdata)
 {
-    const int player_frame = Timeline::GetPlayerFrame(data);
+    const int player_frame = Timeline::GetPlayerFrame(tdata, cdata);
     const float sample_time =
-        Timeline::GetPlayerPlaying(data) ? Timeline::GetPlayerSampleTime(data) : static_cast<float>(player_frame);
-    for (auto& seq : data.m_sequences)
+        Timeline::GetPlayerPlaying(cdata) ? Timeline::GetPlayerSampleTime(tdata, cdata) : static_cast<float>(player_frame);
+    for (auto& seq : tdata.m_sequences)
     {
         if (!seq.IsRecording() && seq.IsBetweenFirstAndLastFrame(player_frame))
         {
             const auto opt_comp = FindMatchingComponent(seq, entity_datas);
             if (opt_comp.has_value())
             {
-                opt_comp.value().get().m_sample(registry, Timeline::FindEntity(data, seq), data, sample_time, seq);
+                opt_comp.value().get().m_sample(registry, Timeline::FindEntity(cdata, seq), sample_time, seq);
             }
         }
     }
 }
 
-void Tanim::StartTimeline(TimelineData& data)
+void Tanim::StartTimeline(const TimelineData& tdata, ComponentData& cdata)
 {
-    Timeline::ResetPlayerTime(data);
-    if (Timeline::GetPlayImmediately(data))
+    Timeline::ResetPlayerTime(cdata);
+    if (Timeline::GetPlayImmediately(tdata))
     {
-        Timeline::Play(data);
+        Timeline::Play(cdata);
     }
 }
 
 void Tanim::UpdateTimeline(entt::registry& registry,
                            const std::vector<EntityData>& entity_datas,
-                           TimelineData& data,
+                           TimelineData& tdata,
+                           ComponentData& cdata,
                            float delta_time)
 {
-    if (Timeline::GetPlayerPlaying(data))
+    if (Timeline::GetPlayerPlaying(cdata))
     {
-        Timeline::TickTime(data, delta_time);
-        Sample(registry, entity_datas, data);
+        Timeline::TickTime(tdata, cdata, delta_time);
+        Sample(registry, entity_datas, tdata, cdata);
     }
 }
 
-void Tanim::StopTimeline(TimelineData& data) { Timeline::Stop(data); }
+void Tanim::StopTimeline(ComponentData& cdata) { Timeline::Stop(cdata); }
 
-bool Tanim::IsPlaying(const TimelineData& data) { return Timeline::GetPlayerPlaying(data); }
+bool Tanim::IsPlaying(const ComponentData& cdata) { return Timeline::GetPlayerPlaying(cdata); }
 
-void Tanim::Play(TimelineData& data) { Timeline::Play(data); }
+void Tanim::Play(ComponentData& cdata) { Timeline::Play(cdata); }
 
-void Tanim::Pause(TimelineData& data) { Timeline::Pause(data); }
+void Tanim::Pause(ComponentData& cdata) { Timeline::Pause(cdata); }
 
-void Tanim::Stop(TimelineData& data) { Timeline::Stop(data); }
+void Tanim::Stop(ComponentData& cdata) { Timeline::Stop(cdata); }
 
 std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatchingComponent(
     const Sequence& seq,
@@ -115,12 +125,13 @@ std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatc
 
 void Tanim::Draw()
 {
-    if (m_editor_timeline_data == nullptr)
+    if (m_editor_timeline_data == nullptr || m_editor_component_data == nullptr)
     {
         return;
     }
 
-    TimelineData& data = *m_editor_timeline_data;
+    TimelineData& tdata = *m_editor_timeline_data;
+    ComponentData& cdata = *m_editor_component_data;
 
     //*****************************************************
 
@@ -133,19 +144,19 @@ void Tanim::Draw()
     {
         ImGui::Begin("controls");
 
-        if (!Timeline::GetPlayerPlaying(data))
+        if (!Timeline::GetPlayerPlaying(cdata))
         {
             if (ImGui::Button("Play", {50, 0}))
             {
-                Timeline::ResetPlayerTime(data);
-                Timeline::Play(data);
+                Timeline::ResetPlayerTime(cdata);
+                Timeline::Play(cdata);
             }
         }
         else
         {
             if (ImGui::Button("Pause", {50, 0}))
             {
-                Timeline::Pause(data);
+                Timeline::Pause(cdata);
             }
         }
 
@@ -155,7 +166,7 @@ void Tanim::Draw()
 
         ImGui::PushItemWidth(100);
 
-        const bool disabled = Timeline::GetPlayerPlaying(data);
+        const bool disabled = Timeline::GetPlayerPlaying(cdata);
         if (disabled)
         {
             ImGui::BeginDisabled();
@@ -166,11 +177,11 @@ void Tanim::Draw()
             if (m_preview == false)
             {
                 m_preview = true;
-                const int frame_before = Timeline::GetPlayerFrame(data);
-                Timeline::ResetPlayerTime(data);
-                Sample(*m_editor_registry, m_editor_entity_datas, data);
+                const int frame_before = Timeline::GetPlayerFrame(tdata, cdata);
+                Timeline::ResetPlayerTime(cdata);
+                Sample(*m_editor_registry, m_editor_entity_datas, tdata, cdata);
                 m_preview = false;
-                Timeline::SetPlayerTimeFromFrame(data, frame_before);
+                Timeline::SetPlayerTimeFromFrame(tdata, cdata, frame_before);
             }
         }
         if (disabled)
@@ -182,21 +193,21 @@ void Tanim::Draw()
         ImGui::Text(" | ");
         ImGui::SameLine();
 
-        ImGui::DragInt("Samples", &data.m_player_samples, 0.1f, Timeline::GetMinFrame(data));
-        data.m_player_samples = ImMax(1, data.m_player_samples);
+        ImGui::DragInt("Samples", &tdata.m_player_samples, 0.1f, Timeline::GetMinFrame(tdata));
+        tdata.m_player_samples = ImMax(1, tdata.m_player_samples);
 
         ImGui::SameLine();
         ImGui::Text(" | ");
         ImGui::SameLine();
 
-        int player_frame = Timeline::GetPlayerFrame(data);
+        int player_frame = Timeline::GetPlayerFrame(tdata, cdata);
         if (ImGui::InputInt("Frame", &player_frame))
         {
             player_frame = ImMax(0, player_frame);
-            Timeline::SetPlayerTimeFromFrame(data, player_frame);
+            Timeline::SetPlayerTimeFromFrame(tdata, cdata, player_frame);
             if (m_preview)
             {
-                Sample(*m_editor_registry, m_editor_entity_datas, data);
+                Sample(*m_editor_registry, m_editor_entity_datas, tdata, cdata);
             }
         }
 
@@ -204,8 +215,8 @@ void Tanim::Draw()
         ImGui::Text(" | ");
         ImGui::SameLine();
 
-        ImGui::DragInt("MaxFrame", &data.m_max_frame, 0.1f, Timeline::GetMinFrame(data));
-        data.m_max_frame = ImMax(1, data.m_max_frame);
+        ImGui::DragInt("MaxFrame", &tdata.m_max_frame, 0.1f, Timeline::GetMinFrame(tdata));
+        tdata.m_max_frame = ImMax(1, tdata.m_max_frame);
 
         ImGui::SameLine();
         ImGui::Text(" | ");
@@ -215,7 +226,7 @@ void Tanim::Draw()
         if (ImGui::DragFloat("SnapY", &m_snap_y_value, 0.01f))
         {
             m_snap_y_value = ImMax(0.0f, m_snap_y_value);
-            Timeline::EditSnapY(data, m_snap_y_value);
+            Timeline::EditSnapY(tdata, m_snap_y_value);
         }
 
         ImGui::PopItemWidth();
@@ -231,18 +242,18 @@ void Tanim::Draw()
         constexpr int flags =
             timeliner::TIMELINER_CHANGE_FRAME | timeliner::TIMELINER_DELETE_SEQUENCE | timeliner::TIMELINER_EDIT_STARTEND;
 
-        int player_frame = Timeline::GetPlayerFrame(data);
+        int player_frame = Timeline::GetPlayerFrame(tdata, cdata);
         const int player_frame_before = player_frame;
 
-        timeliner::Timeliner(data, &player_frame, &data.m_expanded, &data.m_selected_sequence, &data.m_first_frame, flags);
+        timeliner::Timeliner(tdata, &player_frame, &tdata.m_expanded, &tdata.m_selected_sequence, &tdata.m_first_frame, flags);
         const int player_frame_after = player_frame;
 
-        if ((!m_is_engine_in_play_mode && !Timeline::GetPlayerPlaying(data)) || (player_frame_before != player_frame_after))
+        if ((!m_is_engine_in_play_mode && !Timeline::GetPlayerPlaying(cdata)) || (player_frame_before != player_frame_after))
         {
-            Timeline::SetPlayerTimeFromFrame(data, player_frame_after);
+            Timeline::SetPlayerTimeFromFrame(tdata, cdata, player_frame_after);
             if (m_preview)
             {
-                Sample(*m_editor_registry, m_editor_entity_datas, data);
+                Sample(*m_editor_registry, m_editor_entity_datas, tdata, cdata);
             }
         }
 
@@ -253,7 +264,7 @@ void Tanim::Draw()
 
     ImGui::Begin("timeline");
 
-    helpers::InspectEnum(data.m_playback_type);
+    helpers::InspectEnum(tdata.m_playback_type);
 
     if (ImGui::Button("+ Sequence"))
     {
@@ -267,14 +278,14 @@ void Tanim::Draw()
         {
             for (const auto& component : components)
             {
-                if (component.m_entity_has(*m_editor_registry, Timeline::FindEntity(data, entity_data.m_uid)))
+                if (component.m_entity_has(*m_editor_registry, Timeline::FindEntity(cdata, entity_data.m_uid)))
                 {
                     for (const auto& field_name : component.m_field_names)
                     {
                         const std::string full_name =
                             helpers::MakeFullName(entity_data.m_uid, component.m_struct_name, field_name);
 
-                        if (!Timeline::HasSequenceWithFullName(data, full_name))
+                        if (!Timeline::HasSequenceWithFullName(tdata, full_name))
                         {
                             const std::string display = entity_data.m_display + "::" +
                                                         helpers::MakeStructFieldName(component.m_struct_name, field_name);
@@ -282,7 +293,7 @@ void Tanim::Draw()
                             if (ImGui::MenuItem(display.c_str()))
                             {
                                 SequenceId seq_id{entity_data, component.m_struct_name, field_name};
-                                component.m_add_sequence(*m_editor_registry, data, seq_id);
+                                component.m_add_sequence(*m_editor_registry, tdata, cdata, seq_id);
                             }
                         }
                     }
@@ -294,16 +305,16 @@ void Tanim::Draw()
     }
 
     char name_buf[256];
-    strncpy_s(name_buf, Timeline::GetName(data).c_str(), sizeof(name_buf));
+    strncpy_s(name_buf, Timeline::GetName(tdata).c_str(), sizeof(name_buf));
     if (ImGui::InputText("Timeline Name", name_buf, sizeof(name_buf)))
     {
-        Timeline::SetName(data, std::string(name_buf));
+        Timeline::SetName(tdata, std::string(name_buf));
     }
 
-    ImGui::Checkbox("Play Immediately", &data.m_play_immediately);
+    ImGui::Checkbox("Play Immediately", &tdata.m_play_immediately);
 
-    ImGui::Text("max frame:            %d", Timeline::GetMinFrame(data));
-    ImGui::Text("timeline last frame:  %d", Timeline::GetTimelineLastFrame(data));
+    ImGui::Text("max frame:            %d", Timeline::GetMinFrame(tdata));
+    ImGui::Text("timeline last frame:  %d", Timeline::GetTimelineLastFrame(tdata));
 
     ImGui::End();
 
@@ -314,26 +325,26 @@ void Tanim::Draw()
     bool has_expanded_seq = false;
     int expanded_seq_idx = -1;
     entt::entity expanded_seq_entity{entt::null};
-    if (const auto idx = Timeline::GetExpandedSequenceIdx(data))
+    if (const auto idx = Timeline::GetExpandedSequenceIdx(tdata))
     {
         has_expanded_seq = true;
         expanded_seq_idx = idx.value();
-        expanded_seq_entity = Timeline::FindEntity(data, expanded_seq_idx);
+        expanded_seq_entity = Timeline::FindEntity(tdata, cdata, expanded_seq_idx);
     }
 
     if (has_expanded_seq)
     {
-        Timeline::SetDrawMaxX(data, expanded_seq_idx, static_cast<float>(Timeline::GetMaxFrame(data)));
+        Timeline::SetDrawMaxX(tdata, expanded_seq_idx, static_cast<float>(Timeline::GetMaxFrame(tdata)));
     }
 
     if (has_expanded_seq)
     {
-        Sequence& seq = Timeline::GetSequence(data, expanded_seq_idx);
-        const int player_frame = Timeline::GetPlayerFrame(data);
-        const bool is_in_bounds = player_frame >= Timeline::GetSequenceFirstFrame(data, expanded_seq_idx) &&
-                                  player_frame <= Timeline::GetSequenceLastFrame(data, expanded_seq_idx);
+        Sequence& seq = Timeline::GetSequence(tdata, expanded_seq_idx);
+        const int player_frame = Timeline::GetPlayerFrame(tdata, cdata);
+        const bool is_in_bounds = player_frame >= Timeline::GetSequenceFirstFrame(tdata, expanded_seq_idx) &&
+                                  player_frame <= Timeline::GetSequenceLastFrame(tdata, expanded_seq_idx);
         const bool is_keyframe_in_all_curves = seq.IsKeyframeInAllCurves(player_frame);
-        const bool disabled_new_keyframe = !is_in_bounds || is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(data);
+        const bool disabled_new_keyframe = !is_in_bounds || is_keyframe_in_all_curves || Timeline::GetPlayerPlaying(cdata);
         if (disabled_new_keyframe)
         {
             ImGui::BeginDisabled();
@@ -346,7 +357,7 @@ void Tanim::Draw()
             const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
             if (opt_comp.has_value())
             {
-                opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, data, seq);
+                opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, seq.m_recording_frame, seq);
             }
 
             seq.StopRecording();
@@ -356,8 +367,8 @@ void Tanim::Draw()
             ImGui::EndDisabled();
         }
 
-        bool disabled_delete_keyframe = player_frame <= 0 || player_frame >= Timeline::GetTimelineLastFrame(data) ||
-                                        Timeline::GetPlayerPlaying(data) || !seq.IsKeyframeInAnyCurve(player_frame);
+        bool disabled_delete_keyframe = player_frame <= 0 || player_frame >= Timeline::GetTimelineLastFrame(tdata) ||
+                                        Timeline::GetPlayerPlaying(cdata) || !seq.IsKeyframeInAnyCurve(player_frame);
         if (disabled_delete_keyframe)
         {
             ImGui::BeginDisabled();
@@ -374,7 +385,7 @@ void Tanim::Draw()
         if (seq.IsRecording())
         {
             const bool clicked_on_stop_recording = ImGui::Button("Stop Recording");
-            const bool has_moved_player_frame = Timeline::GetPlayerFrame(data) != seq.GetRecordingFrame();
+            const bool has_moved_player_frame = Timeline::GetPlayerFrame(tdata, cdata) != seq.GetRecordingFrame();
             const bool has_moved_recording_frame_x = !seq.IsKeyframeInAllCurves(seq.GetRecordingFrame());
             if (clicked_on_stop_recording || has_moved_player_frame || has_moved_recording_frame_x)
             {
@@ -385,21 +396,21 @@ void Tanim::Draw()
                 const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
                 if (opt_comp.has_value())
                 {
-                    opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, data, seq);
+                    opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, seq.m_recording_frame, seq);
                 }
             }
         }
         else
         {
-            const bool disabled_recording = !is_in_bounds || Timeline::GetPlayerPlaying(data);
+            const bool disabled_recording = !is_in_bounds || Timeline::GetPlayerPlaying(cdata);
             if (disabled_recording)
             {
                 ImGui::BeginDisabled();
             }
             if (ImGui::Button("Record"))
             {
-                seq.AddNewKeyframe(Timeline::GetPlayerFrame(data));
-                seq.StartRecording(Timeline::GetPlayerFrame(data));
+                seq.AddNewKeyframe(Timeline::GetPlayerFrame(tdata, cdata));
+                seq.StartRecording(Timeline::GetPlayerFrame(tdata, cdata));
             }
             if (disabled_recording)
             {
@@ -415,8 +426,8 @@ void Tanim::Draw()
         ImGui::EndDisabled();
         ImGui::PopItemWidth();
 
-        ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(data, expanded_seq_idx));
-        ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(data, expanded_seq_idx));
+        ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(tdata, expanded_seq_idx));
+        ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(tdata, expanded_seq_idx));
         ImGui::Text("entity:          %llu", static_cast<uint64_t>(expanded_seq_entity));
         ImGui::Text("uid:             %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
         ImGui::Text("display:         %s", seq.m_seq_id.m_entity_data.m_display.c_str());
@@ -445,7 +456,7 @@ void Tanim::Draw()
 
     if (has_expanded_seq)
     {
-        Sequence& seq = Timeline::GetSequence(data, expanded_seq_idx);
+        Sequence& seq = Timeline::GetSequence(tdata, expanded_seq_idx);
         const bool is_recording = seq.IsRecording();
         if (!seq.IsRecording())
         {
@@ -459,7 +470,10 @@ void Tanim::Draw()
                 }
 
                 ImGui::Text("%s", opt_comp.value().get().m_struct_name.c_str());
-                opt_comp.value().get().m_inspect(*m_editor_registry, expanded_seq_entity, data, seq);
+                opt_comp.value().get().m_inspect(*m_editor_registry,
+                                                 expanded_seq_entity,
+                                                 Timeline::GetPlayerFrame(tdata, cdata),
+                                                 seq);
                 ImGui::Separator();
 
                 if (is_recording)
@@ -476,9 +490,9 @@ void Tanim::Draw()
 
     ImGui::Begin("Player");
 
-    ImGui::Text("Real Time:    %.3fs", Timeline::GetPlayerRealTime(data));
-    ImGui::Text("Sample Time:  %.3fs", Timeline::GetPlayerSampleTime(data));
-    ImGui::Text("Frame:        %d", Timeline::GetPlayerFrame(data));
+    ImGui::Text("Real Time:    %.3fs", Timeline::GetPlayerRealTime(cdata));
+    ImGui::Text("Sample Time:  %.3fs", Timeline::GetPlayerSampleTime(tdata, cdata));
+    ImGui::Text("Frame:        %d", Timeline::GetPlayerFrame(tdata, cdata));
 
     ImGui::End();
 
@@ -551,7 +565,7 @@ std::string Tanim::Serialize(TimelineData& data)
     return json.dump(4);
 }
 
-void Tanim::Deserialize(entt::entity root_entity, TimelineData& data, const std::string& serialized_string)
+void Tanim::Deserialize(entt::entity /*root_entity*/, TimelineData& data, const std::string& serialized_string)
 {
     assert(!serialized_string.empty());
     const nlohmann::ordered_json json = nlohmann::ordered_json::parse(serialized_string);
@@ -566,7 +580,7 @@ void Tanim::Deserialize(entt::entity root_entity, TimelineData& data, const std:
     data.m_play_immediately = timeline_js["m_play_immediately"].get<bool>();
     data.m_player_samples = timeline_js["m_player_samples"].get<int>();
     // data.m_uid = timeline_js["m_uid"].get<std::string>();
-    data.m_root_entity = root_entity;
+    // data.m_root_entity = root_entity;
 
     const std::string playback_type_str = timeline_js["m_playback_type"].get<std::string>();
     data.m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
