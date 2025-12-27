@@ -740,28 +740,69 @@ public:
                 registered_component.m_struct_field_names.emplace_back(helpers::MakeStructFieldName(type_name, field_name));
             });
 
+        registered_component.m_entity_has = [](const entt::registry& entt_registry, entt::entity entity)
+        { return entt_registry.all_of<T>(entity); };
+
         registered_component.m_add_sequence = [](const entt::registry& entt_registry,
                                                  TimelineData& timeline_data,
                                                  const ComponentData& component_data,
                                                  SequenceId& seq_id)
         {
-            reflection::AddSequence(entt_registry.get<T>(Timeline::FindEntity(component_data, seq_id.m_entity_data.m_uid)),
-                                    timeline_data,
-                                    seq_id);
+            const auto opt_entity = Timeline::FindEntity(component_data, seq_id.m_entity_data.m_uid);
+            if (opt_entity.has_value())
+            {
+                reflection::AddSequence(entt_registry.get<T>(opt_entity.value()), timeline_data, seq_id);
+            }
         };
 
         registered_component.m_sample = [](entt::registry& entt_registry, entt::entity entity, float sample_time, Sequence& seq)
-        { reflection::Sample(entt_registry.get<T>(entity), sample_time, seq); };
+        {
+            if (entity != entt::null)
+            {
+                if (entt_registry.all_of<T>(entity))
+                {
+                    reflection::Sample(entt_registry.get<T>(entity), sample_time, seq);
+                }
+                else
+                {
+                    LogError("entity " + std::to_string(entt::to_integral(entity)) + " does not have a component named " +
+                             visit_struct::get_name<T>());
+                }
+            }
+        };
 
         registered_component.m_inspect = [](entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq)
-        { reflection::Inspect(entt_registry.get<T>(entity), player_frame, seq); };
+        {
+            if (entity != entt::null)
+            {
+                if (entt_registry.all_of<T>(entity))
+                {
+                    reflection::Inspect(entt_registry.get<T>(entity), player_frame, seq);
+                }
+                else
+                {
+                    LogError("entity " + std::to_string(entt::to_integral(entity)) + " does not have a component named " +
+                             visit_struct::get_name<T>());
+                }
+            }
+        };
 
         registered_component.m_record =
             [](const entt::registry& entt_registry, entt::entity entity, int recording_frame, Sequence& seq)
-        { reflection::Record(entt_registry.get<T>(entity), recording_frame, seq); };
-
-        registered_component.m_entity_has = [](const entt::registry& entt_registry, entt::entity entity)
-        { return entt_registry.all_of<T>(entity); };
+        {
+            if (entity != entt::null)
+            {
+                if (entt_registry.all_of<T>(entity))
+                {
+                    reflection::Record(entt_registry.get<T>(entity), recording_frame, seq);
+                }
+                else
+                {
+                    LogError("entity " + std::to_string(entt::to_integral(entity)) + " does not have a component named " +
+                             visit_struct::get_name<T>());
+                }
+            }
+        };
 
         m_components.push_back(std::move(registered_component));
     }

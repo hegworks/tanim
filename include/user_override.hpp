@@ -5,7 +5,7 @@
 namespace tanim
 {
 
-entt::entity GetEntityOfUID(const std::string& uid);
-entt::entity GetNestedEntityOfUID(entt::entity root_entity, const std::string& to_find_uid);
+std::optional<entt::entity> FindEntityOfUID(entt::entity root_entity, const std::string& uid_to_find);
+void LogError(const std::string& message);
 
 }  // namespace tanim

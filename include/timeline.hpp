@@ -246,19 +246,27 @@ public:
         ResetPlayerTime(cdata);
     }
 
-    [[nodiscard]] static entt::entity FindEntity(const ComponentData& cdata, const Sequence& seq)
+    [[nodiscard]] static std::optional<entt::entity> FindEntity(const ComponentData& cdata, const std::string& uid)
     {
-        return GetNestedEntityOfUID(cdata.m_root_entity, seq.m_seq_id.m_entity_data.m_uid);
+        const auto opt_entity = FindEntityOfUID(cdata.m_root_entity, uid);
+        if (!opt_entity.has_value())
+        {
+            LogError("Couldn't find any entity with uid " + uid + " on the root entity " +
+                     std::to_string(entt::to_integral(cdata.m_root_entity)));
+        }
+        return opt_entity;
     }
 
-    [[nodiscard]] static entt::entity FindEntity(const TimelineData& tdata, const ComponentData& cdata, int seq_idx)
+    [[nodiscard]] static std::optional<entt::entity> FindEntity(const ComponentData& cdata, const Sequence& seq)
+    {
+        return FindEntity(cdata, seq.m_seq_id.m_entity_data.m_uid);
+    }
+
+    [[nodiscard]] static std::optional<entt::entity> FindEntity(const TimelineData& tdata,
+                                                                const ComponentData& cdata,
+                                                                int seq_idx)
     {
         return FindEntity(cdata, tdata.m_sequences.at(seq_idx));
-    }
-
-    [[nodiscard]] static entt::entity FindEntity(const ComponentData& cdata, const std::string& uid)
-    {
-        return GetNestedEntityOfUID(cdata.m_root_entity, uid);
     }
 
     static void ResetPlayerTime(ComponentData& cdata) { cdata.m_player_time = 0; }

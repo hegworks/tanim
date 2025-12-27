@@ -64,7 +64,11 @@ void Tanim::Sample(entt::registry& registry,
             const auto opt_comp = FindMatchingComponent(seq, entity_datas);
             if (opt_comp.has_value())
             {
-                opt_comp.value().get().m_sample(registry, Timeline::FindEntity(cdata, seq), sample_time, seq);
+                const auto opt_entity = Timeline::FindEntity(cdata, seq);
+                if (opt_entity.has_value())
+                {
+                    opt_comp.value().get().m_sample(registry, opt_entity.value(), sample_time, seq);
+                }
             }
         }
     }
@@ -120,6 +124,8 @@ std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatc
             }
         }
     }
+
+    LogError("Couldn't find any entity with matching details: " + seq.m_seq_id.FullName());
     return std::nullopt;
 }
 
@@ -278,7 +284,8 @@ void Tanim::Draw()
         {
             for (const auto& component : components)
             {
-                if (component.m_entity_has(*m_editor_registry, Timeline::FindEntity(cdata, entity_data.m_uid)))
+                if (component.m_entity_has(*m_editor_registry,
+                                           Timeline::FindEntity(cdata, entity_data.m_uid).value_or(entt::null)))
                 {
                     for (const auto& field_name : component.m_field_names)
                     {
@@ -329,7 +336,8 @@ void Tanim::Draw()
     {
         has_expanded_seq = true;
         expanded_seq_idx = idx.value();
-        expanded_seq_entity = Timeline::FindEntity(tdata, cdata, expanded_seq_idx);
+        auto opt_entity = Timeline::FindEntity(tdata, cdata, expanded_seq_idx);
+        expanded_seq_entity = opt_entity.value_or(entt::null);
     }
 
     if (has_expanded_seq)
@@ -428,8 +436,19 @@ void Tanim::Draw()
 
         ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(tdata, expanded_seq_idx));
         ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(tdata, expanded_seq_idx));
-        ImGui::Text("entity:          %llu", static_cast<uint64_t>(expanded_seq_entity));
+
+        ImGui::Text(
+            "entity:          %s",
+            expanded_seq_entity == entt::null ? "NOT FOUND" : std::to_string(entt::to_integral(expanded_seq_entity)).c_str());
         ImGui::Text("uid:             %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
+
+        char uid_buf[256];
+        strncpy_s(uid_buf, seq.m_seq_id.m_entity_data.m_uid.c_str(), sizeof(uid_buf));
+        if (ImGui::InputText("uid", uid_buf, sizeof(uid_buf)))
+        {
+            seq.m_seq_id.m_entity_data.m_uid = std::string(uid_buf);
+        }
+
         ImGui::Text("display:         %s", seq.m_seq_id.m_entity_data.m_display.c_str());
         ImGui::Text("full name:       %s", seq.m_seq_id.FullName().c_str());
 
