@@ -3,6 +3,7 @@
 
 #include "tanim/include/tanim.hpp"
 
+#include "tanim/include/curve.hpp"
 #include "tanim/include/registry.hpp"
 #include "tanim/include/timeliner.hpp"
 #include "tanim/include/sequence.hpp"
@@ -11,7 +12,13 @@
 namespace tanim
 {
 
-void Tanim::Init() {}
+static ImVec2 foo[10];
+static int selectionIdx = -1;
+
+void Tanim::Init()
+{
+    foo[0].x = ImGui::CurveTerminator;  // init data so editor knows to take it from here
+}
 
 void Tanim::UpdateEditor(float dt)
 {
@@ -138,6 +145,29 @@ void Tanim::Draw()
 
     TimelineData& tdata = *m_editor_timeline_data;
     ComponentData& cdata = *m_editor_component_data;
+
+    /*
+    Example of use:
+    ImVec2 foo[10];
+    int selectionIdx = -1;
+    ...
+    foo[0].x = ImGui::CurveTerminator; // init data so editor knows to take it from here
+    ...
+    if (ImGui::Curve("Das editor", ImVec2(600, 200), 10, foo, &selectionIdx))
+    {
+        // curve changed
+    }
+    ...
+    float value_you_care_about = ImGui::CurveValue(0.7f, 10, foo); // calculate value at position 0.7
+    */
+
+    ImGui::Begin("NewCurve");
+
+    if (ImGui::Curve("The Label", ImVec2(600, 200), 10, foo, &selectionIdx, {-10, -10}, {10, 10}))
+    {
+    }
+
+    ImGui::End();
 
     //*****************************************************
 
