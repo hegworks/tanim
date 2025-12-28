@@ -12,12 +12,19 @@
 namespace tanim
 {
 
-static ImVec2 foo[10];
-static int selectionIdx = -1;
+static NewCurve new_curve;
+static bool m_fit_curve_in_editor;
+static int m_selected_point;
+static int m_hovered_point;
+static ImVec2 points[64];
 
 void Tanim::Init()
 {
-    foo[0].x = ImGui::CurveTerminator;  // init data so editor knows to take it from here
+    // new_curve.type = v.type;
+    new_curve.frames.push_back(Time(0));
+    new_curve.frames.push_back(Time(100));
+    new_curve.values.push_back(0);
+    new_curve.values.push_back(1);
 }
 
 void Tanim::UpdateEditor(float dt)
@@ -138,6 +145,101 @@ std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatc
 
 void Tanim::Draw()
 {
+    ImGui::Begin("NewCurve");
+
+    static ImVec2 size(-1, 200);
+
+    NewCurve& curve = new_curve;
+    assert((u32)curve.frames.size() < std::size(points));
+    for (int i = 0; i < curve.frames.size(); ++i)
+    {
+        points[i].x = curve.frames[i].seconds();
+        points[i].y = curve.values[i];
+    }
+
+    int new_count;
+    int curve_flags = /*(int)CurveEditorFlags::NO_TANGENTS |*/ (int)CurveEditorFlags::SHOW_GRID;
+    if (m_fit_curve_in_editor)
+    {
+        curve_flags |= (int)CurveEditorFlags::RESET;
+        m_fit_curve_in_editor = false;
+    }
+    ImGui::SetNextItemWidth(-1);
+    ImGui::PushID(123);
+    int changed_idx = CurveEditor("##curve",
+                                  (float*)points,
+                                  static_cast<int>(curve.frames.size()),
+                                  std::size(points),
+                                  size,
+                                  curve_flags,
+                                  &new_count,
+                                  &m_selected_point,
+                                  &m_hovered_point);
+    ImGui::PopID();
+    if (changed_idx >= 0)
+    {
+        curve.frames[changed_idx] = Time::fromSeconds(points[changed_idx].x);
+        curve.values[changed_idx] = points[changed_idx].y;
+        // curve.frames.back() = m_resource->length;
+        // curve.frames.back() = Time(100);
+        // curve.frames[0] = Time(0);
+        // saveUndo(true);
+    }
+    if (new_count != curve.frames.size())
+    {
+        curve.frames.resize(new_count);
+        curve.values.resize(new_count);
+        for (int i = 0; i < new_count; ++i)
+        {
+            curve.frames[i] = Time::fromSeconds(points[i].x);
+            curve.values[i] = points[i].y;
+        }
+        // saveUndo(true);
+    }
+
+    if (ImGui::BeginPopupContextItem("curve"))
+    {
+        if (ImGui::Selectable("Fit data")) m_fit_curve_in_editor = true;
+
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginTable("curves_table", 2))
+    {
+        ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+        ImGui::TableNextColumn();
+        ImGui::Text("Time");
+        ImGui::TableNextColumn();
+        ImGui::Text("Value");
+        for (int i = 0; i < (int)curve.frames.size(); ++i)
+        {
+            ImGui::PushID(i);
+            ImGui::TableNextRow();
+            if (m_selected_point == i)
+            {
+                ImU32 row_bg_color = ImGui::GetColorU32(ImGui::GetStyle().Colors[ImGuiCol_TabSelected]);
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, row_bg_color);
+            }
+            ImGui::TableNextColumn();
+            float f = curve.frames[i].seconds();
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::DragFloat("##f", &f))
+            {
+                curve.frames[i] = Time::fromSeconds(f);
+                // saveUndo(true);
+            }
+            ImGui::TableNextColumn();
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputFloat("##v", &curve.values[i]);
+            // saveUndo();
+            ImGui::PopID();
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+
     if (m_editor_timeline_data == nullptr || m_editor_component_data == nullptr)
     {
         return;
@@ -145,29 +247,6 @@ void Tanim::Draw()
 
     TimelineData& tdata = *m_editor_timeline_data;
     ComponentData& cdata = *m_editor_component_data;
-
-    /*
-    Example of use:
-    ImVec2 foo[10];
-    int selectionIdx = -1;
-    ...
-    foo[0].x = ImGui::CurveTerminator; // init data so editor knows to take it from here
-    ...
-    if (ImGui::Curve("Das editor", ImVec2(600, 200), 10, foo, &selectionIdx))
-    {
-        // curve changed
-    }
-    ...
-    float value_you_care_about = ImGui::CurveValue(0.7f, 10, foo); // calculate value at position 0.7
-    */
-
-    ImGui::Begin("NewCurve");
-
-    if (ImGui::Curve("The Label", ImVec2(600, 200), 10, foo, &selectionIdx, {-10, -10}, {10, 10}))
-    {
-    }
-
-    ImGui::End();
 
     //*****************************************************
 
