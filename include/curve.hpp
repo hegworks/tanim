@@ -3,526 +3,302 @@
 
 using namespace ImGui;
 
-typedef uint32_t u32;
-
-static constexpr float HANDLE_RADIUS = 4;
-
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 static ImVec2 operator+(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x + b.x, a.y + b.y); }
 
 static ImVec2 operator-(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x - b.x, a.y - b.y); }
 
-// static ImVec2 operator*(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x * b.x, a.y * b.y); }
+static ImVec2 operator*(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x * b.x, a.y * b.y); }
 
 // static ImVec2 operator/(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x / b.x, a.y / b.y); }
 
-static ImVec2 operator*(const ImVec2& a, const float b) { return ImVec2(a.x * b, a.y * b); }
+// static ImVec2 operator*(const ImVec2& a, const float b) { return ImVec2(a.x * b, a.y * b); }
 
-static ImVec2& operator-=(ImVec2& lhs, const ImVec2& rhs)
-{
-    lhs.x -= rhs.x;
-    lhs.y -= rhs.y;
-    return lhs;
-}
+// static ImVec2& operator-=(ImVec2& lhs, const ImVec2& rhs)
+// {
+//     lhs.x -= rhs.x;
+//     lhs.y -= rhs.y;
+//     return lhs;
+// }
 
-static ImVec2& operator+=(ImVec2& lhs, const ImVec2& rhs)
-{
-    lhs.x += rhs.x;
-    lhs.y += rhs.y;
-    return lhs;
-}
+// static ImVec2& operator+=(ImVec2& lhs, const ImVec2& rhs)
+// {
+//     lhs.x += rhs.x;
+//     lhs.y += rhs.y;
+//     return lhs;
+// }
 #endif
 
-enum class CurveEditorFlags
+template <int steps>
+void bezier_table(ImVec2 P[4], ImVec2 results[steps + 1])
 {
-    NO_TANGENTS = 1 << 0,
-    SHOW_GRID = 1 << 1,
-    RESET = 1 << 2
-};
-
-struct Time
-{
-    Time() {}
-    explicit Time(u32 v) : value(v) {}
-    static Time fromSeconds(float time)
+    static float C[(steps + 1) * 4], *K = 0;
+    if (!K)
     {
-        assert(time >= 0);
-        return Time{u32(time * ONE_SECOND)};
+        K = C;
+        for (unsigned step = 0; step <= steps; ++step)
+        {
+            float t = (float)step / (float)steps;
+            C[step * 4 + 0] = (1 - t) * (1 - t) * (1 - t);  // * P0
+            C[step * 4 + 1] = 3 * (1 - t) * (1 - t) * t;    // * P1
+            C[step * 4 + 2] = 3 * (1 - t) * t * t;          // * P2
+            C[step * 4 + 3] = t * t * t;                    // * P3
+        }
     }
-    float seconds() const { return float(value / double(ONE_SECOND)); }
-    float toFrame(float fps) const { return float(value / double(ONE_SECOND) * fps); }
-    Time operator*(float t) const { return Time{u32(value * t)}; }
-    float operator/(const Time& rhs) const { return float(double(value) / double(rhs.value)); }
-    Time operator+(const Time& rhs) const { return Time{value + rhs.value}; }
-    Time operator-(const Time& rhs) const
+    for (unsigned step = 0; step <= steps; ++step)
     {
-        assert(value >= rhs.value);
-        return Time{value - rhs.value};
+        ImVec2 point = {
+            K[step * 4 + 0] * P[0].x + K[step * 4 + 1] * P[1].x + K[step * 4 + 2] * P[2].x + K[step * 4 + 3] * P[3].x,
+            K[step * 4 + 0] * P[0].y + K[step * 4 + 1] * P[1].y + K[step * 4 + 2] * P[2].y + K[step * 4 + 3] * P[3].y};
+        results[step] = point;
     }
-    void operator+=(const Time& rhs) { value += rhs.value; }
-    bool operator<(const Time& rhs) const { return value < rhs.value; }
-    bool operator>(const Time& rhs) const { return value > rhs.value; }
-    bool operator<=(const Time& rhs) const { return value <= rhs.value; }
-    bool operator>=(const Time& rhs) const { return value >= rhs.value; }
-    Time operator%(const Time& rhs) const { return Time{value % rhs.value}; }
-    u32 raw() const { return value; }
-    u32* rawPtr() { return &value; }
+}
 
-private:
-    u32 value = 0;
-    static constexpr u32 ONE_SECOND = 1 << 15;
-};
-
-struct NewCurve
+float BezierValue(float dt01, float P[4])
 {
-    // Curve(IAllocator& allocator) : frames(allocator), values(allocator) {}
-
-    // CurveType type = CurveType::NOT_SET;
-    // ComponentType cmp_type;
-    // const reflection::Property<float>* property = nullptr;
-
-    std::vector<Time> frames;
-    std::vector<float> values;
-};
-
-int CurveEditor(const char* label,
-                float* values,
-                int points_count,
-                int capacity,
-                const ImVec2& editor_size,
-                ImU32 flags,
-                int* new_count,
-                int* selected_point,
-                int* hovered_point)
-{
-    enum class StorageValues : ImGuiID
+    enum
     {
-        FROM_X = 100,
-        FROM_Y,
-        WIDTH,
-        HEIGHT,
-        IS_PANNING,
-        POINT_START_X,
-        POINT_START_Y
+        STEPS = 256
+    };
+    ImVec2 Q[4] = {{0, 0}, {P[0], P[1]}, {P[2], P[3]}, {1, 1}};
+    ImVec2 results[STEPS + 1];
+    bezier_table<STEPS>(Q, results);
+    return results[(int)((dt01 < 0 ? 0 : dt01 > 1 ? 1 : dt01) * STEPS)].y;
+}
+
+int Bezier(const char* label, float P[5])
+{
+    // visuals
+    enum
+    {
+        SMOOTHNESS = 64
+    };  // curve smoothness: the higher number of segments, the smoother curve
+    enum
+    {
+        CURVE_WIDTH = 4
+    };  // main curved line width
+    enum
+    {
+        LINE_WIDTH = 1
+    };  // handlers: small lines width
+    enum
+    {
+        GRAB_RADIUS = 8
+    };  // handlers: circle radius
+    enum
+    {
+        GRAB_BORDER = 2
+    };  // handlers: circle border width
+    enum
+    {
+        AREA_CONSTRAINED = false
+    };  // should grabbers be constrained to grid area?
+    enum
+    {
+        AREA_WIDTH = 512
+    };  // area width in pixels. 0 for adaptive size (will use max avail width)
+
+    // curve presets
+    static struct
+    {
+        const char* name;
+        float points[4];
+    } presets[] = {
+        {"Linear", 0.000f, 0.000f, 1.000f, 1.000f},
+
+        {"In Sine", 0.470f, 0.000f, 0.745f, 0.715f},     {"In Quad", 0.550f, 0.085f, 0.680f, 0.530f},
+        {"In Cubic", 0.550f, 0.055f, 0.675f, 0.190f},    {"In Quart", 0.895f, 0.030f, 0.685f, 0.220f},
+        {"In Quint", 0.755f, 0.050f, 0.855f, 0.060f},    {"In Expo", 0.950f, 0.050f, 0.795f, 0.035f},
+        {"In Circ", 0.600f, 0.040f, 0.980f, 0.335f},     {"In Back", 0.600f, -0.28f, 0.735f, 0.045f},
+
+        {"Out Sine", 0.390f, 0.575f, 0.565f, 1.000f},    {"Out Quad", 0.250f, 0.460f, 0.450f, 0.940f},
+        {"Out Cubic", 0.215f, 0.610f, 0.355f, 1.000f},   {"Out Quart", 0.165f, 0.840f, 0.440f, 1.000f},
+        {"Out Quint", 0.230f, 1.000f, 0.320f, 1.000f},   {"Out Expo", 0.190f, 1.000f, 0.220f, 1.000f},
+        {"Out Circ", 0.075f, 0.820f, 0.165f, 1.000f},    {"Out Back", 0.175f, 0.885f, 0.320f, 1.275f},
+
+        {"InOut Sine", 0.445f, 0.050f, 0.550f, 0.950f},  {"InOut Quad", 0.455f, 0.030f, 0.515f, 0.955f},
+        {"InOut Cubic", 0.645f, 0.045f, 0.355f, 1.000f}, {"InOut Quart", 0.770f, 0.000f, 0.175f, 1.000f},
+        {"InOut Quint", 0.860f, 0.000f, 0.070f, 1.000f}, {"InOut Expo", 1.000f, 0.000f, 0.000f, 1.000f},
+        {"InOut Circ", 0.785f, 0.135f, 0.150f, 0.860f},  {"InOut Back", 0.680f, -0.55f, 0.265f, 1.550f},
+
+        // easeInElastic: not a bezier
+        // easeOutElastic: not a bezier
+        // easeInOutElastic: not a bezier
+        // easeInBounce: not a bezier
+        // easeOutBounce: not a bezier
+        // easeInOutBounce: not a bezier
     };
 
-    const float HEIGHT = 100;
-    static ImVec2 start_pan;
+    // preset selector
 
-    ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    ImVec2 size = editor_size;
-    size.x = size.x < 0 ? CalcItemWidth() + (style.FramePadding.x * 2) : size.x;
-    size.y = size.y < 0 ? HEIGHT : size.y;
-    if (hovered_point) *hovered_point = -1;
-
-    ImGuiWindow* parent_window = GetCurrentWindow();
-    ImGuiID id = parent_window->GetID(label);
-    if (new_count) *new_count = points_count;
-    if (!BeginChildFrame(id, size, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
-    {
-        EndChildFrame();
-        return -1;
-    }
-
-    int hovered_idx = -1;
-
-    ImGuiWindow* window = GetCurrentWindow();
-    if (window->SkipItems)
-    {
-        EndChildFrame();
-        return -1;
-    }
-
-    ImVec2 points_min(FLT_MAX, FLT_MAX);
-    ImVec2 points_max(-FLT_MAX, -FLT_MAX);
-    for (int point_idx = 0; point_idx < points_count; ++point_idx)
-    {
-        ImVec2 point;
-        if (flags & (int)CurveEditorFlags::NO_TANGENTS)
-        {
-            point = ((ImVec2*)values)[point_idx];
-        }
+    bool reload = 0;
+    ImGui::PushID(label);
+    if (ImGui::ArrowButton("##lt", ImGuiDir_Left))
+    {  // ImGui::ArrowButton(ImGui::GetCurrentWindow()->GetID("##lt"), ImGuiDir_Left, ImVec2(0, 0), 0)
+        if (--P[4] >= 0)
+            reload = 1;
         else
+            ++P[4];
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("Presets"))
+    {
+        ImGui::OpenPopup("!Presets");
+    }
+    if (ImGui::BeginPopup("!Presets"))
+    {
+        for (int i = 0; i < IM_ARRAYSIZE(presets); ++i)
         {
-            point = ((ImVec2*)values)[1 + point_idx * 3];
-        }
-        points_max = ImMax(points_max, point);
-        points_min = ImMin(points_min, point);
-    }
-    points_max.y = ImMax(points_max.y, points_min.y + 0.0001f);
-
-    ImVec2 points_range = points_max - points_min;
-    points_min -= points_range * 0.05f;
-    points_max += points_range * 0.05f;
-
-    if (flags & (int)CurveEditorFlags::RESET) window->StateStorage.Clear();
-
-    float from_x = window->StateStorage.GetFloat((ImGuiID)StorageValues::FROM_X, points_min.x);
-    float from_y = window->StateStorage.GetFloat((ImGuiID)StorageValues::FROM_Y, points_min.y);
-    float width = window->StateStorage.GetFloat((ImGuiID)StorageValues::WIDTH, points_max.x - points_min.x);
-    float height = window->StateStorage.GetFloat((ImGuiID)StorageValues::HEIGHT, points_max.y - points_min.y);
-    window->StateStorage.SetFloat((ImGuiID)StorageValues::FROM_X, from_x);
-    window->StateStorage.SetFloat((ImGuiID)StorageValues::FROM_Y, from_y);
-    window->StateStorage.SetFloat((ImGuiID)StorageValues::WIDTH, width);
-    window->StateStorage.SetFloat((ImGuiID)StorageValues::HEIGHT, height);
-
-    const ImRect inner_bb = window->InnerClipRect;
-    if (inner_bb.GetWidth() == 0 || inner_bb.GetHeight() == 0)
-    {
-        EndChildFrame();
-        return -1;
-    }
-    const ImRect frame_bb(inner_bb.Min - style.FramePadding, inner_bb.Max + style.FramePadding);
-
-    auto transform = [&](const ImVec2& pos) -> ImVec2
-    {
-        float x = (pos.x - from_x) / width;
-        float y = (pos.y - from_y) / height;
-
-        return ImVec2(inner_bb.Min.x * (1 - x) + inner_bb.Max.x * x, inner_bb.Min.y * y + inner_bb.Max.y * (1 - y));
-    };
-
-    auto invTransform = [&](const ImVec2& pos) -> ImVec2
-    {
-        float x = (pos.x - inner_bb.Min.x) / (inner_bb.Max.x - inner_bb.Min.x);
-        float y = (inner_bb.Max.y - pos.y) / (inner_bb.Max.y - inner_bb.Min.y);
-
-        return ImVec2(from_x + width * x, from_y + height * y);
-    };
-
-    const ImU32 color_text = GetColorU32(ImGuiCol_TextDisabled);
-    if (flags & (int)CurveEditorFlags::SHOW_GRID)
-    {
-        int exp;
-        frexp(width / 5, &exp);
-        float step_x = (float)ldexp(1.0, exp);
-        int cell_cols = int(width / step_x);
-
-        float x = step_x * int(from_x / step_x);
-        for (int i = -1; i < cell_cols + 2; ++i)
-        {
-            ImVec2 a = transform({x + i * step_x, from_y});
-            ImVec2 b = transform({x + i * step_x, from_y + height});
-            window->DrawList->AddLine(a, b, 0x55000000);
-            char buf[64];
-            if (exp > 0)
+            if (i == 1 || i == 9 || i == 17) ImGui::Separator();
+            if (ImGui::MenuItem(presets[i].name, NULL, P[4] == i))
             {
-                ImFormatString(buf, sizeof(buf), " %d", int(x + i * step_x));
+                P[4] = (float)i;
+                reload = 1;
             }
-            else
-            {
-                ImFormatString(buf, sizeof(buf), " %.2f", x + i * step_x);
-            }
-            window->DrawList->AddText(b, color_text, buf);
         }
-
-        frexp(height / 5, &exp);
-        float step_y = (float)ldexp(1.0, exp);
-        int cell_rows = int(height / step_y);
-
-        float y = step_y * int(from_y / step_y);
-        for (int i = -1; i < cell_rows + 2; ++i)
-        {
-            ImVec2 a = transform({from_x, y + i * step_y});
-            ImVec2 b = transform({from_x + width, y + i * step_y});
-            window->DrawList->AddLine(a, b, 0x55000000);
-            char buf[64];
-            if (exp > 0)
-            {
-                ImFormatString(buf, sizeof(buf), " %d", int(y + i * step_y));
-            }
-            else
-            {
-                ImFormatString(buf, sizeof(buf), " %.2f", y + i * step_y);
-            }
-            window->DrawList->AddText(a, color_text, buf);
-        }
+        ImGui::EndPopup();
     }
+    ImGui::SameLine();
 
-    const ImGuiID dragger_id = GetID("##_node_dragger");
-    ImGui::ItemAdd(inner_bb, dragger_id);
-
-    if (GetIO().MouseWheel != 0 && IsItemHovered())
-    {
-        float scale = powf(2, -GetIO().MouseWheel);
-        width *= scale;
-        height *= scale;
-        window->StateStorage.SetFloat((ImGuiID)StorageValues::WIDTH, width);
-        window->StateStorage.SetFloat((ImGuiID)StorageValues::HEIGHT, height);
-    }
-    if (IsMouseReleased(2))
-    {
-        window->StateStorage.SetBool((ImGuiID)StorageValues::IS_PANNING, false);
-    }
-    if (window->StateStorage.GetBool((ImGuiID)StorageValues::IS_PANNING, false))
-    {
-        ImVec2 drag_offset = GetMouseDragDelta(2);
-        from_x = start_pan.x;
-        from_y = start_pan.y;
-        from_x -= drag_offset.x * width / (inner_bb.Max.x - inner_bb.Min.x);
-        from_y += drag_offset.y * height / (inner_bb.Max.y - inner_bb.Min.y);
-        window->StateStorage.SetFloat((ImGuiID)StorageValues::FROM_X, from_x);
-        window->StateStorage.SetFloat((ImGuiID)StorageValues::FROM_Y, from_y);
-    }
-    else if (IsMouseDragging(2) && IsItemHovered())
-    {
-        window->StateStorage.SetBool((ImGuiID)StorageValues::IS_PANNING, true);
-        start_pan.x = from_x;
-        start_pan.y = from_y;
-    }
-
-    int changed_idx = -1;
-    for (int point_idx = points_count - 2; point_idx >= 0; --point_idx)
-    {
-        ImVec2* points;
-        if (flags & (int)CurveEditorFlags::NO_TANGENTS)
-        {
-            points = ((ImVec2*)values) + point_idx;
-        }
+    if (ImGui::ArrowButton("##rt", ImGuiDir_Right))
+    {  // ImGui::ArrowButton(ImGui::GetCurrentWindow()->GetID("##rt"), ImGuiDir_Right, ImVec2(0, 0), 0)
+        if (++P[4] < IM_ARRAYSIZE(presets))
+            reload = 1;
         else
+            --P[4];
+    }
+    ImGui::SameLine();
+    ImGui::PopID();
+
+    if (reload)
+    {
+        memcpy(P, presets[(int)P[4]].points, sizeof(float) * 4);
+    }
+
+    // bezier widget
+
+    const ImGuiStyle& Style = GetStyle();
+    // const ImGuiIO& IO = GetIO();
+    ImDrawList* DrawList = GetWindowDrawList();
+    ImGuiWindow* Window = GetCurrentWindow();
+    if (Window->SkipItems) return false;
+
+    // header and spacing
+    int changed = SliderFloat4(label, P, 0, 1);
+    int hovered = IsItemActive() || IsItemHovered();  // IsItemDragged() ?
+    Dummy(ImVec2(0, 3));
+
+    // prepare canvas
+    const float avail = GetContentRegionAvail().x;
+    const float dim = AREA_WIDTH > 0 ? AREA_WIDTH : avail;
+    ImVec2 Canvas(dim, dim);
+
+    ImRect bb(Window->DC.CursorPos, Window->DC.CursorPos + Canvas);
+    ItemSize(bb);
+    if (!ItemAdd(bb, NULL)) return changed;
+
+    const ImGuiID id = Window->GetID(label);
+    hovered |= 0 != ItemHoverable(ImRect(bb.Min, bb.Min + ImVec2(avail, dim)), id, ImGuiItemFlags_Default_);
+
+    RenderFrame(bb.Min, bb.Max, GetColorU32(ImGuiCol_FrameBg, 1), true, Style.FrameRounding);
+
+    // background grid
+    for (int i = 0; (float)i <= Canvas.x; i += (int)(Canvas.x / 4.0f))
+    {
+        DrawList->AddLine(ImVec2(bb.Min.x + i, bb.Min.y), ImVec2(bb.Min.x + i, bb.Max.y), GetColorU32(ImGuiCol_TextDisabled));
+    }
+    for (int i = 0; (float)i <= Canvas.y; i += (int)(Canvas.y / 4.0f))
+    {
+        DrawList->AddLine(ImVec2(bb.Min.x, bb.Min.y + i), ImVec2(bb.Max.x, bb.Min.y + i), GetColorU32(ImGuiCol_TextDisabled));
+    }
+
+    // eval curve
+    ImVec2 Q[4] = {{0, 0}, {P[0], P[1]}, {P[2], P[3]}, {1, 1}};
+    ImVec2 results[SMOOTHNESS + 1];
+    bezier_table<SMOOTHNESS>(Q, results);
+
+    // control points: 2 lines and 2 circles
+    {
+        // handle grabbers
+        ImVec2 mouse = GetIO().MousePos, pos[2];
+        float distance[2];
+
+        for (int i = 0; i < 2; ++i)
         {
-            points = ((ImVec2*)values) + 1 + point_idx * 3;
+            pos[i] = ImVec2(P[i * 2 + 0], 1 - P[i * 2 + 1]) * (bb.Max - bb.Min) + bb.Min;
+            distance[i] = (pos[i].x - mouse.x) * (pos[i].x - mouse.x) + (pos[i].y - mouse.y) * (pos[i].y - mouse.y);
         }
 
-        ImVec2 p_prev = points[0];
-        ImVec2 tangent_last;
-        ImVec2 tangent;
-        ImVec2 p;
-        if (flags & (int)CurveEditorFlags::NO_TANGENTS)
+        int selected = distance[0] < distance[1] ? 0 : 1;
+        if (distance[selected] < (4 * GRAB_RADIUS * 4 * GRAB_RADIUS))
         {
-            p = points[1];
-        }
-        else
-        {
-            tangent_last = points[1];
-            tangent = points[2];
-            p = points[3];
-        }
+            SetTooltip("(%4.3f, %4.3f)", P[selected * 2 + 0], P[selected * 2 + 1]);
 
-        auto handlePoint = [&](ImVec2& p, int idx) -> bool
-        {
-            static const float SIZE = 3;
-
-            ImVec2 cursor_pos = GetCursorScreenPos();
-            ImVec2 pos = transform(p);
-
-            SetCursorScreenPos(pos - ImVec2(SIZE, SIZE));
-            PushID(idx);
-            InvisibleButton("##ib", ImVec2(2 * HANDLE_RADIUS, 2 * HANDLE_RADIUS));
-
-            bool is_selected = selected_point && *selected_point == point_idx + idx;
-            float thickness = is_selected ? 2.0f : 1.0f;
-            ImU32 col =
-                IsItemActive() || IsItemHovered() ? GetColorU32(ImGuiCol_PlotLinesHovered) : GetColorU32(ImGuiCol_PlotLines);
-
-            window->DrawList->AddLine(pos + ImVec2(-SIZE, 0), pos + ImVec2(0, SIZE), col, thickness);
-            window->DrawList->AddLine(pos + ImVec2(SIZE, 0), pos + ImVec2(0, SIZE), col, thickness);
-            window->DrawList->AddLine(pos + ImVec2(SIZE, 0), pos + ImVec2(0, -SIZE), col, thickness);
-            window->DrawList->AddLine(pos + ImVec2(-SIZE, 0), pos + ImVec2(0, -SIZE), col, thickness);
-
-            if (IsItemHovered()) hovered_idx = point_idx + idx;
-
-            bool changed = false;
-            if (IsItemActive() && IsMouseClicked(0))
+            if (/*hovered &&*/ (IsMouseClicked(0) || IsMouseDragging(0)))
             {
-                if (selected_point) *selected_point = point_idx + idx;
-                window->StateStorage.SetFloat((ImGuiID)StorageValues::POINT_START_X, pos.x);
-                window->StateStorage.SetFloat((ImGuiID)StorageValues::POINT_START_Y, pos.y);
-            }
+                float& px = (P[selected * 2 + 0] += GetIO().MouseDelta.x / Canvas.x);
+                float& py = (P[selected * 2 + 1] -= GetIO().MouseDelta.y / Canvas.y);
 
-            if (IsItemHovered() || (IsItemActive() && IsMouseDragging(0)))
-            {
-                char tmp[64];
-                ImFormatString(tmp, sizeof(tmp), "%0.2f, %0.2f", p.x, p.y);
-                window->DrawList->AddText({pos.x, pos.y - GetTextLineHeight()}, color_text, tmp);
-            }
+                if constexpr (AREA_CONSTRAINED)
+                {
+                    px = (px < 0 ? 0 : (px > 1 ? 1 : px));
+                    py = (py < 0 ? 0 : (py > 1 ? 1 : py));
+                }
 
-            if (IsItemActive() && IsMouseDragging(0))
-            {
-                pos.x = window->StateStorage.GetFloat((ImGuiID)StorageValues::POINT_START_X, pos.x);
-                pos.y = window->StateStorage.GetFloat((ImGuiID)StorageValues::POINT_START_Y, pos.y);
-                pos += GetMouseDragDelta();
-                ImVec2 v = invTransform(pos);
-
-                p = v;
                 changed = true;
             }
-            PopID();
-
-            SetCursorScreenPos(cursor_pos);
-            return changed;
-        };
-
-        auto handleTangent = [&](ImVec2& t, const ImVec2& p, int idx) -> bool
-        {
-            static const float SIZE = 2;
-            static const float LENGTH = 18;
-
-            auto normalized = [](const ImVec2& v) -> ImVec2
-            {
-                float len = 1.0f / sqrtf(v.x * v.x + v.y * v.y);
-                return ImVec2(v.x * len, v.y * len);
-            };
-
-            ImVec2 cursor_pos = GetCursorScreenPos();
-            ImVec2 pos = transform(p);
-            ImVec2 tang = pos + normalized(ImVec2(t.x, -t.y)) * LENGTH;
-
-            SetCursorScreenPos(tang - ImVec2(SIZE, SIZE));
-            PushID(-idx);
-            InvisibleButton("##ib2", ImVec2(2 * HANDLE_RADIUS, 2 * HANDLE_RADIUS));
-
-            window->DrawList->AddLine(pos, tang, GetColorU32(ImGuiCol_PlotLines));
-
-            ImU32 col = IsItemHovered() ? GetColorU32(ImGuiCol_PlotLinesHovered) : GetColorU32(ImGuiCol_PlotLines);
-
-            window->DrawList->AddLine(tang + ImVec2(-SIZE, SIZE), tang + ImVec2(SIZE, SIZE), col);
-            window->DrawList->AddLine(tang + ImVec2(SIZE, SIZE), tang + ImVec2(SIZE, -SIZE), col);
-            window->DrawList->AddLine(tang + ImVec2(SIZE, -SIZE), tang + ImVec2(-SIZE, -SIZE), col);
-            window->DrawList->AddLine(tang + ImVec2(-SIZE, -SIZE), tang + ImVec2(-SIZE, SIZE), col);
-
-            bool changed = false;
-            if (IsItemActive() && IsMouseDragging(0))
-            {
-                tang = GetIO().MousePos - pos;
-                tang = normalized(tang);
-                tang.y *= -1;
-
-                t = tang;
-                changed = true;
-            }
-            PopID();
-
-            SetCursorScreenPos(cursor_pos);
-            return changed;
-        };
-
-        PushID(point_idx);
-        if ((flags & (int)CurveEditorFlags::NO_TANGENTS) == 0)
-        {
-            window->DrawList->AddBezierCubic(transform(p_prev),
-                                             transform(p_prev + tangent_last),
-                                             transform(p + tangent),
-                                             transform(p),
-                                             GetColorU32(ImGuiCol_PlotLines),
-                                             1.0f,
-                                             20);
-            if (handleTangent(tangent_last, p_prev, 0))
-            {
-                points[1] = ImClamp(tangent_last, ImVec2(0, -1), ImVec2(1, 1));
-                changed_idx = point_idx;
-            }
-            if (handleTangent(tangent, p, 1))
-            {
-                points[2] = ImClamp(tangent, ImVec2(-1, -1), ImVec2(0, 1));
-                changed_idx = point_idx + 1;
-            }
-            if (handlePoint(p, 1))
-            {
-                if (p.x <= p_prev.x) p.x = p_prev.x + 0.001f;
-                if (point_idx < points_count - 2 && p.x >= points[6].x)
-                {
-                    p.x = points[6].x - 0.001f;
-                }
-                points[3] = p;
-                changed_idx = point_idx + 1;
-            }
         }
-        else
-        {
-            window->DrawList->AddLine(transform(p_prev), transform(p), GetColorU32(ImGuiCol_PlotLines), 1.0f);
-            if (handlePoint(p, 1))
-            {
-                if (p.x <= p_prev.x) p.x = p_prev.x + 0.001f;
-                if (point_idx < points_count - 2 && p.x >= points[2].x)
-                {
-                    p.x = points[2].x - 0.001f;
-                }
-                points[1] = p;
-                changed_idx = point_idx + 1;
-            }
-        }
-        if (point_idx == 0)
-        {
-            if (handlePoint(p_prev, 0))
-            {
-                if (p.x <= p_prev.x) p_prev.x = p.x - 0.001f;
-                points[0] = p_prev;
-                changed_idx = point_idx;
-            }
-        }
-        PopID();
     }
 
-    SetCursorScreenPos(inner_bb.Min);
+    // if (hovered || changed) DrawList->PushClipRectFullScreen();
 
-    InvisibleButton("bg", inner_bb.Max - inner_bb.Min);
-
-    if (IsItemActive() && IsMouseDoubleClicked(0) && new_count && points_count < capacity)
+    // draw curve
     {
-        ImVec2 mp = GetMousePos();
-        ImVec2 new_p = invTransform(mp);
-        ImVec2* points = (ImVec2*)values;
-
-        if ((flags & (int)CurveEditorFlags::NO_TANGENTS) == 0)
+        ImColor color(GetStyle().Colors[ImGuiCol_PlotLines]);
+        for (int i = 0; i < SMOOTHNESS; ++i)
         {
-            points[points_count * 3 + 0] = ImVec2(-0.2f, 0);
-            points[points_count * 3 + 1] = new_p;
-            points[points_count * 3 + 2] = ImVec2(0.2f, 0);
-            ;
-            ++*new_count;
-
-            auto compare = [](const void* a, const void* b) -> int
-            {
-                float fa = (((const ImVec2*)a) + 1)->x;
-                float fb = (((const ImVec2*)b) + 1)->x;
-                return fa < fb ? -1 : (fa > fb) ? 1 : 0;
-            };
-
-            qsort(values, points_count + 1, sizeof(ImVec2) * 3, compare);
-        }
-        else
-        {
-            points[points_count] = new_p;
-            ++*new_count;
-
-            auto compare = [](const void* a, const void* b) -> int
-            {
-                float fa = ((const ImVec2*)a)->x;
-                float fb = ((const ImVec2*)b)->x;
-                return fa < fb ? -1 : (fa > fb) ? 1 : 0;
-            };
-
-            qsort(values, points_count + 1, sizeof(ImVec2), compare);
+            ImVec2 p = {results[i + 0].x, 1 - results[i + 0].y};
+            ImVec2 q = {results[i + 1].x, 1 - results[i + 1].y};
+            ImVec2 r(p.x * (bb.Max.x - bb.Min.x) + bb.Min.x, p.y * (bb.Max.y - bb.Min.y) + bb.Min.y);
+            ImVec2 s(q.x * (bb.Max.x - bb.Min.x) + bb.Min.x, q.y * (bb.Max.y - bb.Min.y) + bb.Min.y);
+            DrawList->AddLine(r, s, color, CURVE_WIDTH);
         }
     }
 
-    if (hovered_idx >= 0 && IsMouseDoubleClicked(0) && new_count && points_count > 2)
+    // draw preview (cycles every 1s)
+    static clock_t epoch = clock();
+    ImVec4 white(GetStyle().Colors[ImGuiCol_Text]);
+    for (int i = 0; i < 3; ++i)
     {
-        ImVec2* points = (ImVec2*)values;
-        --*new_count;
-        if ((flags & (int)CurveEditorFlags::NO_TANGENTS) == 0)
-        {
-            for (int j = hovered_idx * 3; j < points_count * 3 - 3; j += 3)
-            {
-                points[j + 0] = points[j + 3];
-                points[j + 1] = points[j + 4];
-                points[j + 2] = points[j + 5];
-            }
-        }
-        else
-        {
-            for (int j = hovered_idx; j < points_count - 1; ++j)
-            {
-                points[j] = points[j + 1];
-            }
-        }
+        double now = ((clock() - epoch) / (double)CLOCKS_PER_SEC);
+        float delta = ((int)(now * 1000) % 1000) / 1000.f;
+        delta += i / 3.f;
+        if (delta > 1) delta -= 1;
+        int idx = (int)(delta * SMOOTHNESS);
+        float evalx = results[idx].x;  //
+        float evaly = results[idx].y;  // ImGui::BezierValue( delta, P );
+        ImVec2 p0 = ImVec2(evalx, 1 - 0) * (bb.Max - bb.Min) + bb.Min;
+        ImVec2 p1 = ImVec2(0, 1 - evaly) * (bb.Max - bb.Min) + bb.Min;
+        ImVec2 p2 = ImVec2(evalx, 1 - evaly) * (bb.Max - bb.Min) + bb.Min;
+        DrawList->AddCircleFilled(p0, GRAB_RADIUS / 2, ImColor(white));
+        DrawList->AddCircleFilled(p1, GRAB_RADIUS / 2, ImColor(white));
+        DrawList->AddCircleFilled(p2, GRAB_RADIUS / 2, ImColor(white));
     }
 
-    if (hovered_point) *hovered_point = hovered_idx;
+    // draw lines and grabbers
+    float luma = IsItemActive() || IsItemHovered() ? 0.5f : 1.0f;
+    ImVec4 pink(1.00f, 0.00f, 0.75f, luma), cyan(0.00f, 0.75f, 1.00f, luma);
+    ImVec2 p1 = ImVec2(P[0], 1 - P[1]) * (bb.Max - bb.Min) + bb.Min;
+    ImVec2 p2 = ImVec2(P[2], 1 - P[3]) * (bb.Max - bb.Min) + bb.Min;
+    DrawList->AddLine(ImVec2(bb.Min.x, bb.Max.y), p1, ImColor(white), LINE_WIDTH);
+    DrawList->AddLine(ImVec2(bb.Max.x, bb.Min.y), p2, ImColor(white), LINE_WIDTH);
+    DrawList->AddCircleFilled(p1, GRAB_RADIUS, ImColor(white));
+    DrawList->AddCircleFilled(p1, GRAB_RADIUS - GRAB_BORDER, ImColor(pink));
+    DrawList->AddCircleFilled(p2, GRAB_RADIUS, ImColor(white));
+    DrawList->AddCircleFilled(p2, GRAB_RADIUS - GRAB_BORDER, ImColor(cyan));
 
-    EndChildFrame();
-    RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, inner_bb.Min.y), label);
-    return changed_idx;
+    // if (hovered || changed) DrawList->PopClipRect();
+
+    return changed;
 }
