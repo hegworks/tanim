@@ -513,6 +513,8 @@ int Edit(SequenceInterface& delegate,
             // Right-click on keyframe - open context menu
             if (drawState && io.MouseClicked[1])
             {
+                selection.clear();
+                selection.insert({int(c), int(p)});  // Select the right-clicked keyframe
                 rightClickedCurve = int(c);
                 rightClickedKeyframe = int(p);
                 ImGui::OpenPopup("KeyframeContextMenu");
@@ -721,10 +723,12 @@ int Edit(SequenceInterface& delegate,
                 if (ptCount < 1) continue;
 
                 const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(c);
+                const bool isBezier = (delegate.GetCurveLerpType(c) == LerpType::BEZIER);
                 for (int p = 0; p < ptCount; p++)
                 {
-                    const ImVec2 center = pointToRange(pts[p]) * viewSize + offset;
-                    if (selectionQuad.Contains(center)) selection.insert({int(c), int(p)});
+                    const ImVec2 keyframe = isBezier ? pts[p * 3 + 1] : pts[p];
+                    const ImVec2 center = pointToRange(keyframe) * viewSize + offset;
+                    if (selectionQuad.Contains(center)) selection.insert({c, p});
                 }
             }
             // done
