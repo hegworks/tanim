@@ -3,7 +3,6 @@
 
 #include "tanim/include/tanim.hpp"
 
-#include "tanim/include/curve.hpp"
 #include "tanim/include/registry.hpp"
 #include "tanim/include/timeliner.hpp"
 #include "tanim/include/sequence.hpp"
@@ -132,13 +131,6 @@ std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatc
 
 void Tanim::Draw()
 {
-    ImGui::Begin("NewCurve");
-
-    static float v[5] = {0.950f, 0.050f, 0.795f, 0.035f};
-    Bezier("easeInExpo", v);
-
-    ImGui::End();
-
     if (m_editor_timeline_data == nullptr || m_editor_component_data == nullptr)
     {
         return;

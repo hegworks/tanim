@@ -98,6 +98,95 @@ static float distance(float x, float y, float x1, float y1, float x2, float y2)
     return sqrtf(dx * dx + dy * dy);
 }
 
+// Cubic bezier evaluation: P(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t)t^2 P2 + t^3 P3
+static ImVec2 CubicBezier(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, float t)
+{  // REF: by claude.ai
+    float u = 1.0f - t;
+    float tt = t * t;
+    float uu = u * u;
+    float uuu = uu * u;
+    float ttt = tt * t;
+
+    return ImVec2(uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+                  uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y);
+}
+
+// Find t for a given X using Newton-Raphson iteration (for sampling by time)
+static float FindTForX(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, float targetX)
+{  // REF: by claude.ai
+    // Initial guess using linear interpolation
+    float t = (targetX - p0.x) / (p3.x - p0.x);
+    t = ImClamp(t, 0.0f, 1.0f);
+
+    // Newton-Raphson iterations
+    for (int i = 0; i < 8; i++)
+    {
+        float u = 1.0f - t;
+        float tt = t * t;
+        float uu = u * u;
+
+        // Current X value
+        float x = u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x;
+        float error = x - targetX;
+
+        if (fabsf(error) < 1e-6f) break;
+
+        // Derivative of X with respect to t
+        float dx = 3 * uu * (p1.x - p0.x) + 6 * u * t * (p2.x - p1.x) + 3 * tt * (p3.x - p0.x);
+
+        if (fabsf(dx) < 1e-6f) break;
+
+        t -= error / dx;
+        t = ImClamp(t, 0.0f, 1.0f);
+    }
+
+    return t;
+}
+
+static int DrawBezierHandle(ImDrawList* draw_list,
+                            ImVec2 pos,
+                            ImVec2 keyframePos,
+                            const ImVec2& viewSize,
+                            const ImVec2& offset,
+                            bool isInHandle,
+                            bool isSelected)
+{  // REF: by claude.ai
+    int ret = 0;
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImVec2 handleScreenPos = pos * viewSize + offset;
+    ImVec2 keyScreenPos = keyframePos * viewSize + offset;
+
+    // Draw line from keyframe to handle
+    draw_list->AddLine(keyScreenPos, handleScreenPos, 0xFF808080, 1.0f);
+
+    // Handle colors
+    ImU32 borderColor = isInHandle ? 0xFF0000FF : 0xFFFF0000;  // Red for in, Blue for out (BGR)
+    ImU32 fillColor = 0x00000000;                              // Transparent by default
+
+    const float radius = 4.0f;
+    const ImRect handleRect(handleScreenPos - ImVec2(radius, radius), handleScreenPos + ImVec2(radius, radius));
+
+    bool hovered = handleRect.Contains(io.MousePos);
+    if (hovered)
+    {
+        ret = 1;
+        fillColor = 0xFFFFFFFF;  // White fill on hover
+        if (io.MouseDown[0]) ret = 2;
+    }
+
+    if (isSelected)
+    {
+        fillColor = 0xFFFFFFFF;
+    }
+
+    // Draw handle circle
+    if (fillColor != 0x00000000) draw_list->AddCircleFilled(handleScreenPos, radius, fillColor);
+    draw_list->AddCircle(handleScreenPos, radius, borderColor, 0, 2.0f);
+
+    return ret;
+}
+
 static int DrawPoint(ImDrawList* draw_list, ImVec2 pos, const ImVec2 size, const ImVec2 offset, bool edited)
 {
     int ret = 0;
@@ -142,6 +231,10 @@ int Edit(SequenceInterface& delegate,
     static bool scrollingV = false;
     static std::set<EditPoint> selection;
     static bool overSelectedPoint = false;
+
+    // for bezier
+    static std::set<EditPoint> handleSelection;  // Separate selection for handles
+    static bool overHandle = false;
 
     int ret = 0;
 
@@ -239,9 +332,6 @@ int Edit(SequenceInterface& delegate,
 
         for (size_t p = 0; p < ptCount - 1; p++)
         {
-            const ImVec2 p1 = pointToRange(pts[p]);
-            const ImVec2 p2 = pointToRange(pts[p + 1]);
-
             if (curveType == LerpType::SMOOTH || curveType == LerpType::LINEAR)
             {
                 size_t subStepCount = (curveType == LerpType::SMOOTH) ? 20 : 2;  // TODO(tanim) hardcoded 20
@@ -266,6 +356,9 @@ int Edit(SequenceInterface& delegate,
             }
             else if (curveType == LerpType::DISCRETE)
             {
+                const ImVec2 p1 = pointToRange(pts[p]);
+                const ImVec2 p2 = pointToRange(pts[p + 1]);
+
                 ImVec2 dp1 = p1 * viewSize + offset;
                 ImVec2 dp2 = ImVec2(p2.x, p1.y) * viewSize + offset;
                 ImVec2 dp3 = p2 * viewSize + offset;
@@ -281,33 +374,172 @@ int Edit(SequenceInterface& delegate,
                     overCurveOrPoint = true;
                 }
             }
+            else if (curveType == LerpType::BEZIER)
+            {  // REF: by claude.ai
+                // For Bezier, ptCount is keyframe count, actual vector has 3*ptCount points
+                const size_t keyframeCount = ptCount;
+                if (keyframeCount < 2) continue;
+
+                // Draw bezier curve segments
+                for (size_t seg = 0; seg < keyframeCount - 1; seg++)
+                {
+                    size_t idx0 = seg * 3;
+                    ImVec2 p0 = pts[idx0 + 1];  // keyframe
+                    ImVec2 p1 = pts[idx0 + 2];  // out-handle
+                    ImVec2 p2 = pts[idx0 + 3];  // next in-handle
+                    ImVec2 p3 = pts[idx0 + 4];  // next keyframe
+
+                    const int subSteps = 32;
+                    for (int step = 0; step < subSteps; step++)
+                    {
+                        float t1 = (float)step / (float)subSteps;
+                        float t2 = (float)(step + 1) / (float)subSteps;
+
+                        ImVec2 pt1 = CubicBezier(p0, p1, p2, p3, t1);
+                        ImVec2 pt2 = CubicBezier(p0, p1, p2, p3, t2);
+
+                        ImVec2 pos1 = pointToRange(pt1) * viewSize + offset;
+                        ImVec2 pos2 = pointToRange(pt2) * viewSize + offset;
+
+                        if (distance(io.MousePos.x, io.MousePos.y, pos1.x, pos1.y, pos2.x, pos2.y) < 8.f && !scrollingV)
+                        {
+                            localOverCurve = int(c);
+                            overCurve = int(c);
+                            overCurveOrPoint = true;
+                        }
+
+                        draw_list->AddLine(pos1, pos2, curveColor, 1.3f);
+                    }
+                }
+
+                // Draw handles for each keyframe
+                for (size_t k = 0; k < keyframeCount; k++)
+                {
+                    size_t idx = k * 3;
+                    ImVec2 keyframe = pts[idx + 1];
+                    ImVec2 keyframeRange = pointToRange(keyframe);
+
+                    // Draw in-handle (if not first keyframe)
+                    if (k > 0)
+                    {
+                        ImVec2 inHandle = pts[idx];
+                        ImVec2 inHandleRange = pointToRange(inHandle);
+                        bool isHandleSelected = handleSelection.find({int(c), int(idx)}) != handleSelection.end();
+
+                        int handleState =
+                            DrawBezierHandle(draw_list, inHandleRange, keyframeRange, viewSize, offset, true, isHandleSelected);
+                        if (handleState && movingCurve == -1 && !selectingQuad)
+                        {
+                            overCurveOrPoint = true;
+                            overHandle = true;
+                            overCurve = -1;
+
+                            if (handleState == 2)
+                            {
+                                if (!io.KeyShift) handleSelection.clear();
+                                handleSelection.insert({int(c), int(idx)});
+                            }
+                        }
+                    }
+
+                    // Draw out-handle (if not last keyframe)
+                    if (k < keyframeCount - 1)
+                    {
+                        ImVec2 outHandle = pts[idx + 2];
+                        ImVec2 outHandleRange = pointToRange(outHandle);
+                        bool isHandleSelected = handleSelection.find({int(c), int(idx + 2)}) != handleSelection.end();
+
+                        int handleState = DrawBezierHandle(draw_list,
+                                                           outHandleRange,
+                                                           keyframeRange,
+                                                           viewSize,
+                                                           offset,
+                                                           false,
+                                                           isHandleSelected);
+                        if (handleState && movingCurve == -1 && !selectingQuad)
+                        {
+                            overCurveOrPoint = true;
+                            overHandle = true;
+                            overCurve = -1;
+
+                            if (handleState == 2)
+                            {
+                                if (!io.KeyShift) handleSelection.clear();
+                                handleSelection.insert({int(c), int(idx + 2)});
+                            }
+                        }
+                    }
+                }
+            }
         }  // point loop
 
-        for (size_t p = 0; p < ptCount; p++)
-        {
-            const int drawState =
-                DrawPoint(draw_list,
-                          pointToRange(pts[p]),
-                          viewSize,
-                          offset,
-                          (selection.find({int(c), int(p)}) != selection.end() && movingCurve == -1 && !scrollingV));
-
-            {  // display point value near point
-                char point_val_text[512];
-                const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
-                ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", pts[p].x, pts[p].y);
-                draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
-            }
-
-            if (drawState && movingCurve == -1 && !selectingQuad)
+        if (curveType == LerpType::BEZIER)
+        {  // REF: by claude.ai
+            // Draw keyframe points
+            size_t keyframeCount = ptCount;
+            for (size_t k = 0; k < keyframeCount; k++)
             {
-                overCurveOrPoint = true;
-                overSelectedPoint = true;
-                overCurve = -1;
-                if (drawState == 2)
+                size_t rawIdx = k * 3 + 1;
+                ImVec2 keyframe = pts[rawIdx];
+
+                const int drawState =
+                    DrawPoint(draw_list,
+                              pointToRange(keyframe),
+                              viewSize,
+                              offset,
+                              (selection.find({int(c), int(k)}) != selection.end() && movingCurve == -1 && !scrollingV));
+
+                // Display point value
                 {
-                    if (!io.KeyShift && selection.find({int(c), int(p)}) == selection.end()) selection.clear();
-                    selection.insert({int(c), int(p)});
+                    char point_val_text[512];
+                    const ImVec2 point_draw_pos = pointToRange(keyframe) * viewSize + offset;
+                    ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", keyframe.x, keyframe.y);
+                    draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
+                }
+
+                if (drawState && movingCurve == -1 && !selectingQuad)
+                {
+                    overCurveOrPoint = true;
+                    overSelectedPoint = true;
+                    overCurve = -1;
+                    overHandle = false;
+
+                    if (drawState == 2)
+                    {
+                        if (!io.KeyShift && selection.find({int(c), int(k)}) == selection.end()) selection.clear();
+                        selection.insert({int(c), int(k)});
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (size_t p = 0; p < ptCount; p++)
+            {
+                const int drawState =
+                    DrawPoint(draw_list,
+                              pointToRange(pts[p]),
+                              viewSize,
+                              offset,
+                              (selection.find({int(c), int(p)}) != selection.end() && movingCurve == -1 && !scrollingV));
+
+                {  // display point value near point
+                    char point_val_text[512];
+                    const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
+                    ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", pts[p].x, pts[p].y);
+                    draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
+                }
+
+                if (drawState && movingCurve == -1 && !selectingQuad)
+                {
+                    overCurveOrPoint = true;
+                    overSelectedPoint = true;
+                    overCurve = -1;
+                    if (drawState == 2)
+                    {
+                        if (!io.KeyShift && selection.find({int(c), int(p)}) == selection.end()) selection.clear();
+                        selection.insert({int(c), int(p)});
+                    }
                 }
             }
         }
@@ -319,6 +551,7 @@ int Edit(SequenceInterface& delegate,
     static bool pointsMoved = false;
     static ImVec2 mousePosOrigin;
     static std::vector<ImVec2> originalPoints;
+
     if (overSelectedPoint && io.MouseDown[0])
     {
         if ((fabsf(io.MouseDelta.x) > 0.f || fabsf(io.MouseDelta.y) > 0.f) && !selection.empty())
@@ -330,24 +563,47 @@ int Edit(SequenceInterface& delegate,
                 originalPoints.resize(selection.size());
                 int index = 0;
                 for (auto& sel : selection)
-                {
+                {  // REF: by claude.ai
                     const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(sel.curveIndex);
-                    originalPoints[index++] = pts[sel.pointIndex];
+                    LerpType lt = delegate.GetCurveLerpType(sel.curveIndex);
+                    if (lt == LerpType::BEZIER)
+                    {
+                        // For Bezier, sel.pointIndex is keyframe index, get raw index
+                        originalPoints[index++] = pts[sel.pointIndex * 3 + 1];
+                    }
+                    else
+                    {
+                        originalPoints[index++] = pts[sel.pointIndex];
+                    }
                 }
             }
             pointsMoved = true;
             ret = 1;
+
             auto prevSelection = selection;
             int originalIndex = 0;
             for (auto& sel : prevSelection)
             {
                 const ImVec2 p =
                     rangeToPoint(pointToRange(originalPoints[originalIndex]) + (io.MousePos - mousePosOrigin) * sizeOfPixel);
-                const int newIndex = delegate.EditPoint(sel.curveIndex, sel.pointIndex, p);
-                if (newIndex != sel.pointIndex)
+
+                LerpType lt = delegate.GetCurveLerpType(sel.curveIndex);
+
+                if (lt == LerpType::BEZIER)
                 {
-                    selection.erase(sel);
-                    selection.insert({sel.curveIndex, newIndex});
+                    // Pass raw keyframe index - EditPoint handles the rest
+                    int rawIdx = sel.pointIndex * 3 + 1;
+                    delegate.EditPoint(sel.curveIndex, rawIdx, p);
+                    // Bezier keyframes don't reorder, so no index update needed
+                }
+                else
+                {
+                    const int newIndex = delegate.EditPoint(sel.curveIndex, sel.pointIndex, p);
+                    if (newIndex != sel.pointIndex)
+                    {
+                        selection.erase(sel);
+                        selection.insert({sel.curveIndex, newIndex});
+                    }
                 }
                 originalIndex++;
             }
@@ -360,6 +616,53 @@ int Edit(SequenceInterface& delegate,
         if (pointsMoved)
         {
             pointsMoved = false;
+            delegate.EndEdit();
+        }
+    }
+
+    // Move handle selection (Bezier handles)
+    static bool handlesMoved = false;
+    static ImVec2 handleMousePosOrigin;
+    static std::vector<ImVec2> originalHandlePositions;
+
+    if (overHandle && io.MouseDown[0] && !handleSelection.empty())
+    {
+        if ((fabsf(io.MouseDelta.x) > 0.f || fabsf(io.MouseDelta.y) > 0.f))
+        {
+            if (!handlesMoved)
+            {
+                delegate.BeginEdit(0);
+                handleMousePosOrigin = io.MousePos;
+                originalHandlePositions.resize(handleSelection.size());
+                int index = 0;
+                for (auto& sel : handleSelection)
+                {
+                    const std::vector<ImVec2>& pts = delegate.GetCurvePointsList(sel.curveIndex);
+                    originalHandlePositions[index++] = pts[sel.pointIndex];
+                }
+            }
+            handlesMoved = true;
+            ret = 1;
+
+            int originalIndex = 0;
+            for (auto& sel : handleSelection)
+            {
+                ImVec2 newPos = rangeToPoint(pointToRange(originalHandlePositions[originalIndex]) +
+                                             (io.MousePos - handleMousePosOrigin) * sizeOfPixel);
+
+                // Delegate all constraint logic to EditPoint
+                delegate.EditPoint(sel.curveIndex, sel.pointIndex, newPos);
+                originalIndex++;
+            }
+        }
+    }
+
+    if (overHandle && !io.MouseDown[0])
+    {
+        overHandle = false;
+        if (handlesMoved)
+        {
+            handlesMoved = false;
             delegate.EndEdit();
         }
     }
@@ -478,13 +781,43 @@ int Edit(SequenceInterface& delegate,
 ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max) { return (point - min) / (max - min); }
 
 ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
-                             size_t ptCount,
+                             size_t ptCount,  // keyframe count for Bezier
                              float t,
                              LerpType curveType,
                              const ImVec2& min,
                              const ImVec2& max)
 {
     t = ImClamp(t, 0.0f, 1.0f);
+
+    if (curveType == LerpType::BEZIER)
+    {
+        // For Bezier: pts has 3*ptCount entries, ptCount is keyframe count
+        if (ptCount < 2) return PointToRange(pts[1], min, max + ImVec2(1.f, 0.f));
+
+        float segmentFloat = t * (ptCount - 1);
+        size_t segmentIndex = (size_t)segmentFloat;
+
+        if (segmentIndex >= ptCount - 1)
+        {
+            segmentIndex = ptCount - 2;
+            segmentFloat = (float)(ptCount - 1);
+        }
+
+        float localT = segmentFloat - (float)segmentIndex;
+
+        // Get the 4 control points for this segment
+        // Keyframe i is at index 3*i+1, its out-handle at 3*i+2
+        // Keyframe i+1 is at index 3*(i+1)+1, its in-handle at 3*(i+1)
+        size_t idx0 = segmentIndex * 3;
+        ImVec2 p0 = pts[idx0 + 1];  // keyframe i
+        ImVec2 p1 = pts[idx0 + 2];  // keyframe i out-handle
+        ImVec2 p2 = pts[idx0 + 3];  // keyframe i+1 in-handle
+        ImVec2 p3 = pts[idx0 + 4];  // keyframe i+1
+
+        ImVec2 result = CubicBezier(p0, p1, p2, p3, localT);
+        return PointToRange(result, min, max + ImVec2(1.f, 0.f));
+    }
+
     float segmentFloat = t * (ptCount - 1);
     size_t segmentIndex = (size_t)segmentFloat;
 
@@ -522,6 +855,40 @@ float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
                               LerpType curve_type,
                               RepresentationMeta /*representation_meta*/)
 {
+    if (curve_type == LerpType::BEZIER)
+    {
+        // For Bezier: pts has 3*keyframeCount entries
+        // Keyframes are at indices 1, 4, 7, 10, ... (3*i + 1)
+        const int keyframeCount = (int)pts.size() / 3;
+        if (keyframeCount < 1) return 0.0f;
+
+        // Find which segment contains this time
+        for (int i = 0; i < keyframeCount - 1; i++)
+        {
+            ImVec2 key0 = pts[i * 3 + 1];
+            ImVec2 key1 = pts[(i + 1) * 3 + 1];
+
+            if (time >= key0.x && time <= key1.x)
+            {
+                ImVec2 p0 = key0;
+                ImVec2 p1 = pts[i * 3 + 2];    // key0 out-handle
+                ImVec2 p2 = pts[(i + 1) * 3];  // key1 in-handle
+                ImVec2 p3 = key1;
+
+                float t = FindTForX(p0, p1, p2, p3, time);
+                ImVec2 result = CubicBezier(p0, p1, p2, p3, t);
+                return result.y;
+            }
+        }
+
+        // Before first keyframe
+        if (time <= pts[1].x) return pts[1].y;
+        // After last keyframe
+        if (time >= pts[(keyframeCount - 1) * 3 + 1].x) return pts[(keyframeCount - 1) * 3 + 1].y;
+
+        return pts[1].y;
+    }
+
     const int ptCount = (int)pts.size();
     for (int i = 0; i < ptCount - 1; i++)
     {

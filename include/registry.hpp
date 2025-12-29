@@ -66,7 +66,8 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        curve.m_points = {{0.0f, field}, {last_frame, field}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0.0f, field});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
@@ -76,8 +77,9 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        curve.m_points = {{0.0f, static_cast<float>(field)}, {last_frame, static_cast<float>(field)}};
                         curve.m_lerp_type = sequencer::LerpType::LINEAR;
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0.0f, static_cast<float>(field)});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, static_cast<float>(field)});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
@@ -87,9 +89,10 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        float f = field == true ? 1.0f : 0.0f;
-                        curve.m_points = {{0.0f, f}, {last_frame, f}};
                         curve.m_lerp_type = sequencer::LerpType::DISCRETE;
+                        float f = field == true ? 1.0f : 0.0f;
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0.0f, f});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, f});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
@@ -97,12 +100,14 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        curve.m_points = {{0, field.x}, {last_frame, field.x}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.x});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        curve.m_points = {{0, field.y}, {last_frame, field.y}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.y});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
@@ -112,17 +117,20 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        curve.m_points = {{0, field.x}, {last_frame, field.x}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.x});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        curve.m_points = {{0, field.y}, {last_frame, field.y}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.y});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
-                        curve.m_points = {{0, field.z}, {last_frame, field.z}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.z});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.z});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
@@ -132,27 +140,26 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "R";
-                        curve.m_points = {{0, field.r}, {last_frame, field.r}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.r});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.r});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "G";
-                        curve.m_points = {{0, field.g}, {last_frame, field.g}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.g});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.g});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "B";
-                        curve.m_points = {{0, field.b}, {last_frame, field.b}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.b});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.b});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "A";
-                        curve.m_points = {{0, field.a}, {last_frame, field.a}};
-                    }
-                    {
-                        Sequence::Curve& curve = seq.AddCurve();
-                        curve.m_name = "Spins";
-                        curve.m_points = {{0, 0}, {last_frame, 0}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.a});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.a});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
@@ -162,28 +169,33 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "W";
-                        curve.m_points = {{0, field.w}, {last_frame, field.w}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.w});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.w});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        curve.m_points = {{0, field.x}, {last_frame, field.x}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.x});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        curve.m_points = {{0, field.y}, {last_frame, field.y}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.y});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
-                        curve.m_points = {{0, field.z}, {last_frame, field.z}};
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.z});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.z});
                     }
                     {
                         Sequence::Curve& curve = seq.AddCurve();
                         curve.m_name = "Spins";
-                        curve.m_points = {{0, 0}, {last_frame, 0}};
                         curve.m_lerp_type = sequencer::LerpType::DISCRETE;
+                        seq.AddPoint(seq.GetCurveCount() - 1, {0, 0});
+                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, 0});
                     }
                 }
                 else

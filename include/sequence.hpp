@@ -41,7 +41,7 @@ struct Sequence : public sequencer::SequenceInterface
     struct Curve
     {
         std::vector<Point> m_points{{0, 0}, {10, 0}};
-        sequencer::LerpType m_lerp_type{sequencer::LerpType::LINEAR};
+        sequencer::LerpType m_lerp_type{sequencer::LerpType::BEZIER};
         bool m_visibility{true};
         std::string m_name{"new_curve"};
     };
@@ -60,6 +60,8 @@ struct Sequence : public sequencer::SequenceInterface
     float m_snap_y_value = 0.1f;
 
     Curve& AddCurve() { return m_curves.emplace_back(); }
+
+    bool IsBezierCurve(int curve_index) const { return m_curves.at(curve_index).m_lerp_type == sequencer::LerpType::BEZIER; }
 
     bool IsKeyframeInAllCurves(int frame_num) const
     {
@@ -136,12 +138,112 @@ struct Sequence : public sequencer::SequenceInterface
 
     void SetCurveVisibility(int curve_idx, bool visibility) override { m_curves.at(curve_idx).m_visibility = visibility; }
 
-    int GetCurvePointCount(int curve_index) override { return (int)m_curves.at(curve_index).m_points.size(); }
+    /// @return keyframe count
+    int GetCurvePointCount(int curve_index) override
+    {
+        if (IsBezierCurve(curve_index)) return (int)m_curves.at(curve_index).m_points.size() / 3;
+        return (int)m_curves.at(curve_index).m_points.size();
+    }
+
+    /// @return keyframe + handles(for bezier) count
+    int GetCurveRawPointCount(int curve_index) const { return (int)m_curves.at(curve_index).m_points.size(); }
+
+    /// @return keyframe index from raw point index (for Bezier)
+    int GetKeyframeIndex(int curve_index, int raw_point_index) const
+    {
+        if (IsBezierCurve(curve_index)) return raw_point_index / 3;
+        return raw_point_index;
+    }
+
+    /// @return Get raw index of keyframe (for Bezier)
+    int GetKeyframeRawIndex(int curve_index, int keyframe_index) const
+    {
+        if (IsBezierCurve(curve_index)) return keyframe_index * 3 + 1;
+        return keyframe_index;
+    }
+
+    static float ConstrainHandleX(float handleX, float keyframeX, float adjacentKeyX, bool isOutHandle)
+    {
+        if (isOutHandle)
+            return ImClamp(handleX, keyframeX, adjacentKeyX);
+        else
+            return ImClamp(handleX, adjacentKeyX, keyframeX);
+    }
+
+    // Generate default handles (flat tangents, 1/3 segment width) for a keyframe
+    void GenerateDefaultHandles(int curve_index,
+                                int keyframe_index,
+                                ImVec2 keyframePos,
+                                Point& outInHandle,
+                                Point& outOutHandle) const
+    {  // REF: by claude.ai
+        const auto& pts = m_curves.at(curve_index).m_points;
+        int keyframeCount = (int)pts.size() / 3;
+        const float handleFraction = 1.0f / 3.0f;
+
+        // In-handle
+        if (keyframe_index > 0)
+        {
+            const Point& prevKey = pts.at((keyframe_index - 1) * 3 + 1);
+            float segmentWidth = keyframePos.x - prevKey.x;
+            outInHandle = Point(keyframePos.x - segmentWidth * handleFraction, keyframePos.y);
+        }
+        else
+        {
+            outInHandle = keyframePos;
+        }
+
+        // Out-handle
+        if (keyframe_index < keyframeCount - 1)
+        {
+            const Point& nextKey = pts.at((keyframe_index + 1) * 3 + 1);
+            float segmentWidth = nextKey.x - keyframePos.x;
+            outOutHandle = Point(keyframePos.x + segmentWidth * handleFraction, keyframePos.y);
+        }
+        else
+        {
+            outOutHandle = keyframePos;
+        }
+    }
+
+    void ConstrainHandlesForKeyframe(int curve_index, int keyframe_index)
+    {  // REF: by claude.ai
+        auto& pts = m_curves.at(curve_index).m_points;
+        int keyframeCount = (int)pts.size() / 3;
+
+        int inIdx = keyframe_index * 3;
+        int keyIdx = keyframe_index * 3 + 1;
+        int outIdx = keyframe_index * 3 + 2;
+
+        Point& inHandle = pts.at(inIdx);
+        Point& keyframe = pts.at(keyIdx);
+        Point& outHandle = pts.at(outIdx);
+
+        if (keyframe_index > 0)
+        {
+            float prevKeyX = pts.at((keyframe_index - 1) * 3 + 1).x;
+            inHandle.x = ConstrainHandleX(inHandle.x, keyframe.x, prevKeyX, false);
+        }
+        else
+        {
+            inHandle = keyframe;
+        }
+
+        if (keyframe_index < keyframeCount - 1)
+        {
+            float nextKeyX = pts.at((keyframe_index + 1) * 3 + 1).x;
+            outHandle.x = ConstrainHandleX(outHandle.x, keyframe.x, nextKeyX, true);
+        }
+        else
+        {
+            outHandle = keyframe;
+        }
+    }
 
     uint32_t GetCurveColor(int curve_index) override
     {
         // TODO(tanim) replace hardcoded colors
-        constexpr uint32_t colors[] = {0xFF0000FF, 0xFF00FF00, 0xFFFF0000};
+        constexpr uint32_t colors[] = {0xFF0000FF, 0xFF00FF00, 0xFFFF0000, 0xFFFFFF00, 0xFFFF00FF};
         return colors[curve_index];
     }
 
@@ -172,71 +274,242 @@ struct Sequence : public sequencer::SequenceInterface
 
     int EditPoint(int curve_index, int point_index, ImVec2 value) override
     {
-        // TanimAddition
-        // snap the time (x) of keyframes to integers
-        value.x = floorf(value.x);
+        auto& pts = m_curves.at(curve_index).m_points;
+        if (IsBezierCurve(curve_index))
+        {
+            int pointType = point_index % 3;  // 0=in-handle, 1=keyframe, 2=out-handle
+            int keyframeIdx = point_index / 3;
+            int keyframeCount = GetCurvePointCount(curve_index);
 
-        // TanimAddition
-        // return early if the keyframes are in the same frame
-        if (point_index + 1 < (int)GetCurvePointCount(curve_index) &&
-            (int)m_curves.at(curve_index).m_points.at(point_index + 1).x == (int)value.x)
-        {
-            return point_index;
-        }
-        if (point_index - 1 > 0 && (int)m_curves.at(curve_index).m_points.at(point_index - 1).x == (int)value.x)
-        {
-            return point_index;
-        }
-
-        if (ImGui::GetIO().KeyCtrl)
-        {
-            if (m_snap_y_value > 0.0f)
+            if (pointType == 1)  // === EDITING A KEYFRAME ===
             {
-                value.y = std::round(value.y / m_snap_y_value) * m_snap_y_value;
+                // Snap X to integer
+                value.x = floorf(value.x);
+
+                // Prevent duplicate frames
+                if (keyframeIdx + 1 < keyframeCount)
+                {
+                    if ((int)pts.at((keyframeIdx + 1) * 3 + 1).x == (int)value.x) return point_index;
+                }
+                if (keyframeIdx > 0)
+                {
+                    if ((int)pts.at((keyframeIdx - 1) * 3 + 1).x == (int)value.x) return point_index;
+                }
+
+                // Y-axis snapping
+                if (ImGui::GetIO().KeyCtrl && m_snap_y_value > 0.0f)
+                    value.y = std::round(value.y / m_snap_y_value) * m_snap_y_value;
+
+                // TypeMeta constraints
+                if (m_type_meta == TypeMeta::INT)
+                    value.y = std::floorf(value.y);
+                else if (m_type_meta == TypeMeta::BOOL)
+                    value.y = value.y > 0.5f ? 1.0f : 0.0f;
+
+                // RepresentationMeta constraints
+                if (m_representation_meta == RepresentationMeta::COLOR) value.y = ImClamp(value.y, 0.0f, 1.0f);
+
+                // Calculate delta from old position
+                Point oldKeyframe = pts.at(point_index);
+                ImVec2 delta(value.x - oldKeyframe.x, value.y - oldKeyframe.y);
+
+                // Update keyframe
+                pts.at(point_index) = value;
+
+                // Move handles with keyframe
+                int inIdx = keyframeIdx * 3;
+                int outIdx = keyframeIdx * 3 + 2;
+                pts.at(inIdx).x += delta.x;
+                pts.at(inIdx).y += delta.y;
+                pts.at(outIdx).x += delta.x;
+                pts.at(outIdx).y += delta.y;
+
+                // Clamp first keyframe to first frame
+                if (keyframeIdx == 0)
+                {
+                    float targetX = static_cast<float>(m_first_frame);
+                    float xDiff = targetX - pts.at(point_index).x;
+                    pts.at(point_index).x = targetX;
+                    pts.at(inIdx).x += xDiff;
+                    pts.at(outIdx).x += xDiff;
+                }
+
+                // Clamp last keyframe to last frame
+                if (keyframeIdx == keyframeCount - 1)
+                {
+                    float targetX = static_cast<float>(m_last_frame);
+                    float xDiff = targetX - pts.at(point_index).x;
+                    pts.at(point_index).x = targetX;
+                    pts.at(inIdx).x += xDiff;
+                    pts.at(outIdx).x += xDiff;
+                }
+
+                // Constrain handles to valid ranges
+                ConstrainHandlesForKeyframe(curve_index, keyframeIdx);
+
+                // Also constrain neighbor handles that might be affected
+                if (keyframeIdx > 0) ConstrainHandlesForKeyframe(curve_index, keyframeIdx - 1);
+                if (keyframeIdx < keyframeCount - 1) ConstrainHandlesForKeyframe(curve_index, keyframeIdx + 1);
+
+                return point_index;
+            }
+            else  // === EDITING A HANDLE ===
+            {
+                Point& keyframe = pts.at(keyframeIdx * 3 + 1);
+
+                if (pointType == 0)  // In-handle
+                {
+                    if (keyframeIdx > 0)
+                    {
+                        float prevKeyX = pts.at((keyframeIdx - 1) * 3 + 1).x;
+                        value.x = ConstrainHandleX(value.x, keyframe.x, prevKeyX, false);
+                    }
+                    else
+                    {
+                        value = keyframe;
+                    }
+                }
+                else  // Out-handle
+                {
+                    if (keyframeIdx < keyframeCount - 1)
+                    {
+                        float nextKeyX = pts.at((keyframeIdx + 1) * 3 + 1).x;
+                        value.x = ConstrainHandleX(value.x, keyframe.x, nextKeyX, true);
+                    }
+                    else
+                    {
+                        value = keyframe;
+                    }
+                }
+
+                pts.at(point_index) = value;
+                return point_index;
             }
         }
-
-        if (m_type_meta == TypeMeta::INT)
+        else  // === NON-BEZIER CURVES ===
         {
-            value.y = std::floorf(value.y);
-        }
-        else if (m_type_meta == TypeMeta::BOOL)
-        {
-            value.y = value.y > 0.5f ? 1.0f : 0.0f;
-        }
+            value.x = floorf(value.x);
 
-        if (m_representation_meta == RepresentationMeta::COLOR)
-        {
-            value.y = ImClamp(value.y, 0.0f, 1.0f);
+            if (point_index + 1 < (int)GetCurvePointCount(curve_index) && (int)pts.at(point_index + 1).x == (int)value.x)
+                return point_index;
+
+            if (point_index - 1 > 0 && (int)pts.at(point_index - 1).x == (int)value.x) return point_index;
+
+            if (ImGui::GetIO().KeyCtrl && m_snap_y_value > 0.0f)
+                value.y = std::round(value.y / m_snap_y_value) * m_snap_y_value;
+
+            if (m_type_meta == TypeMeta::INT)
+                value.y = std::floorf(value.y);
+            else if (m_type_meta == TypeMeta::BOOL)
+                value.y = value.y > 0.5f ? 1.0f : 0.0f;
+
+            if (m_representation_meta == RepresentationMeta::COLOR) value.y = ImClamp(value.y, 0.0f, 1.0f);
+
+            pts.at(point_index) = ImVec2(value.x, value.y);
+            SortCurvePoints(curve_index);
+
+            pts.at(0).x = static_cast<float>(m_first_frame);
+            pts.at(GetCurvePointCount(curve_index) - 1).x = static_cast<float>(m_last_frame);
+
+            for (int i = 0; i < GetCurvePointCount(curve_index); i++)
+            {
+                if (m_curves.at(curve_index).m_points.at(i).Frame() == (int)value.x) return i;
+            }
+            return point_index;
         }
-
-        m_curves.at(curve_index).m_points.at(point_index) = ImVec2(value.x, value.y);
-        SortCurvePoints(curve_index);
-
-        // force the first keyframe time (x) to the sequence's first frame
-        m_curves.at(curve_index).m_points.at(0).x = static_cast<float>(m_first_frame);
-        // force the last keyframe time (x) to the sequence's last frame
-        m_curves.at(curve_index).m_points.at(GetCurvePointCount(curve_index) - 1).x = static_cast<float>(m_last_frame);
-
-        for (int i = 0; i < GetCurvePointCount(curve_index); i++)
-        {
-            if (m_curves.at(curve_index).m_points.at(i).Frame() == (int)value.x) return i;
-        }
-        return point_index;
     }
 
     void AddPoint(int curve_index, ImVec2 value) override
     {
-        m_curves.at(curve_index).m_points.emplace_back(value);
-        SortCurvePoints(curve_index);
+        auto& pts = m_curves.at(curve_index).m_points;
+
+        if (IsBezierCurve(curve_index))
+        {  // REF: by claude.ai
+            value.x = floorf(value.x);
+            int keyframeCount = GetCurvePointCount(curve_index);
+
+            // Find insertion position & check for duplicates
+            int insertKeyIdx = keyframeCount;
+            for (int k = 0; k < keyframeCount; k++)
+            {
+                float keyX = pts.at(k * 3 + 1).x;
+                if ((int)value.x == (int)keyX) return;  // Duplicate
+                if (value.x < keyX)
+                {
+                    insertKeyIdx = k;
+                    break;
+                }
+            }
+
+            // Generate handles based on position AFTER insertion
+            // We need to calculate what the neighbors will be
+            Point inHandle, outHandle;
+            const float handleFraction = 1.0f / 3.0f;
+
+            // In-handle
+            if (insertKeyIdx > 0)
+            {
+                float prevKeyX = pts.at((insertKeyIdx - 1) * 3 + 1).x;
+                float segmentWidth = value.x - prevKeyX;
+                inHandle = Point(value.x - segmentWidth * handleFraction, value.y);
+            }
+            else
+            {
+                inHandle = value;
+            }
+
+            // Out-handle
+            if (insertKeyIdx < keyframeCount)
+            {
+                float nextKeyX = pts.at(insertKeyIdx * 3 + 1).x;
+                float segmentWidth = nextKeyX - value.x;
+                outHandle = Point(value.x + segmentWidth * handleFraction, value.y);
+            }
+            else if (keyframeCount > 0)
+            {
+                float prevKeyX = pts.at((keyframeCount - 1) * 3 + 1).x;
+                float segmentWidth = value.x - prevKeyX;
+                outHandle = Point(value.x + segmentWidth * handleFraction, value.y);
+            }
+            else
+            {
+                outHandle = value;
+            }
+
+            // Insert the 3 points
+            int insertRawIdx = insertKeyIdx * 3;
+            pts.insert(pts.begin() + insertRawIdx, Point(inHandle));
+            pts.insert(pts.begin() + insertRawIdx + 1, Point(value));
+            pts.insert(pts.begin() + insertRawIdx + 2, Point(outHandle));
+
+            // Constrain neighbor handles
+            int newKeyframeCount = keyframeCount + 1;
+            if (insertKeyIdx > 0) ConstrainHandlesForKeyframe(curve_index, insertKeyIdx - 1);
+            if (insertKeyIdx < newKeyframeCount - 1) ConstrainHandlesForKeyframe(curve_index, insertKeyIdx + 1);
+        }
+        else
+        {
+            pts.emplace_back(value);
+            SortCurvePoints(curve_index);
+        }
     }
 
     void RemovePoint(int curve_index, int point_index) override
     {
-        if (point_index > 0 && point_index < GetCurvePointCount(curve_index) - 1)
+        auto& pts = m_curves.at(curve_index).m_points;
+
+        if (IsBezierCurve(curve_index))
+        {  // REF: by claude.ai
+            int keyframeCount = GetCurvePointCount(curve_index);
+
+            if (point_index <= 0 || point_index >= keyframeCount - 1) return;
+
+            int rawIdx = point_index * 3;
+            pts.erase(pts.begin() + rawIdx, pts.begin() + rawIdx + 3);
+        }
+        else
         {
-            std::vector<Point>* points = &m_curves.at(curve_index).m_points;
-            points->erase(points->begin() + point_index);
+            if (point_index > 0 && point_index < GetCurvePointCount(curve_index) - 1) pts.erase(pts.begin() + point_index);
         }
     }
 
@@ -248,11 +521,20 @@ struct Sequence : public sequencer::SequenceInterface
         }
 
         const Curve& curve = m_curves.at(curve_idx);
-        for (int point_idx = 0; point_idx < (int)curve.m_points.size(); ++point_idx)
-        {
-            if (curve.m_points.at(point_idx).Frame() == frame_num)
+
+        if (IsBezierCurve(curve_idx))
+        {  // REF: by claude.ai
+            int keyframeCount = (int)curve.m_points.size() / 3;
+            for (int k = 0; k < keyframeCount; k++)
             {
-                return point_idx;
+                if (curve.m_points.at(k * 3 + 1).Frame() == frame_num) return k;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < (int)curve.m_points.size(); ++i)
+            {
+                if (curve.m_points.at(i).Frame() == frame_num) return i;
             }
         }
 
@@ -279,15 +561,44 @@ struct Sequence : public sequencer::SequenceInterface
 
     void EditLastFrame(int new_last_frame)
     {
-        for (auto& curve : m_curves)
+        for (int c = 0; c < (int)m_curves.size(); c++)
         {
-            for (auto& point : curve.m_points)
+            auto& curve = m_curves[c];
+
+            if (IsBezierCurve(c))
+            {  // REF: by claude.ai
+                int keyframeCount = (int)curve.m_points.size() / 3;
+                for (int k = 0; k < keyframeCount; k++)
+                {
+                    int inIdx = k * 3;
+                    int keyIdx = k * 3 + 1;
+                    int outIdx = k * 3 + 2;
+
+                    float oldX = curve.m_points[keyIdx].x;
+                    float newX = helpers::Remap((float)m_first_frame,
+                                                (float)m_last_frame,
+                                                (float)m_first_frame,
+                                                (float)new_last_frame,
+                                                oldX);
+
+                    float xDiff = newX - oldX;
+                    curve.m_points[keyIdx].x = newX;
+                    curve.m_points[inIdx].x += xDiff;
+                    curve.m_points[outIdx].x += xDiff;
+                }
+
+                for (int k = 0; k < keyframeCount; k++) ConstrainHandlesForKeyframe(c, k);
+            }
+            else
             {
-                point.x = helpers::Remap(static_cast<float>(m_first_frame),
-                                         static_cast<float>(m_last_frame),
-                                         static_cast<float>(m_first_frame),
-                                         static_cast<float>(new_last_frame),
-                                         point.x);
+                for (auto& point : curve.m_points)
+                {
+                    point.x = helpers::Remap((float)m_first_frame,
+                                             (float)m_last_frame,
+                                             (float)m_first_frame,
+                                             (float)new_last_frame,
+                                             point.x);
+                }
             }
         }
 
@@ -297,15 +608,44 @@ struct Sequence : public sequencer::SequenceInterface
 
     void EditFirstFrame(int new_first_frame)
     {
-        for (auto& curve : m_curves)
+        for (int c = 0; c < (int)m_curves.size(); c++)
         {
-            for (auto& point : curve.m_points)
+            auto& curve = m_curves[c];
+
+            if (IsBezierCurve(c))
+            {  // REF: by claude.ai
+                int keyframeCount = (int)curve.m_points.size() / 3;
+                for (int k = 0; k < keyframeCount; k++)
+                {
+                    int inIdx = k * 3;
+                    int keyIdx = k * 3 + 1;
+                    int outIdx = k * 3 + 2;
+
+                    float oldX = curve.m_points[keyIdx].x;
+                    float newX = helpers::Remap((float)m_first_frame,
+                                                (float)m_last_frame,
+                                                (float)new_first_frame,
+                                                (float)m_last_frame,
+                                                oldX);
+
+                    float xDiff = newX - oldX;
+                    curve.m_points[keyIdx].x = newX;
+                    curve.m_points[inIdx].x += xDiff;
+                    curve.m_points[outIdx].x += xDiff;
+                }
+
+                for (int k = 0; k < keyframeCount; k++) ConstrainHandlesForKeyframe(c, k);
+            }
+            else
             {
-                point.x = helpers::Remap(static_cast<float>(m_first_frame),
-                                         static_cast<float>(m_last_frame),
-                                         static_cast<float>(new_first_frame),
-                                         static_cast<float>(m_last_frame),
-                                         point.x);
+                for (auto& point : curve.m_points)
+                {
+                    point.x = helpers::Remap((float)m_first_frame,
+                                             (float)m_last_frame,
+                                             (float)new_first_frame,
+                                             (float)m_last_frame,
+                                             point.x);
+                }
             }
         }
 
@@ -333,19 +673,28 @@ struct Sequence : public sequencer::SequenceInterface
         m_draw_min.x = 0;
 
         float min_y = std::numeric_limits<float>::max();
-        float max_y = std::numeric_limits<float>::min();
+        float max_y = std::numeric_limits<float>::lowest();
 
-        for (const auto& curve : m_curves)
+        for (int c = 0; c < (int)m_curves.size(); c++)
         {
-            for (const auto& point : curve.m_points)
-            {
-                if (point.y > max_y)
+            const auto& curve = m_curves[c];
+
+            if (IsBezierCurve(c))
+            {  // REF: by claude.ai
+                int keyframeCount = (int)curve.m_points.size() / 3;
+                for (int k = 0; k < keyframeCount; k++)
                 {
-                    max_y = point.y;
+                    float y = curve.m_points.at(k * 3 + 1).y;
+                    max_y = std::max(max_y, y);
+                    min_y = std::min(min_y, y);
                 }
-                if (point.y < min_y)
+            }
+            else
+            {
+                for (const auto& point : curve.m_points)
                 {
-                    min_y = point.y;
+                    max_y = std::max(max_y, point.y);
+                    min_y = std::min(min_y, point.y);
                 }
             }
         }
@@ -366,10 +715,28 @@ private:
 
     void ClampLastPointsToLastFrame()
     {
-        for (int i = 0; i < GetCurveCount(); i++)
+        for (int c = 0; c < GetCurveCount(); c++)
         {
-            m_curves.at(i).m_points.at(GetCurvePointCount(i) - 1).x = (float)m_last_frame;
-            SortCurvePoints(i);
+            auto& curve = m_curves[c];
+
+            if (IsBezierCurve(c))
+            {
+                int keyframeCount = (int)curve.m_points.size() / 3;
+                if (keyframeCount > 0)
+                {
+                    float xDiff = (float)m_first_frame - curve.m_points[1].x;
+                    curve.m_points[0] = Point((float)m_first_frame, curve.m_points[1].y);
+                    curve.m_points[1].x = (float)m_first_frame;
+                    curve.m_points[2].x += xDiff;
+
+                    ConstrainHandlesForKeyframe(c, 0);
+                }
+            }
+            else
+            {
+                if (!curve.m_points.empty()) curve.m_points[0].x = (float)m_first_frame;
+                SortCurvePoints(c);
+            }
         }
     }
 
