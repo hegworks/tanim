@@ -206,6 +206,20 @@ struct Sequence : public sequencer::SequenceInterface
         }
     }
 
+    void ResetTangentsForKeyframe(int curve_index, int keyframe_index) override
+    {
+        if (!IsBezierCurve(curve_index)) return;
+
+        auto& pts = m_curves.at(curve_index).m_points;
+        ImVec2 keyframePos = pts.at(keyframe_index * 3 + 1);
+
+        Point newInHandle, newOutHandle;
+        GenerateDefaultHandles(curve_index, keyframe_index, keyframePos, newInHandle, newOutHandle);
+
+        pts.at(keyframe_index * 3) = newInHandle;
+        pts.at(keyframe_index * 3 + 2) = newOutHandle;
+    }
+
     void ConstrainHandlesForKeyframe(int curve_index, int keyframe_index)
     {  // REF: by claude.ai
         auto& pts = m_curves.at(curve_index).m_points;

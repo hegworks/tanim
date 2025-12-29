@@ -232,6 +232,9 @@ int Edit(SequenceInterface& delegate,
     static std::set<EditPoint> selection;
     static bool overSelectedPoint = false;
 
+    static int rightClickedCurve = -1;
+    static int rightClickedKeyframe = -1;
+
     // for bezier
     static std::set<EditPoint> handleSelection;  // Separate selection for handles
     static bool overHandle = false;
@@ -473,74 +476,46 @@ int Edit(SequenceInterface& delegate,
             }
         }  // point loop
 
-        if (curveType == LerpType::BEZIER)
-        {  // REF: by claude.ai
-            // Draw keyframe points
-            size_t keyframeCount = ptCount;
-            for (size_t k = 0; k < keyframeCount; k++)
+        const bool isBezier = (curveType == LerpType::BEZIER);
+        for (size_t p = 0; p < ptCount; p++)
+        {
+            const ImVec2 keyframe = isBezier ? pts[p * 3 + 1] : pts[p];
+
+            const int drawState =
+                DrawPoint(draw_list,
+                          pointToRange(keyframe),
+                          viewSize,
+                          offset,
+                          (selection.find({int(c), int(p)}) != selection.end() && movingCurve == -1 && !scrollingV));
+
+            // Display point value near point
             {
-                size_t rawIdx = k * 3 + 1;
-                ImVec2 keyframe = pts[rawIdx];
+                char point_val_text[512];
+                const ImVec2 point_draw_pos = pointToRange(keyframe) * viewSize + offset;
+                ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", keyframe.x, keyframe.y);
+                draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
+            }
 
-                const int drawState =
-                    DrawPoint(draw_list,
-                              pointToRange(keyframe),
-                              viewSize,
-                              offset,
-                              (selection.find({int(c), int(k)}) != selection.end() && movingCurve == -1 && !scrollingV));
+            if (drawState && movingCurve == -1 && !selectingQuad)
+            {
+                overCurveOrPoint = true;
+                overSelectedPoint = true;
+                overCurve = -1;
+                if (isBezier) overHandle = false;
 
-                // Display point value
+                if (drawState == 2)
                 {
-                    char point_val_text[512];
-                    const ImVec2 point_draw_pos = pointToRange(keyframe) * viewSize + offset;
-                    ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", keyframe.x, keyframe.y);
-                    draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
-                }
-
-                if (drawState && movingCurve == -1 && !selectingQuad)
-                {
-                    overCurveOrPoint = true;
-                    overSelectedPoint = true;
-                    overCurve = -1;
-                    overHandle = false;
-
-                    if (drawState == 2)
-                    {
-                        if (!io.KeyShift && selection.find({int(c), int(k)}) == selection.end()) selection.clear();
-                        selection.insert({int(c), int(k)});
-                    }
+                    if (!io.KeyShift && selection.find({int(c), int(p)}) == selection.end()) selection.clear();
+                    selection.insert({int(c), int(p)});
                 }
             }
-        }
-        else
-        {
-            for (size_t p = 0; p < ptCount; p++)
+
+            // Right-click on keyframe - open context menu
+            if (drawState && io.MouseClicked[1])
             {
-                const int drawState =
-                    DrawPoint(draw_list,
-                              pointToRange(pts[p]),
-                              viewSize,
-                              offset,
-                              (selection.find({int(c), int(p)}) != selection.end() && movingCurve == -1 && !scrollingV));
-
-                {  // display point value near point
-                    char point_val_text[512];
-                    const ImVec2 point_draw_pos = pointToRange(pts[p]) * viewSize + offset;
-                    ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", pts[p].x, pts[p].y);
-                    draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
-                }
-
-                if (drawState && movingCurve == -1 && !selectingQuad)
-                {
-                    overCurveOrPoint = true;
-                    overSelectedPoint = true;
-                    overCurve = -1;
-                    if (drawState == 2)
-                    {
-                        if (!io.KeyShift && selection.find({int(c), int(p)}) == selection.end()) selection.clear();
-                        selection.insert({int(c), int(p)});
-                    }
-                }
+                rightClickedCurve = int(c);
+                rightClickedKeyframe = int(p);
+                ImGui::OpenPopup("KeyframeContextMenu");
             }
         }
     }  // curves loop
@@ -763,6 +738,46 @@ int Edit(SequenceInterface& delegate,
         quadSelection = io.MousePos;
     }
     if (clippingRect) draw_list->PopClipRect();
+
+    // Bezier keyframe context menu
+    if (ImGui::BeginPopup("KeyframeContextMenu"))
+    {
+        if (rightClickedCurve >= 0 && rightClickedKeyframe >= 0)
+        {
+            LerpType lt = delegate.GetCurveLerpType(rightClickedCurve);
+
+            if (lt == LerpType::BEZIER)
+            {
+                if (ImGui::MenuItem("Reset Tangents"))
+                {
+                    delegate.BeginEdit(rightClickedCurve);
+                    delegate.ResetTangentsForKeyframe(rightClickedCurve, rightClickedKeyframe);
+                    delegate.EndEdit();
+                }
+                ImGui::Separator();
+            }
+
+            // General keyframe options (work for all curve types)
+            int keyframeCount = delegate.GetCurvePointCount(rightClickedCurve);
+            bool canDelete = rightClickedKeyframe > 0 && rightClickedKeyframe < keyframeCount - 1;
+
+            if (ImGui::MenuItem("Delete Keyframe", nullptr, false, canDelete))
+            {
+                delegate.BeginEdit(rightClickedCurve);
+                delegate.RemovePoint(rightClickedCurve, rightClickedKeyframe);
+                delegate.EndEdit();
+                selection.clear();
+            }
+        }
+
+        ImGui::EndPopup();
+    }
+    else
+    {
+        // Reset when popup closes
+        rightClickedCurve = -1;
+        rightClickedKeyframe = -1;
+    }
 
     ImGui::EndChild();
     ImGui::PopStyleVar();

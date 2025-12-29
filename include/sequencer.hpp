@@ -85,6 +85,7 @@ struct SequenceInterface
     virtual void AddPoint(int curve_index, ImVec2 value) = 0;
     virtual void RemovePoint(int curve_index, int point_index) = 0;
     virtual unsigned int GetBackgroundColor() = 0;
+    virtual void ResetTangentsForKeyframe(int curve_index, int keyframe_index) = 0;
     // handle undo/redo through this functions
     virtual void BeginEdit(int curve_index) = 0;
     virtual void EndEdit() = 0;
