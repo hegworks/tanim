@@ -27,91 +27,38 @@
 // SOFTWARE.
 
 #pragma once
-#include "tanim/include/includes.hpp"
-#include "tanim/include/enums.hpp"
 
-#include <stdint.h>
-#include <vector>
+#include "tanim/include/includes.hpp"
+
+struct ImRect;
 
 namespace tanim
 {
 struct Sequence;
 }
 
-struct ImRect;
-
 namespace tanim::sequencer
 {
 
-enum class LerpType
-{
-    NONE,
-    DISCRETE,
-    LINEAR,
-    SMOOTH,
-    BEZIER,
-};
-
 struct EditPoint
 {
-    int curveIndex;
-    int pointIndex;
+    int m_curve_index;
+    int m_keyframe_index;
     bool operator<(const EditPoint& other) const
     {
-        if (curveIndex < other.curveIndex) return true;
-        if (curveIndex > other.curveIndex) return false;
+        if (m_curve_index < other.m_curve_index) return true;
+        if (m_curve_index > other.m_curve_index) return false;
 
-        if (pointIndex < other.pointIndex) return true;
+        if (m_keyframe_index < other.m_keyframe_index) return true;
         return false;
     }
 };
 
-struct SequenceInterface
-{
-    bool m_focused = false;
-    virtual int GetCurveCount() const = 0;
-    virtual bool GetCurveVisibility(int curve_idx) = 0;
-    virtual void SetCurveVisibility(int curve_idx, bool visibility) = 0;
-    virtual LerpType GetCurveLerpType(int curve_idx) = 0;
-    virtual ImVec2 GetDrawMin() = 0;
-    virtual ImVec2 GetDrawMax() = 0;
-    virtual void SetDrawMin(ImVec2 min) = 0;
-    virtual void SetDrawMax(ImVec2 max) = 0;
-    virtual void Fit() = 0;
-    virtual int GetCurvePointCount(int curve_index) = 0;
-    virtual uint32_t GetCurveColor(int curve_index) = 0;
-    virtual const std::vector<ImVec2>& GetCurvePointsList(int curve_index) = 0;
-    virtual int EditPoint(int curve_index, int point_index, ImVec2 value) = 0;
-    virtual void AddPoint(int curve_index, ImVec2 value) = 0;
-    virtual void RemovePoint(int curve_index, int point_index) = 0;
-    virtual unsigned int GetBackgroundColor() = 0;
-    virtual void ResetTangentsForKeyframe(int curve_index, int keyframe_index) = 0;
-    // handle undo/redo through this functions
-    virtual void BeginEdit(int curve_index) = 0;
-    virtual void EndEdit() = 0;
-
-    virtual ~SequenceInterface() = default;
-};
-
-int Edit(SequenceInterface& delegate,
+int Edit(Sequence& seq,
          const ImVec2& size,
          unsigned int id,
-         const ImRect* clippingRect = NULL,
-         ImVector<EditPoint>* selectedPoints = NULL);
-
-static ImVec2 PointToRange(const ImVec2& point, const ImVec2& min, const ImVec2& max);
-
-ImVec2 SampleCurveForDrawing(const std::vector<ImVec2>& pts,
-                             size_t ptCount,
-                             float t,
-                             LerpType curveType,
-                             const ImVec2& min,
-                             const ImVec2& max);
-
-float SampleCurveForAnimation(const std::vector<ImVec2>& pts,
-                              float time,
-                              LerpType curve_type,
-                              RepresentationMeta representation_meta = RepresentationMeta::NONE);
+         const ImRect* clipping_rect = nullptr,
+         ImVector<EditPoint>* selected_points = nullptr);
 
 glm::quat SampleQuatForAnimation(Sequence& seq, float time);
 

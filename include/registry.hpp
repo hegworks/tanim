@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sequencer.hpp"
 #include "tanim/include/timeline.hpp"
 #include "tanim/include/includes.hpp"
 #include "tanim/include/enums.hpp"
@@ -64,10 +65,10 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0.0f, field});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, field});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
@@ -75,11 +76,12 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     seq.m_type_meta = Sequence::TypeMeta::INT;
 
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        curve.m_lerp_type = sequencer::LerpType::LINEAR;
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0.0f, static_cast<float>(field)});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, static_cast<float>(field)});
+                        SetKeyframeBrokenType(curve, 0, Tangent::BrokenType::LINEAR, Tangent::BrokenType::LINEAR);
+                        SetKeyframeBrokenType(curve, 1, Tangent::BrokenType::LINEAR, Tangent::BrokenType::LINEAR);
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, static_cast<float>(field)});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, static_cast<float>(field)});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
@@ -87,27 +89,28 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     seq.m_type_meta = Sequence::TypeMeta::BOOL;
 
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        curve.m_lerp_type = sequencer::LerpType::DISCRETE;
+                        SetKeyframeBrokenType(curve, 0, Tangent::BrokenType::CONSTANT, Tangent::BrokenType::CONSTANT);
+                        SetKeyframeBrokenType(curve, 1, Tangent::BrokenType::CONSTANT, Tangent::BrokenType::CONSTANT);
                         float f = field == true ? 1.0f : 0.0f;
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0.0f, f});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, f});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, f});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, f});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.x});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.x});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.x});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.y});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.y});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.y});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
@@ -115,22 +118,22 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     seq.m_representation_meta = RepresentationMeta::VECTOR;
 
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.x});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.x});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.x});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.y});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.y});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.y});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.z});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.z});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.z});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.z});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
@@ -138,28 +141,28 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     seq.m_representation_meta = RepresentationMeta::COLOR;
 
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "R";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.r});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.r});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.r});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.r});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "G";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.g});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.g});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.g});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.g});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "B";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.b});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.b});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.b});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.b});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "A";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.a});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.a});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.a});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.a});
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
@@ -167,35 +170,35 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     seq.m_representation_meta = RepresentationMeta::QUAT;
 
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "W";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.w});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.w});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.w});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.w});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.x});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.x});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.x});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.y});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.y});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.y});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, field.z});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, field.z});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.z});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.z});
                     }
                     {
-                        Sequence::Curve& curve = seq.AddCurve();
+                        Curve& curve = seq.AddCurve();
                         curve.m_name = "Spins";
-                        curve.m_lerp_type = sequencer::LerpType::DISCRETE;
-                        seq.AddPoint(seq.GetCurveCount() - 1, {0, 0});
-                        seq.AddPoint(seq.GetCurveCount() - 1, {last_frame, 0});
+                        SetKeyframeBrokenType(curve, 4, Tangent::BrokenType::CONSTANT, Tangent::BrokenType::CONSTANT);
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, 0});
+                        seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, 0});
                     }
                 }
                 else
@@ -221,36 +224,28 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
             {
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
-                    field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                    field = SampleCurveValue(seq.m_curves.at(0), sample_time);
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                    field = SampleCurveValue(seq.m_curves.at(0), sample_time);
                     field = static_cast<int>(std::floorf(field));
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
-                    field = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
+                    field = SampleCurveValue(seq.m_curves.at(0), sample_time);
                     field = std::round(field) >= 0.5f ? true : false;
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
-                    field.x =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
-
-                    field.y =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
+                    field.x = SampleCurveValue(seq.m_curves.at(0), sample_time);
+                    field.y = SampleCurveValue(seq.m_curves.at(1), sample_time);
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    field.x =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0), sample_time, seq.GetCurveLerpType(0));
-
-                    field.y =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1), sample_time, seq.GetCurveLerpType(1));
-
-                    field.z =
-                        sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2), sample_time, seq.GetCurveLerpType(2));
+                    field.x = SampleCurveValue(seq.m_curves.at(0), sample_time);
+                    field.y = SampleCurveValue(seq.m_curves.at(1), sample_time);
+                    field.z = SampleCurveValue(seq.m_curves.at(2), sample_time);
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
@@ -258,21 +253,10 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                     {
                         case RepresentationMeta::COLOR:
                         {
-                            field.r = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(0),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(0));
-
-                            field.g = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(1),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(1));
-
-                            field.b = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(2),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(2));
-
-                            field.a = sequencer::SampleCurveForAnimation(seq.GetCurvePointsList(3),
-                                                                         sample_time,
-                                                                         seq.GetCurveLerpType(3));
+                            field.r = SampleCurveValue(seq.m_curves.at(0), sample_time);
+                            field.g = SampleCurveValue(seq.m_curves.at(1), sample_time);
+                            field.b = SampleCurveValue(seq.m_curves.at(2), sample_time);
+                            field.a = SampleCurveValue(seq.m_curves.at(3), sample_time);
 
                             break;
                         }
@@ -315,11 +299,11 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
             if (struct_field_name == seq.m_seq_id.StructFieldName())
             {
                 const float player_frame_f = static_cast<float>(player_frame);
-                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, player_frame);
-                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, player_frame);
-                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, player_frame);
-                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, player_frame);
-                const auto& curve_4_optional_point_idx = seq.GetPointIdx(4, player_frame);
+                const auto& curve_0_optional_point_idx = seq.GetKeyframeIdx(0, player_frame);
+                const auto& curve_1_optional_point_idx = seq.GetKeyframeIdx(1, player_frame);
+                const auto& curve_2_optional_point_idx = seq.GetKeyframeIdx(2, player_frame);
+                const auto& curve_3_optional_point_idx = seq.GetKeyframeIdx(3, player_frame);
+                const auto& curve_4_optional_point_idx = seq.GetKeyframeIdx(4, player_frame);
 
                 const bool curve_0_disabled = !curve_0_optional_point_idx.has_value();
                 const bool curve_1_disabled = !curve_1_optional_point_idx.has_value();
@@ -329,8 +313,8 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
-                    helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
+                    // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
 
                     if (curve_0_disabled)
                     {
@@ -339,7 +323,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                     if (ImGui::InputFloat(field_name, &field) && !curve_0_disabled)
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field});
+                        seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field});
                     }
 
                     if (curve_0_disabled)
@@ -349,8 +333,8 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
+                    // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
 
                     if (curve_0_disabled)
                     {
@@ -359,7 +343,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                     if (ImGui::InputInt(field_name, &field) && !curve_0_disabled)
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, static_cast<float>(field)});
+                        seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, static_cast<float>(field)});
                     }
 
                     if (curve_0_disabled)
@@ -376,7 +360,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                     if (ImGui::Checkbox(field_name, &field) && !curve_0_disabled)
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field == true ? 1.0f : 0.0f});
+                        seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field == true ? 1.0f : 0.0f});
                     }
 
                     if (curve_0_disabled)
@@ -386,13 +370,13 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
-                    helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                                         "X LerpType");
+                    // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                    //                      "X LerpType");
 
-                    helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
-                                         {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                                         "Y LerpType");
+                    // helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
+                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                    //                      "Y LerpType");
 
                     if (curve_0_disabled)
                     {
@@ -400,7 +384,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                     }
                     if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x) && !curve_0_disabled)
                     {
-                        seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
+                        seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
                     }
                     if (curve_0_disabled)
                     {
@@ -413,7 +397,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                     }
                     if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y) && !curve_1_disabled)
                     {
-                        seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
+                        seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                     }
                     if (curve_1_disabled)
                     {
@@ -428,17 +412,17 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                     {
                         case RepresentationMeta::VECTOR:
                         {
-                            helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                                 {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                                                 "X LerpType");
-
-                            helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
-                                                 {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                                                 "Y LerpType");
-
-                            helpers::InspectEnum(seq.m_curves.at(2).m_lerp_type,
-                                                 {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                                                 "Z LerpType");
+                            // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                            //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                            //                      "X LerpType");
+                            //
+                            // helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
+                            //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                            //                      "Y LerpType");
+                            //
+                            // helpers::InspectEnum(seq.m_curves.at(2).m_lerp_type,
+                            //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
+                            //                      "Z LerpType");
 
                             if (curve_0_disabled)
                             {
@@ -446,7 +430,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x) && !curve_0_disabled)
                             {
-                                seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
+                                seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.x});
                             }
                             if (curve_0_disabled)
                             {
@@ -459,7 +443,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y) && !curve_1_disabled)
                             {
-                                seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
+                                seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.y});
                             }
                             if (curve_1_disabled)
                             {
@@ -472,7 +456,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                             }
                             if (ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z) && !curve_2_disabled)
                             {
-                                seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.z});
+                                seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.z});
                             }
                             if (curve_2_disabled)
                             {
@@ -485,12 +469,12 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                         {
                             const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled;
 
-                            if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                                     {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
-                            {
-                                seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                                seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                            }
+                            // if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                            //                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
+                            // {
+                            //     seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                            //     seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                            // }
 
                             if (disabled)
                             {
@@ -499,9 +483,9 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                             if (ImGui::ColorEdit3(field_name, &field.r) && !disabled)
                             {
-                                seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
-                                seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
-                                seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
+                                seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
+                                seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
+                                seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
                             }
 
                             if (disabled)
@@ -519,13 +503,13 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
-                    if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                             {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
-                    {
-                        seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                        seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                        seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    }
+                    // if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                    //                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
+                    // {
+                    //     seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    //     seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    //     seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    // }
 
                     if (helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::VECTOR}))
                     {
@@ -577,10 +561,10 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                             if (ImGui::ColorEdit4(field_name, &field.r) && !disabled)
                             {
-                                seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
-                                seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
-                                seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
-                                seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
+                                seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
+                                seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
+                                seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
+                                seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
                             }
 
                             if (disabled)
@@ -598,13 +582,13 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                                             {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
-                    {
-                        seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                        seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                        seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    }
+                    // if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
+                    //                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
+                    // {
+                    //     seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    //     seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    //     seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
+                    // }
 
                     glm::quat q = field;
                     glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(q));
@@ -622,19 +606,19 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                     if (curve_4_optional_point_idx.has_value())
                     {
-                        float spins = seq.m_curves.at(4).m_points.at(curve_4_optional_point_idx.value()).y;
+                        float spins = seq.m_curves.at(4).m_keyframes.at(curve_4_optional_point_idx.value()).Value();
                         int spins_int = (int)spins;
                         if (ImGui::InputInt("Spins", &spins_int))
                         {
                             spins = (float)spins_int;
-                            seq.EditPoint(4, curve_4_optional_point_idx.value(), {player_frame_f, spins});
+                            seq.EditKeyframe(4, curve_4_optional_point_idx.value(), {player_frame_f, spins});
 
                             field = sequencer::SampleQuatForAnimation(seq, player_frame_f);
 
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
+                            seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
+                            seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
+                            seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
+                            seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
                         }
                     }
                 }
@@ -661,49 +645,49 @@ static void Record(T& ecs_component, int recording_frame, Sequence& seq)
             {
                 const float recording_frame_f = static_cast<float>(recording_frame);
 
-                const auto& curve_0_optional_point_idx = seq.GetPointIdx(0, recording_frame_f);
-                const auto& curve_1_optional_point_idx = seq.GetPointIdx(1, recording_frame_f);
-                const auto& curve_2_optional_point_idx = seq.GetPointIdx(2, recording_frame_f);
-                const auto& curve_3_optional_point_idx = seq.GetPointIdx(3, recording_frame_f);
+                const auto& curve_0_optional_point_idx = seq.GetKeyframeIdx(0, recording_frame_f);
+                const auto& curve_1_optional_point_idx = seq.GetKeyframeIdx(1, recording_frame_f);
+                const auto& curve_2_optional_point_idx = seq.GetKeyframeIdx(2, recording_frame_f);
+                const auto& curve_3_optional_point_idx = seq.GetKeyframeIdx(3, recording_frame_f);
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field});
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field});
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, (float)field});
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, (float)field});
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field == true ? 1.0f : 0.0f});
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field == true ? 1.0f : 0.0f});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.x});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.y});
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.x});
+                    seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.y});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.x});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.y});
-                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.z});
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.x});
+                    seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.y});
+                    seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.z});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
                     switch (seq.m_representation_meta)
                     {
                         case RepresentationMeta::COLOR:
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.r});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.g});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.b});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.a});
+                            seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.r});
+                            seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.g});
+                            seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.b});
+                            seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.a});
                             break;
                         case RepresentationMeta::QUAT:
-                            seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
-                            seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
-                            seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
-                            seq.EditPoint(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
+                            seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
+                            seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
+                            seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
+                            seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
                             break;
                         case RepresentationMeta::VECTOR:
                         case RepresentationMeta::NONE:
@@ -713,10 +697,10 @@ static void Record(T& ecs_component, int recording_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    seq.EditPoint(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
-                    seq.EditPoint(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
-                    seq.EditPoint(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
-                    seq.EditPoint(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
+                    seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
+                    seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
+                    seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
                 }
                 else
                 {

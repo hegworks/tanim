@@ -2,10 +2,15 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
-#include "tanim/include/timeliner.hpp"
+#include "user_override.hpp"
 #include "tanim/include/timeline_data.hpp"
-#include "tanim/include/user_override.hpp"
-#include "tanim/include/sequencer.hpp"
+#include "tanim/include/sequence.hpp"
+#include "tanim/include/timeliner.hpp"
+
+#include <optional>
+#include <vector>
+#include <string>
+#include <memory>
 
 namespace tanim
 {
@@ -90,7 +95,7 @@ public:
         {
             for (int point_idx = 0; point_idx < seq.GetCurveKeyframeCount(curve_index); point_idx++)
             {
-                float p = seq.m_curves.at(curve_index).m_keyframes.at(point_idx).Time();
+                float p = seq.m_curves.at(curve_index).m_points.at(point_idx).x;
                 if (p < (float)data.m_first_frame || p > (float)seq.m_last_frame) continue;
                 float r = (p - (float)data.m_min_frame) / float(data.m_max_frame - data.m_min_frame);
                 float x = ImLerp(rc.Min.x, rc.Max.x, r);

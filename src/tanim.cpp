@@ -559,15 +559,15 @@ std::string Tanim::Serialize(TimelineData& data)
         {
             nlohmann::ordered_json curve_js{};
 
-            Sequence::Curve& curve = seq.m_curves.at(curve_idx);
+            Curve& curve = seq.m_curves.at(curve_idx);
             curve_js["m_name"] = curve.m_name;
-            curve_js["m_lerp_type"] = std::string(magic_enum::enum_name(curve.m_lerp_type));
+            // curve_js["m_lerp_type"] = std::string(magic_enum::enum_name(curve.m_lerp_type));
 
             nlohmann::ordered_json pts_js_array = nlohmann::ordered_json::array();
-            for (int pt_idx = 0; pt_idx < seq.GetCurvePointCount(curve_idx); ++pt_idx)
+            for (int pt_idx = 0; pt_idx < seq.GetCurveKeyframeCount(curve_idx); ++pt_idx)
             {
-                const auto& pt = curve.m_points.at(pt_idx);
-                pts_js_array.push_back({pt.x, pt.y});
+                const auto& pt = curve.m_keyframes.at(pt_idx);
+                pts_js_array.push_back({pt.Time(), pt.Value()});
             }
             curve_js["m_points"] = pts_js_array;
 
@@ -630,19 +630,20 @@ void Tanim::Deserialize(entt::entity /*root_entity*/, TimelineData& data, const 
         seq.m_curves.clear();
         for (const auto& curve_js : seq_js["m_curves"])
         {
-            Sequence::Curve& curve = seq.m_curves.emplace_back();
+            Curve& curve = seq.m_curves.emplace_back();
 
             curve.m_name = curve_js["m_name"].get<std::string>();
 
             const std::string lerp_type_str = curve_js["m_lerp_type"].get<std::string>();
-            curve.m_lerp_type = magic_enum::enum_cast<sequencer::LerpType>(lerp_type_str).value_or(sequencer::LerpType::SMOOTH);
+            // curve.m_lerp_type =
+            // magic_enum::enum_cast<sequencer::LerpType>(lerp_type_str).value_or(sequencer::LerpType::SMOOTH);
 
-            curve.m_points.clear();
+            curve.m_keyframes.clear();
             for (const auto& pt_js : curve_js["m_points"])
             {
                 const float x = pt_js[0].get<float>();
                 const float y = pt_js[1].get<float>();
-                curve.m_points.emplace_back(x, y);
+                curve.m_keyframes.emplace_back(x, y);
             }
         }
     }
