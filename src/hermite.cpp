@@ -10,22 +10,6 @@ namespace tanim
 
 float Vec2Length(const ImVec2& v) { return std::sqrt(v.x * v.x + v.y * v.y); }
 
-ImVec2 NormalizeVec2(const ImVec2& v, bool default_positive_x)
-{
-    float len = Vec2Length(v);
-    if (len < 1e-6f)
-    {
-        return default_positive_x ? ImVec2(1.0f, 0.0f) : ImVec2(-1.0f, 0.0f);
-    }
-    return ImVec2(v.x / len, v.y / len);
-}
-
-float GetSlope(const ImVec2& dir)
-{
-    if (std::abs(dir.x) < 1e-6f) return 0.0f;
-    return dir.y / std::abs(dir.x);
-}
-
 // === Hermite Spline Evaluation ===
 
 float EvaluateHermite(float p0, float m0, float p1, float m1, float t)
@@ -109,12 +93,9 @@ float SampleCurveValue(const Curve& curve, float time)
 
     float t = (time - k0.Time()) / segment_duration;
 
-    // Compute Hermite tangents: slope * segment_duration
-    float slope0 = GetSlope(k0.m_out.m_dir);
-    float slope1 = GetSlope(k1.m_in.m_dir);
-
-    float m0 = slope0 * k0.m_out.m_weight;
-    float m1 = slope1 * k1.m_in.m_weight;
+    // Hermite tangent = 3 * control point offset (Bezier relationship)
+    float m0 = k0.m_out.m_offset.y * 3.0f;
+    float m1 = -k1.m_in.m_offset.y * 3.0f;
 
     return EvaluateHermite(k0.Value(), m0, k1.Value(), m1, t);
 }
@@ -158,11 +139,9 @@ ImVec2 SampleCurveForDrawing(const Curve& curve, float t, const ImVec2& min, con
     float segment_duration = k1.Time() - k0.Time();
     if (segment_duration < 1e-6f) return normalize_point(k0.m_pos);
 
-    float slope0 = GetSlope(k0.m_out.m_dir);
-    float slope1 = GetSlope(k1.m_in.m_dir);
-
-    float m0 = slope0 * k0.m_out.m_weight;
-    float m1 = slope1 * k1.m_in.m_weight;
+    // Hermite tangent = 3 * control point offset (Bezier relationship)
+    float m0 = k0.m_out.m_offset.y * 3.0f;
+    float m1 = -k1.m_in.m_offset.y * 3.0f;
 
     float x = k0.m_pos.x + local_t * segment_duration;
     float y = EvaluateHermite(k0.Value(), m0, k1.Value(), m1, local_t);
@@ -172,14 +151,13 @@ ImVec2 SampleCurveForDrawing(const Curve& curve, float t, const ImVec2& min, con
 
 // === Tangent Calculation Helpers ===
 
-ImVec2 CalculateAutoTangentDir(const Keyframe* prev, const Keyframe& current, const Keyframe* next)
+float CalculateAutoTangentSlope(const Keyframe* prev, const Keyframe& current, const Keyframe* next)
 {
     // Clamped Catmull-Rom tangent calculation
 
     if (!prev && !next)
     {
-        // Single keyframe, flat tangent
-        return ImVec2(1.0f, 0.0f);
+        return 0.0f;  // Flat
     }
 
     if (!prev)
@@ -187,7 +165,8 @@ ImVec2 CalculateAutoTangentDir(const Keyframe* prev, const Keyframe& current, co
         // First keyframe: tangent points toward next
         float dx = next->m_pos.x - current.m_pos.x;
         float dy = next->m_pos.y - current.m_pos.y;
-        return NormalizeVec2(ImVec2(dx, dy), true);
+        if (std::abs(dx) < 1e-6f) return 0.0f;
+        return dy / dx;
     }
 
     if (!next)
@@ -195,7 +174,8 @@ ImVec2 CalculateAutoTangentDir(const Keyframe* prev, const Keyframe& current, co
         // Last keyframe: tangent points from previous
         float dx = current.m_pos.x - prev->m_pos.x;
         float dy = current.m_pos.y - prev->m_pos.y;
-        return NormalizeVec2(ImVec2(dx, dy), true);
+        if (std::abs(dx) < 1e-6f) return 0.0f;
+        return dy / dx;
     }
 
     // Interior keyframe: Catmull-Rom with clamping
@@ -206,13 +186,12 @@ ImVec2 CalculateAutoTangentDir(const Keyframe* prev, const Keyframe& current, co
 
     if (is_local_max || is_local_min)
     {
-        // Local extremum: flat tangent to prevent overshoot
-        return ImVec2(1.0f, 0.0f);
+        return 0.0f;  // Flat tangent to prevent overshoot
     }
 
     // Standard Catmull-Rom: tangent parallel to line between neighbors
     float time_span = next->m_pos.x - prev->m_pos.x;
-    if (time_span < 1e-6f) return ImVec2(1.0f, 0.0f);
+    if (time_span < 1e-6f) return 0.0f;
 
     float dy = next->m_pos.y - prev->m_pos.y;
     float slope = dy / time_span;
@@ -236,17 +215,15 @@ ImVec2 CalculateAutoTangentDir(const Keyframe* prev, const Keyframe& current, co
         }
     }
 
-    // Return normalized direction vector (always positive x)
-    float len = std::sqrt(1.0f + slope * slope);
-    return ImVec2(1.0f / len, slope / len);
+    return slope;
 }
 
-ImVec2 CalculateLinearTangentDir(const Keyframe& current, const Keyframe& adjacent, bool is_in_tangent)
+float CalculateLinearTangentSlope(const Keyframe& current, const Keyframe& adjacent)
 {
     float dx = adjacent.m_pos.x - current.m_pos.x;
     float dy = adjacent.m_pos.y - current.m_pos.y;
-
-    return NormalizeVec2(ImVec2(dx, dy), !is_in_tangent);
+    if (std::abs(dx) < 1e-6f) return 0.0f;
+    return dy / dx;
 }
 
 // === Tangent Resolution ===
@@ -258,7 +235,7 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
     {
         Tangent& in_tan = keyframe.m_in;
         float segment_duration = keyframe.Time() - prev_key->Time();
-        float default_weight = segment_duration / 3.0f;
+        float default_x = -segment_duration / 3.0f;  // Points left
 
         if (keyframe.m_tangent_type == TangentType::SMOOTH)
         {
@@ -266,18 +243,29 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
             {
                 case Tangent::SmoothType::AUTO:
                 {
-                    ImVec2 auto_dir = CalculateAutoTangentDir(prev_key, keyframe, next_key);
-                    in_tan.m_dir = ImVec2(-std::abs(auto_dir.x), -auto_dir.y);  // Flip for in-tangent
-                    in_tan.m_weight = default_weight;
+                    float slope = CalculateAutoTangentSlope(prev_key, keyframe, next_key);
+                    in_tan.m_offset = ImVec2(default_x, default_x * slope);
                     break;
                 }
                 case Tangent::SmoothType::FLAT:
-                    in_tan.m_dir = ImVec2(-1.0f, 0.0f);
-                    in_tan.m_weight = default_weight;
+                    in_tan.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Tangent::SmoothType::FREE:
-                    ValidateTangentDir(in_tan, true);
-                    if (!in_tan.m_weighted) in_tan.m_weight = default_weight;
+                    if (!in_tan.m_weighted)
+                    {
+                        // Preserve direction, reset length
+                        float len = Vec2Length(in_tan.m_offset);
+                        if (len > 1e-6f)
+                        {
+                            float scale = std::abs(default_x) / std::abs(in_tan.m_offset.x + 1e-6f);
+                            in_tan.m_offset.x = default_x;
+                            in_tan.m_offset.y *= scale;
+                        }
+                        else
+                        {
+                            in_tan.m_offset = ImVec2(default_x, 0.0f);
+                        }
+                    }
                     break;
                 case Tangent::SmoothType::UNUSED:
                     break;
@@ -288,16 +276,29 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
             switch (in_tan.m_broken_type)
             {
                 case Tangent::BrokenType::LINEAR:
-                    in_tan.m_dir = CalculateLinearTangentDir(keyframe, *prev_key, true);
-                    in_tan.m_weight = default_weight;
+                {
+                    float slope = CalculateLinearTangentSlope(keyframe, *prev_key);
+                    in_tan.m_offset = ImVec2(default_x, default_x * slope);
                     break;
+                }
                 case Tangent::BrokenType::CONSTANT:
-                    in_tan.m_dir = ImVec2(-1.0f, 0.0f);
-                    in_tan.m_weight = default_weight;
+                    in_tan.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Tangent::BrokenType::FREE:
-                    ValidateTangentDir(in_tan, true);
-                    if (!in_tan.m_weighted) in_tan.m_weight = default_weight;
+                    if (!in_tan.m_weighted)
+                    {
+                        float len = Vec2Length(in_tan.m_offset);
+                        if (len > 1e-6f)
+                        {
+                            float scale = std::abs(default_x) / std::abs(in_tan.m_offset.x + 1e-6f);
+                            in_tan.m_offset.x = default_x;
+                            in_tan.m_offset.y *= scale;
+                        }
+                        else
+                        {
+                            in_tan.m_offset = ImVec2(default_x, 0.0f);
+                        }
+                    }
                     break;
                 case Tangent::BrokenType::UNUSED:
                     break;
@@ -310,7 +311,7 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
     {
         Tangent& out_tan = keyframe.m_out;
         float segment_duration = next_key->Time() - keyframe.Time();
-        float default_weight = segment_duration / 3.0f;
+        float default_x = segment_duration / 3.0f;  // Points right
 
         if (keyframe.m_tangent_type == TangentType::SMOOTH)
         {
@@ -318,18 +319,28 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
             {
                 case Tangent::SmoothType::AUTO:
                 {
-                    ImVec2 auto_dir = CalculateAutoTangentDir(prev_key, keyframe, next_key);
-                    out_tan.m_dir = ImVec2(std::abs(auto_dir.x), auto_dir.y);
-                    out_tan.m_weight = default_weight;
+                    float slope = CalculateAutoTangentSlope(prev_key, keyframe, next_key);
+                    out_tan.m_offset = ImVec2(default_x, default_x * slope);
                     break;
                 }
                 case Tangent::SmoothType::FLAT:
-                    out_tan.m_dir = ImVec2(1.0f, 0.0f);
-                    out_tan.m_weight = default_weight;
+                    out_tan.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Tangent::SmoothType::FREE:
-                    ValidateTangentDir(out_tan, false);
-                    if (!out_tan.m_weighted) out_tan.m_weight = default_weight;
+                    if (!out_tan.m_weighted)
+                    {
+                        float len = Vec2Length(out_tan.m_offset);
+                        if (len > 1e-6f)
+                        {
+                            float scale = default_x / std::abs(out_tan.m_offset.x + 1e-6f);
+                            out_tan.m_offset.x = default_x;
+                            out_tan.m_offset.y *= scale;
+                        }
+                        else
+                        {
+                            out_tan.m_offset = ImVec2(default_x, 0.0f);
+                        }
+                    }
                     break;
                 case Tangent::SmoothType::UNUSED:
                     break;
@@ -340,16 +351,29 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
             switch (out_tan.m_broken_type)
             {
                 case Tangent::BrokenType::LINEAR:
-                    out_tan.m_dir = CalculateLinearTangentDir(keyframe, *next_key, false);
-                    out_tan.m_weight = default_weight;
+                {
+                    float slope = CalculateLinearTangentSlope(keyframe, *next_key);
+                    out_tan.m_offset = ImVec2(default_x, default_x * slope);
                     break;
+                }
                 case Tangent::BrokenType::CONSTANT:
-                    out_tan.m_dir = ImVec2(1.0f, 0.0f);
-                    out_tan.m_weight = default_weight;
+                    out_tan.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Tangent::BrokenType::FREE:
-                    ValidateTangentDir(out_tan, false);
-                    if (!out_tan.m_weighted) out_tan.m_weight = default_weight;
+                    if (!out_tan.m_weighted)
+                    {
+                        float len = Vec2Length(out_tan.m_offset);
+                        if (len > 1e-6f)
+                        {
+                            float scale = default_x / std::abs(out_tan.m_offset.x + 1e-6f);
+                            out_tan.m_offset.x = default_x;
+                            out_tan.m_offset.y *= scale;
+                        }
+                        else
+                        {
+                            out_tan.m_offset = ImVec2(default_x, 0.0f);
+                        }
+                    }
                     break;
                 case Tangent::BrokenType::UNUSED:
                     break;
@@ -377,37 +401,32 @@ void MirrorTangentDir(Keyframe& keyframe, bool from_out_to_in)
 {
     if (from_out_to_in)
     {
-        // Mirror out-tangent direction to in-tangent (negate)
-        ImVec2 out_dir = NormalizeVec2(keyframe.m_out.m_dir, true);
-        keyframe.m_in.m_dir = ImVec2(-out_dir.x, -out_dir.y);
+        // Mirror out-tangent to in-tangent (negate both components)
+        keyframe.m_in.m_offset = ImVec2(-keyframe.m_out.m_offset.x, -keyframe.m_out.m_offset.y);
     }
     else
     {
-        // Mirror in-tangent direction to out-tangent (negate)
-        ImVec2 in_dir = NormalizeVec2(keyframe.m_in.m_dir, false);
-        keyframe.m_out.m_dir = ImVec2(-in_dir.x, -in_dir.y);
+        // Mirror in-tangent to out-tangent (negate both components)
+        keyframe.m_out.m_offset = ImVec2(-keyframe.m_in.m_offset.x, -keyframe.m_in.m_offset.y);
     }
 }
 
 void ValidateTangentDir(Tangent& tangent, bool is_in_tangent)
 {
-    // Ensure normalized
-    tangent.m_dir = NormalizeVec2(tangent.m_dir, !is_in_tangent);
-
     if (is_in_tangent)
     {
         // In-tangent must point left (negative x)
-        if (tangent.m_dir.x > 0)
+        if (tangent.m_offset.x > 0)
         {
-            tangent.m_dir.x = -tangent.m_dir.x;
+            tangent.m_offset.x = -tangent.m_offset.x;
         }
     }
     else
     {
         // Out-tangent must point right (positive x)
-        if (tangent.m_dir.x < 0)
+        if (tangent.m_offset.x < 0)
         {
-            tangent.m_dir.x = -tangent.m_dir.x;
+            tangent.m_offset.x = -tangent.m_offset.x;
         }
     }
 }

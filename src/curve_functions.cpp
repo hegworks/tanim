@@ -257,7 +257,7 @@ void SetBothTangentsWeighted(Curve& curve, int keyframe_index, bool weighted)
 
 // === Tangent Manipulation ===
 
-void SetInTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir)
+void SetInTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index <= 0 || keyframe_index >= count) return;
@@ -274,8 +274,9 @@ void SetInTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir)
         }
     }
 
-    key.m_in.m_dir = NormalizeVec2(new_dir, false);
-    ValidateTangentDir(key.m_in, true);
+    // Ensure it points left
+    if (offset.x > 0) offset.x = -offset.x;
+    key.m_in.m_offset = offset;
 
     // If SMOOTH, mirror to out-tangent
     if (key.m_tangent_type == TangentType::SMOOTH)
@@ -286,7 +287,7 @@ void SetInTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir)
     ResolveCurveTangents(curve);
 }
 
-void SetOutTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir)
+void SetOutTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count - 1) return;
@@ -303,8 +304,9 @@ void SetOutTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir)
         }
     }
 
-    key.m_out.m_dir = NormalizeVec2(new_dir, true);
-    ValidateTangentDir(key.m_out, false);
+    // Ensure it points right
+    if (offset.x < 0) offset.x = -offset.x;
+    key.m_out.m_offset = offset;
 
     // If SMOOTH, mirror to in-tangent
     if (key.m_tangent_type == TangentType::SMOOTH)
@@ -313,30 +315,6 @@ void SetOutTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir)
     }
 
     ResolveCurveTangents(curve);
-}
-
-void SetInTangentWeight(Curve& curve, int keyframe_index, float weight)
-{
-    int count = GetKeyframeCount(curve);
-    if (keyframe_index <= 0 || keyframe_index >= count) return;
-
-    Keyframe& key = curve.m_keyframes.at(keyframe_index);
-
-    if (!key.m_in.m_weighted) return;  // Only works when weighted
-
-    key.m_in.m_weight = std::max(0.0f, weight);
-}
-
-void SetOutTangentWeight(Curve& curve, int keyframe_index, float weight)
-{
-    int count = GetKeyframeCount(curve);
-    if (keyframe_index < 0 || keyframe_index >= count - 1) return;
-
-    Keyframe& key = curve.m_keyframes.at(keyframe_index);
-
-    if (!key.m_out.m_weighted) return;  // Only works when weighted
-
-    key.m_out.m_weight = std::max(0.0f, weight);
 }
 
 // === Query Functions ===

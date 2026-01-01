@@ -41,13 +41,12 @@ void ResolveKeyframeTangents(Keyframe& keyframe, const Keyframe* prev_key, const
 
 // === Tangent Calculation Helpers ===
 
-// Calculate auto tangent direction using clamped Catmull-Rom.
-// Returns normalized direction vector (positive x, pointing right).
-ImVec2 CalculateAutoTangentDir(const Keyframe* prev, const Keyframe& current, const Keyframe* next);
+// Clamped Catmull-Rom tangent calculation
+float CalculateAutoTangentSlope(const Keyframe* prev, const Keyframe& current, const Keyframe* next);
 
 // Calculate linear tangent direction pointing at adjacent keyframe.
 // Returns normalized direction vector.
-ImVec2 CalculateLinearTangentDir(const Keyframe& current, const Keyframe& adjacent, bool is_in_tangent);
+float CalculateLinearTangentSlope(const Keyframe& current, const Keyframe& adjacent);
 
 // === Tangent Constraint Helpers ===
 
@@ -61,13 +60,7 @@ void ValidateTangentDir(Tangent& tangent, bool is_in_tangent);
 
 // === Vector Utilities ===
 
-// Normalize a vector, returns default direction if near zero.
-ImVec2 NormalizeVec2(const ImVec2& v, bool default_positive_x = true);
-
 // Get length of vector.
 float Vec2Length(const ImVec2& v);
-
-// Get slope (dy/dx) from direction vector. Returns 0 if dx is near zero.
-float GetSlope(const ImVec2& dir);
 
 }  // namespace tanim

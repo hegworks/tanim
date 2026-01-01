@@ -34,15 +34,10 @@ struct Tangent
         CONSTANT,  // Step function: holds value until next keyframe
     };
 
-    // Tangent direction, always normalized.
-    // Convention: in-tangent points "left" (negative x), out-tangent points "right" (positive x)
-    ImVec2 m_dir{1.0f, 0.0f};
-
-    // Tangent weight (length). The actual Hermite tangent magnitude, read directly during evaluation.
-    // For non-weighted tangents, this equals segment_duration (default "neutral" curve).
-    // When m_weighted is false, this is recalculated when segment duration changes.
-    // When m_weighted is true, user controls this by dragging; it stays fixed when keyframes move.
-    float m_weight{1.0f};
+    // Tangent offset vector from keyframe position (like Bezier control point offset).
+    // In-tangent points left (negative x), out-tangent points right (positive x).
+    // This is the actual offset in curve space, used directly for Hermite evaluation (* 3).
+    ImVec2 m_offset{1.0f, 0.0f};
 
     bool m_weighted{false};
 
@@ -61,20 +56,20 @@ struct Keyframe
 
     Keyframe()
     {
-        m_in.m_dir = ImVec2{-1.0f, 0.0f};  // Points left (flat)
-        m_out.m_dir = ImVec2{1.0f, 0.0f};  // Points right (flat)
+        m_in.m_offset = ImVec2{-1.0f, 0.0f};  // Points left (flat)
+        m_out.m_offset = ImVec2{1.0f, 0.0f};  // Points right (flat)
     }
 
     explicit Keyframe(ImVec2 pos) : m_pos(pos)
     {
-        m_in.m_dir = ImVec2{-1.0f, 0.0f};
-        m_out.m_dir = ImVec2{1.0f, 0.0f};
+        m_in.m_offset = ImVec2{-1.0f, 0.0f};
+        m_out.m_offset = ImVec2{1.0f, 0.0f};
     }
 
     Keyframe(float time, float value) : m_pos{time, value}
     {
-        m_in.m_dir = ImVec2{-1.0f, 0.0f};
-        m_out.m_dir = ImVec2{1.0f, 0.0f};
+        m_in.m_offset = ImVec2{-1.0f, 0.0f};
+        m_out.m_offset = ImVec2{1.0f, 0.0f};
     }
 
     float Time() const { return m_pos.x; }

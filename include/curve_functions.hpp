@@ -55,23 +55,8 @@ void SetBothTangentsWeighted(Curve& curve, int keyframe_index, bool weighted);
 
 // === Tangent Manipulation (for handle dragging) ===
 
-// Set in-tangent direction. Used when user drags handle.
-// If tangent was AUTO or FLAT, converts to FREE.
-// If keyframe is SMOOTH, mirrors to out-tangent.
-// new_dir will be normalized internally.
-void SetInTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir);
-
-// Set out-tangent direction. Used when user drags handle.
-// If tangent was AUTO or FLAT, converts to FREE.
-// If keyframe is SMOOTH, mirrors to in-tangent.
-// new_dir will be normalized internally.
-void SetOutTangentDir(Curve& curve, int keyframe_index, ImVec2 new_dir);
-
-// Set in-tangent weight directly. Only works when m_weighted is true.
-void SetInTangentWeight(Curve& curve, int keyframe_index, float weight);
-
-// Set out-tangent weight directly. Only works when m_weighted is true.
-void SetOutTangentWeight(Curve& curve, int keyframe_index, float weight);
+void SetInTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset);
+void SetOutTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset);
 
 // === Query Functions ===
 

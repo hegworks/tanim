@@ -173,28 +173,10 @@ static ImVec2 GetTangentHandleScreenPos(const Keyframe& keyframe,
 {
     const Tangent& tangent = is_in_tangent ? keyframe.m_in : keyframe.m_out;
 
-    // Visual handle length - use a fixed pixel length for non-weighted, actual length for weighted
-    float visual_length;
-    if (tangent.m_weighted)
-    {
-        // Convert weight to screen space
-        visual_length = tangent.m_weight * view_size.x / range.x;
-    }
-    else
-    {
-        visual_length = 50.0f;  // Fixed pixel length for non-weighted
-    }
+    // m_offset is in curve space, convert to screen space
+    ImVec2 screen_offset = ImVec2(tangent.m_offset.x * view_size.x / range.x, tangent.m_offset.y * view_size.y / range.y);
 
-    // Direction in screen space (note: y is inverted in screen coords)
-    ImVec2 screen_dir = ImVec2(tangent.m_dir.x, -tangent.m_dir.y * (view_size.x / range.x) / (-view_size.y / range.y));
-    float len = Vec2Length(screen_dir);
-    if (len > 1e-6f)
-    {
-        screen_dir.x /= len;
-        screen_dir.y /= len;
-    }
-
-    return keyframe_screen_pos + screen_dir * visual_length;
+    return keyframe_screen_pos + screen_offset;
 }
 
 int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipping_rect, ImVector<EditPoint>* selected_points)
@@ -523,31 +505,17 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
     // Move tangent handle selection
     static bool handles_moved = false;
-    static ImVec2 handle_mouse_pos_origin;
-    static std::vector<ImVec2> original_handle_dirs;
     if (over_handle && io.MouseDown[0] && !handle_selection.empty())
     {
-        if ((fabsf(io.MouseDelta.x) > 0.0f || fabsf(io.MouseDelta.y) > 0.0f))
+        if (fabsf(io.MouseDelta.x) > 0.f || fabsf(io.MouseDelta.y) > 0.f)
         {
             if (!handles_moved)
             {
                 Sequence::BeginEdit(0);
-                handle_mouse_pos_origin = io.MousePos;
-                original_handle_dirs.resize(handle_selection.size());
-                int index = 0;
-                for (const auto& sel : handle_selection)
-                {
-                    const Curve& curve = seq.m_curves.at(sel.m_curve_index);
-                    int keyframe_idx = sel.m_keyframe_index / 2;
-                    bool is_out = (sel.m_keyframe_index % 2) == 1;
-                    const Keyframe& keyframe = curve.m_keyframes.at(keyframe_idx);
-                    original_handle_dirs.at(index++) = is_out ? keyframe.m_out.m_dir : keyframe.m_in.m_dir;
-                }
+                handles_moved = true;
             }
-            handles_moved = true;
             ret = 1;
 
-            int original_index = 0;
             for (const auto& sel : handle_selection)
             {
                 Curve& curve = seq.m_curves.at(sel.m_curve_index);
@@ -555,25 +523,23 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 bool is_out = (sel.m_keyframe_index % 2) == 1;
                 const Keyframe& keyframe = curve.m_keyframes.at(keyframe_idx);
 
-                // Calculate new direction based on mouse movement
+                // Get keyframe screen position
                 ImVec2 keyframe_screen = point_to_range(keyframe.m_pos) * view_size + offset;
-                ImVec2 new_handle_screen = keyframe_screen + (io.MousePos - handle_mouse_pos_origin);
 
-                // Convert screen delta to direction
-                ImVec2 screen_delta = new_handle_screen - keyframe_screen;
-                // Convert back to curve space (invert y)
-                ImVec2 new_dir = ImVec2(screen_delta.x, -screen_delta.y * (-view_size.y / range.y) / (view_size.x / range.x));
+                // Mouse position relative to keyframe in screen space
+                ImVec2 screen_delta = io.MousePos - keyframe_screen;
+
+                // Convert screen delta to curve space offset
+                ImVec2 curve_offset = ImVec2(screen_delta.x * range.x / view_size.x, screen_delta.y * range.y / view_size.y);
 
                 if (is_out)
                 {
-                    SetOutTangentDir(curve, keyframe_idx, new_dir);
+                    SetOutTangentOffset(curve, keyframe_idx, curve_offset);
                 }
                 else
                 {
-                    SetInTangentDir(curve, keyframe_idx, new_dir);
+                    SetInTangentOffset(curve, keyframe_idx, curve_offset);
                 }
-
-                original_index++;
             }
         }
     }
