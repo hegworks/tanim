@@ -29,6 +29,13 @@ ImVec2 SampleCurveForDrawing(const Curve& curve, float t, const ImVec2& min, con
 // Returns the index of the keyframe at the start of the segment, or -1 if before first keyframe
 int FindSegmentIndex(const Curve& curve, float time);
 
+// Find parameter t for a given X value using Newton-Raphson iteration.
+// p0_x, p1_x: X values at segment endpoints
+// m0_x, m1_x: X components of Hermite tangents (already multiplied by 3)
+// target_x: the X value to find
+// Returns t in [0, 1]
+float FindTForX(float p0_x, float m0_x, float p1_x, float m1_x, float target_x);
+
 // === Tangent Resolution (call after any keyframe/tangent modification) ===
 
 // Resolve all tangent m_dir and m_weight values in the curve.

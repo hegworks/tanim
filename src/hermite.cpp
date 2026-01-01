@@ -54,10 +54,38 @@ int FindSegmentIndex(const Curve& curve, float time)
     return count - 2;  // Last segment
 }
 
+float FindTForX(float p0_x, float m0_x, float p1_x, float m1_x, float target_x)
+{
+    // Initial guess using linear interpolation
+    float t = (target_x - p0_x) / (p1_x - p0_x);
+    t = std::clamp(t, 0.0f, 1.0f);
+
+    // Newton-Raphson iterations
+    for (int i = 0; i < 8; i++)
+    {
+        float current_x = EvaluateHermite(p0_x, m0_x, p1_x, m1_x, t);
+        float error = current_x - target_x;
+
+        if (std::abs(error) < 1e-6f) break;
+
+        // Derivative of Hermite X with respect to t
+        float t2 = t * t;
+        float dx_dt =
+            m0_x * (3.0f * t2 - 4.0f * t + 1.0f) + m1_x * (3.0f * t2 - 2.0f * t) + (p1_x - p0_x) * (6.0f * t - 6.0f * t2);
+
+        if (std::abs(dx_dt) < 1e-6f) break;
+
+        t -= error / dx_dt;
+        t = std::clamp(t, 0.0f, 1.0f);
+    }
+
+    return t;
+}
+
 float SampleCurveValue(const Curve& curve, float time)
 {
     const auto& keyframes = curve.m_keyframes;
-    int count = (int)keyframes.size();
+    int count = static_cast<int>(keyframes.size());
 
     if (count == 0) return 0.0f;
     if (count == 1) return keyframes.at(0).Value();
@@ -87,23 +115,20 @@ float SampleCurveValue(const Curve& curve, float time)
         return k0.Value();
     }
 
-    // Hermite interpolation
-    float segment_duration = k1.Time() - k0.Time();
-    if (segment_duration < 1e-6f) return k0.Value();
+    // 2D Hermite with proper tangent vectors
+    // Tangent vectors in curve space (multiply by 3 for Bezier-to-Hermite)
+    ImVec2 m0 = ImVec2(k0.m_out.m_offset.x * 3.0f, k0.m_out.m_offset.y * 3.0f);
+    ImVec2 m1 = ImVec2(-k1.m_in.m_offset.x * 3.0f, -k1.m_in.m_offset.y * 3.0f);
 
-    float t = (time - k0.Time()) / segment_duration;
+    float t = FindTForX(k0.Time(), m0.x, k1.Time(), m1.x, time);
 
-    // Hermite tangent = 3 * control point offset (Bezier relationship)
-    float m0 = k0.m_out.m_offset.y * 3.0f;
-    float m1 = -k1.m_in.m_offset.y * 3.0f;
-
-    return EvaluateHermite(k0.Value(), m0, k1.Value(), m1, t);
+    return EvaluateHermite(k0.Value(), m0.y, k1.Value(), m1.y, t);
 }
 
-ImVec2 SampleCurveForDrawing(const Curve& curve, float t, const ImVec2& min, const ImVec2& max)
+ImVec2 SampleCurveForDrawing(const Curve& curve, float t_param, const ImVec2& min, const ImVec2& max)
 {
     const auto& keyframes = curve.m_keyframes;
-    int count = (int)keyframes.size();
+    int count = static_cast<int>(keyframes.size());
 
     auto normalize_point = [&](const ImVec2& p) -> ImVec2
     { return ImVec2((p.x - min.x) / (max.x - min.x + 1.0f), (p.y - min.y) / (max.y - min.y)); };
@@ -111,18 +136,18 @@ ImVec2 SampleCurveForDrawing(const Curve& curve, float t, const ImVec2& min, con
     if (count == 0) return ImVec2(0.0f, 0.0f);
     if (count == 1) return normalize_point(keyframes.at(0).m_pos);
 
-    t = std::clamp(t, 0.0f, 1.0f);
+    t_param = std::clamp(t_param, 0.0f, 1.0f);
 
     // Map t to segment
-    float segment_float = t * (count - 1);
-    int seg = (int)segment_float;
+    float segment_float = t_param * (count - 1);
+    int seg = static_cast<int>(segment_float);
     if (seg >= count - 1)
     {
         seg = count - 2;
-        segment_float = (float)(count - 1);
+        segment_float = static_cast<float>(count - 1);
     }
 
-    float local_t = segment_float - (float)seg;
+    float local_t = segment_float - static_cast<float>(seg);
 
     const Keyframe& k0 = keyframes.at(seg);
     const Keyframe& k1 = keyframes.at(seg + 1);
@@ -130,21 +155,16 @@ ImVec2 SampleCurveForDrawing(const Curve& curve, float t, const ImVec2& min, con
     // Check for CONSTANT
     if (k0.m_tangent_type == TangentType::BROKEN && k0.m_out.m_broken_type == Tangent::BrokenType::CONSTANT)
     {
-        // Draw as step: horizontal line at k0.y
         float step_x = k0.m_pos.x + local_t * (k1.m_pos.x - k0.m_pos.x);
         return normalize_point(ImVec2(step_x, k0.Value()));
     }
 
-    // Hermite interpolation
-    float segment_duration = k1.Time() - k0.Time();
-    if (segment_duration < 1e-6f) return normalize_point(k0.m_pos);
+    // 2D Hermite evaluation
+    ImVec2 m0 = ImVec2(k0.m_out.m_offset.x * 3.0f, k0.m_out.m_offset.y * 3.0f);
+    ImVec2 m1 = ImVec2(-k1.m_in.m_offset.x * 3.0f, -k1.m_in.m_offset.y * 3.0f);
 
-    // Hermite tangent = 3 * control point offset (Bezier relationship)
-    float m0 = k0.m_out.m_offset.y * 3.0f;
-    float m1 = -k1.m_in.m_offset.y * 3.0f;
-
-    float x = k0.m_pos.x + local_t * segment_duration;
-    float y = EvaluateHermite(k0.Value(), m0, k1.Value(), m1, local_t);
+    float x = EvaluateHermite(k0.Time(), m0.x, k1.Time(), m1.x, local_t);
+    float y = EvaluateHermite(k0.Value(), m0.y, k1.Value(), m1.y, local_t);
 
     return normalize_point(ImVec2(x, y));
 }
