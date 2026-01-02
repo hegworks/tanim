@@ -650,9 +650,10 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             const bool in_editable = IsInHandleEditable(curve, right_clicked_keyframe);
             const bool out_editable = IsOutHandleEditable(curve, right_clicked_curve);
             const bool both_editable = in_editable && out_editable;
+            const bool is_curve_enforced = curve.m_enforced_type != EnforcedType::UNENFORCED;
 
             // Smooth submenu
-            if (ImGui::BeginMenu("Smooth"))
+            if (ImGui::BeginMenu("Smooth", !is_curve_enforced))
             {
                 bool is_smooth_auto =
                     (keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::AUTO);
@@ -829,7 +830,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             ImGui::Separator();
 
             // Reset handles
-            if (ImGui::MenuItem("Reset Handles"))
+            if (ImGui::MenuItem("Reset Handles", nullptr, false, !is_curve_enforced))
             {
                 Sequence::BeginEdit(right_clicked_curve);
                 seq.ResetHandlesForKeyframe(right_clicked_curve, right_clicked_keyframe);

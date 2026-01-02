@@ -5,6 +5,12 @@
 namespace tanim
 {
 
+// === Curve Management ===
+
+void EnforceCurveType(Curve& curve, EnforcedType enforced_type);
+
+void ApplyEnforcedCurveTypeOnKeyframe(Curve& curve, int keyframe_index);
+
 // === Keyframe Management ===
 
 // Add a keyframe at the given time/value. Maintains sorted order by time.
@@ -76,6 +82,6 @@ bool ShouldShowOutHandle(const Curve& curve, int keyframe_index);
 bool IsInHandleEditable(const Curve& curve, int keyframe_index);
 
 // Check if out-handle is editable (not last keyframe)
-inline bool IsOutHandleEditable(const Curve& curve, int keyframe_index) { return keyframe_index < GetKeyframeCount(curve) - 1; }
+bool IsOutHandleEditable(const Curve& curve, int keyframe_index);
 
 }  // namespace tanim

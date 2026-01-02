@@ -7,6 +7,47 @@
 namespace tanim
 {
 
+// === Curve Management ===
+
+void EnforceCurveType(Curve& curve, EnforcedType enforced_type)
+{
+    curve.m_enforced_type = enforced_type;
+
+    if (enforced_type == EnforcedType::UNENFORCED) return;
+
+    const int count = GetKeyframeCount(curve);
+    for (int k = 0; k < count; k++)
+    {
+        ApplyEnforcedCurveTypeOnKeyframe(curve, k);
+    }
+}
+
+void ApplyEnforcedCurveTypeOnKeyframe(Curve& curve, int keyframe_index)
+{
+    if (curve.m_enforced_type == EnforcedType::UNENFORCED) return;
+
+    switch (curve.m_enforced_type)
+    {
+        case EnforcedType::UNENFORCED:
+            // do nothing
+            break;
+        case EnforcedType::AUTO:
+            SetKeyframeSmoothType(curve, keyframe_index, Handle::SmoothType::AUTO);
+            break;
+        case EnforcedType::FLAT:
+            SetKeyframeSmoothType(curve, keyframe_index, Handle::SmoothType::FLAT);
+            break;
+        case EnforcedType::LINEAR:
+            SetKeyframeBrokenType(curve, keyframe_index, Handle::BrokenType::LINEAR, Handle::BrokenType::LINEAR);
+            break;
+        case EnforcedType::CONSTANT:
+            SetKeyframeBrokenType(curve, keyframe_index, Handle::BrokenType::CONSTANT, Handle::BrokenType::CONSTANT);
+            break;
+        default:
+            assert(0 && "unhandled enforced type");
+    }
+}
+
 // === Keyframe Management ===
 
 int AddKeyframe(Curve& curve, float time, float value)
@@ -28,11 +69,12 @@ int AddKeyframe(Curve& curve, float time, float value)
         }
     }
 
-    // Create new keyframe with default SMOOTH AUTO
     const Keyframe new_key(time, value);
 
     // Insert
     keyframes.insert(keyframes.begin() + insert_idx, new_key);
+
+    ApplyEnforcedCurveTypeOnKeyframe(curve, insert_idx);
 
     // Resolve all handles (AUTO handles need neighbor info)
     ResolveCurveHandles(curve);
@@ -363,10 +405,28 @@ bool ShouldShowOutHandle(const Curve& curve, int keyframe_index)
 
 bool IsInHandleEditable(const Curve& curve, int keyframe_index)
 {
+    const bool is_enforced = curve.m_enforced_type != EnforcedType::UNENFORCED;
+    if (is_enforced) return false;
+
     const bool is_first_frame = keyframe_index <= 0;
+    if (is_first_frame) return false;
+
     const bool is_prev_keyframe_out_constant =
-        !is_first_frame && GetKeyframe(curve, keyframe_index - 1).m_out.m_broken_type == Handle::BrokenType::CONSTANT;
-    return !is_first_frame && !is_prev_keyframe_out_constant;
+        GetKeyframe(curve, keyframe_index - 1).m_out.m_broken_type == Handle::BrokenType::CONSTANT;
+    if (is_prev_keyframe_out_constant) return false;
+
+    return true;
+}
+
+bool IsOutHandleEditable(const Curve& curve, int keyframe_index)
+{
+    const bool is_enforced = curve.m_enforced_type != EnforcedType::UNENFORCED;
+    if (is_enforced) return false;
+
+    const bool is_last_frame = keyframe_index >= GetKeyframeCount(curve) - 1;
+    if (is_last_frame) return false;
+
+    return true;
 }
 
 }  // namespace tanim
