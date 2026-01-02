@@ -870,53 +870,80 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     return ret;
 }
 
-glm::quat SampleQuatForAnimation(Sequence& /*seq*/, float /*time*/)
+glm::quat SampleQuatForAnimation(Sequence& seq, float time)
 {
-    // const auto& pts_w = seq.GetCurvePointsList(0);
-    // const auto& pts_x = seq.GetCurvePointsList(1);
-    // const auto& pts_y = seq.GetCurvePointsList(2);
-    // const auto& pts_z = seq.GetCurvePointsList(3);
-    // const auto& pts_spins = seq.GetCurvePointsList(4);
-    // const int pt_count = (int)pts_w.size();
-    //
-    // for (int i = 0; i < pt_count - 1; i++)
-    // {
-    //     if (time >= pts_w.at(i).x && time <= pts_w.at(i + 1).x)
-    //     {
-    //         const float segment_t = (time - pts_w.at(i).x) / (pts_w.at(i + 1).x - pts_w.at(i).x);
-    //         const auto q_a = glm::quat(pts_w.at(i).y, pts_x.at(i).y, pts_y.at(i).y, pts_z.at(i).y);
-    //         const auto q_b = glm::quat(pts_w.at(i + 1).y, pts_x.at(i + 1).y, pts_y.at(i + 1).y, pts_z.at(i + 1).y);
-    //
-    //         if (seq.GetCurveLerpType(0) == LerpType::LINEAR)
-    //         {
-    //             return glm::slerp(q_a, q_b, segment_t, (int)pts_spins.at(i + 1).y);
-    //         }
-    //         else if (seq.GetCurveLerpType(0) == LerpType::SMOOTH)
-    //         {
-    //             const float smoothT = smoothstep(0.0f, 1.0f, segment_t);
-    //             return glm::slerp(q_a, q_b, smoothT, (int)pts_spins.at(i + 1).y);
-    //         }
-    //         else if (seq.GetCurveLerpType(0) == LerpType::DISCRETE)
-    //         {
-    //             return q_a;
-    //         }
-    //         else
-    //         {
-    //             assert(0);  /// Unsupported LerpType
-    //         }
-    //     }
-    // }
-    //
-    // const auto q_0 = glm::quat(pts_w.at(0).y, pts_x.at(0).y, pts_y.at(0).y, pts_z.at(0).y);
-    // if (time <= pts_w.at(0).x) return q_0;
-    //
-    // const auto q_last =
-    //     glm::quat(pts_w.at(pt_count - 1).y, pts_x.at(pt_count - 1).y, pts_y.at(pt_count - 1).y, pts_z.at(pt_count - 1).y);
-    // if (time >= pts_w.at(pt_count - 1).x) return q_last;
+    const Curve& curve_w = seq.m_curves.at(0);
+    const Curve& curve_x = seq.m_curves.at(1);
+    const Curve& curve_y = seq.m_curves.at(2);
+    const Curve& curve_z = seq.m_curves.at(3);
+    const Curve& curve_spins = seq.m_curves.at(4);
 
-    // return q_0;
+    const int keyframe_count = GetKeyframeCount(curve_w);
+    if (keyframe_count == 0) return {1.0f, 0.0f, 0.0f, 0.0f};
 
-    return {};
+    // Before first keyframe
+    if (time <= curve_w.m_keyframes.at(0).Time())
+    {
+        return {curve_w.m_keyframes.at(0).Value(),
+                curve_x.m_keyframes.at(0).Value(),
+                curve_y.m_keyframes.at(0).Value(),
+                curve_z.m_keyframes.at(0).Value()};
+    }
+
+    // After last keyframe
+    if (time >= curve_w.m_keyframes.at(keyframe_count - 1).Time())
+    {
+        return {curve_w.m_keyframes.at(keyframe_count - 1).Value(),
+                curve_x.m_keyframes.at(keyframe_count - 1).Value(),
+                curve_y.m_keyframes.at(keyframe_count - 1).Value(),
+                curve_z.m_keyframes.at(keyframe_count - 1).Value()};
+    }
+
+    // Find segment
+    const int seg = FindSegmentIndex(curve_w, time);
+    if (seg < 0)
+    {
+        return {curve_w.m_keyframes.at(0).Value(),
+                curve_x.m_keyframes.at(0).Value(),
+                curve_y.m_keyframes.at(0).Value(),
+                curve_z.m_keyframes.at(0).Value()};
+    }
+
+    const Keyframe& k0 = curve_w.m_keyframes.at(seg);
+    const Keyframe& k1 = curve_w.m_keyframes.at(seg + 1);
+
+    const glm::quat q_a(curve_w.m_keyframes.at(seg).Value(),
+                        curve_x.m_keyframes.at(seg).Value(),
+                        curve_y.m_keyframes.at(seg).Value(),
+                        curve_z.m_keyframes.at(seg).Value());
+
+    const glm::quat q_b(curve_w.m_keyframes.at(seg + 1).Value(),
+                        curve_x.m_keyframes.at(seg + 1).Value(),
+                        curve_y.m_keyframes.at(seg + 1).Value(),
+                        curve_z.m_keyframes.at(seg + 1).Value());
+
+    const int spins = static_cast<int>(curve_spins.m_keyframes.at(seg + 1).Value());
+
+    // CONSTANT - step function
+    if (k0.m_handle_type == HandleType::BROKEN && k0.m_out.m_broken_type == Handle::BrokenType::CONSTANT)
+    {
+        return q_a;
+    }
+
+    const float segment_duration = k1.Time() - k0.Time();
+    if (segment_duration < 1e-6f) return q_a;
+
+    float segment_t = (time - k0.Time()) / segment_duration;
+
+    // FLAT - smoothstep easing
+    if (k0.m_handle_type == HandleType::SMOOTH && k0.m_out.m_smooth_type == Handle::SmoothType::FLAT)
+    {
+        segment_t = segment_t * segment_t * (3.0f - 2.0f * segment_t);
+    }
+
+    // LINEAR - use segment_t as-is
+
+    return glm::slerp(q_a, q_b, segment_t, spins);
 }
 
 }  // namespace tanim::sequencer

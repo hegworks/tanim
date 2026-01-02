@@ -170,24 +170,28 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "W";
+                        EnforceCurveType(curve, EnforcedType::LINEAR);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.w});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.w});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
+                        EnforceCurveType(curve, EnforcedType::LINEAR);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.x});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
+                        EnforceCurveType(curve, EnforcedType::LINEAR);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.y});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
+                        EnforceCurveType(curve, EnforcedType::LINEAR);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.z});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.z});
                     }

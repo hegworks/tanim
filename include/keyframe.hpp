@@ -53,7 +53,7 @@ struct Handle
 
 struct Keyframe
 {
-    ImVec2 m_pos{0.0f, 0.0f};  // x = time/frame, y = value
+    ImVec2 m_pos{};  // x = time/frame, y = value
 
     HandleType m_handle_type{HandleType::SMOOTH};
 
@@ -85,7 +85,7 @@ struct Keyframe
 
 struct Curve
 {
-    std::vector<Keyframe> m_keyframes{Keyframe(0.0f, 0.0f), Keyframe(10.0f, 0.0f)};
+    std::vector<Keyframe> m_keyframes{};
     EnforcedType m_enforced_type{EnforcedType::UNENFORCED};
     bool m_visibility{true};
     std::string m_name{"new_curve"};
