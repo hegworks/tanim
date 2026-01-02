@@ -72,8 +72,8 @@ bool ShouldShowInHandleHandle(const Curve& curve, int keyframe_index);
 // Check if out-handle handle should be shown (not last keyframe, not LINEAR/CONSTANT in BROKEN mode)
 bool ShouldShowOutHandle(const Curve& curve, int keyframe_index);
 
-// Check if in-handle is editable (not first keyframe)
-inline bool IsInHandleEditable(int keyframe_index) { return keyframe_index > 0; }
+// Check if in-handle is editable
+bool IsInHandleEditable(const Curve& curve, int keyframe_index);
 
 // Check if out-handle is editable (not last keyframe)
 inline bool IsOutHandleEditable(const Curve& curve, int keyframe_index) { return keyframe_index < GetKeyframeCount(curve) - 1; }

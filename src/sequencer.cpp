@@ -645,11 +645,11 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             const Curve& curve = seq.m_curves.at(right_clicked_curve);
             const Keyframe& keyframe = curve.m_keyframes.at(right_clicked_keyframe);
             const int keyframe_count = GetKeyframeCount(curve);
-
             const bool is_first = (right_clicked_keyframe == 0);
             const bool is_last = (right_clicked_keyframe == keyframe_count - 1);
-            const bool in_editable = !is_first;
-            const bool out_editable = !is_last;
+            const bool in_editable = IsInHandleEditable(curve, right_clicked_keyframe);
+            const bool out_editable = IsOutHandleEditable(curve, right_clicked_curve);
+            const bool both_editable = in_editable && out_editable;
 
             // Smooth submenu
             if (ImGui::BeginMenu("Smooth"))
@@ -688,51 +688,6 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 ImGui::EndMenu();
             }
 
-            // Broken submenu
-            if (ImGui::BeginMenu("Broken"))
-            {
-                bool all_broken_free =
-                    (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::FREE &&
-                     keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
-                bool all_broken_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                          keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR &&
-                                          keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR);
-                bool all_broken_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                            keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT &&
-                                            keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
-
-                if (ImGui::MenuItem("Free", nullptr, all_broken_free))
-                {
-                    Sequence::BeginEdit(right_clicked_curve);
-                    SetKeyframeBrokenType(seq.m_curves.at(right_clicked_curve),
-                                          right_clicked_keyframe,
-                                          Handle::BrokenType::FREE,
-                                          Handle::BrokenType::FREE);
-                    Sequence::EndEdit();
-                }
-                if (ImGui::MenuItem("Linear", nullptr, all_broken_linear))
-                {
-                    Sequence::BeginEdit(right_clicked_curve);
-                    SetKeyframeBrokenType(seq.m_curves.at(right_clicked_curve),
-                                          right_clicked_keyframe,
-                                          Handle::BrokenType::LINEAR,
-                                          Handle::BrokenType::LINEAR);
-                    Sequence::EndEdit();
-                }
-                if (ImGui::MenuItem("Constant", nullptr, all_broken_constant))
-                {
-                    Sequence::BeginEdit(right_clicked_curve);
-                    SetKeyframeBrokenType(seq.m_curves.at(right_clicked_curve),
-                                          right_clicked_keyframe,
-                                          Handle::BrokenType::CONSTANT,
-                                          Handle::BrokenType::CONSTANT);
-                    Sequence::EndEdit();
-                }
-                ImGui::EndMenu();
-            }
-
-            ImGui::Separator();
-
             // In handle submenu
             if (ImGui::BeginMenu("Left Handle", in_editable))
             {
@@ -760,7 +715,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                                           Handle::BrokenType::LINEAR);
                     Sequence::EndEdit();
                 }
-                if (ImGui::MenuItem("Constant", nullptr, is_in_constant))
+                if (ImGui::MenuItem("Constant", nullptr, is_in_constant, false))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
                     SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
@@ -779,7 +734,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
 
             // Out handle submenu
-            if (ImGui::BeginMenu("Out Handle", out_editable))
+            if (ImGui::BeginMenu("Right Handle", out_editable))
             {
                 bool is_out_free =
                     (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
@@ -824,7 +779,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
 
             // Both handles submenu
-            if (ImGui::BeginMenu("Both Handles"))
+            if (ImGui::BeginMenu("Both Handles", both_editable))
             {
                 bool both_free =
                     (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::FREE &&
@@ -853,7 +808,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                                              Handle::BrokenType::LINEAR);
                     Sequence::EndEdit();
                 }
-                if (ImGui::MenuItem("Constant", nullptr, both_constant))
+                if (ImGui::MenuItem("Constant", nullptr, both_constant, false))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
                     SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),

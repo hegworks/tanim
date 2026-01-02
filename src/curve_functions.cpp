@@ -321,7 +321,7 @@ void SetOutHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset)
 
 bool ShouldShowInHandleHandle(const Curve& curve, int keyframe_index)
 {
-    if (keyframe_index <= 0) return false;  // First keyframe
+    if (!IsInHandleEditable(curve, keyframe_index)) return false;
 
     const Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
@@ -339,8 +339,7 @@ bool ShouldShowInHandleHandle(const Curve& curve, int keyframe_index)
 
 bool ShouldShowOutHandle(const Curve& curve, int keyframe_index)
 {
-    int count = GetKeyframeCount(curve);
-    if (keyframe_index >= count - 1) return false;  // Last keyframe
+    if (!IsOutHandleEditable(curve, keyframe_index)) return false;
 
     const Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
@@ -354,6 +353,14 @@ bool ShouldShowOutHandle(const Curve& curve, int keyframe_index)
     }
 
     return true;
+}
+
+bool IsInHandleEditable(const Curve& curve, int keyframe_index)
+{
+    const bool is_first_frame = keyframe_index <= 0;
+    const bool is_prev_keyframe_out_constant =
+        !is_first_frame && GetKeyframe(curve, keyframe_index - 1).m_out.m_broken_type == Handle::BrokenType::CONSTANT;
+    return !is_first_frame && !is_prev_keyframe_out_constant;
 }
 
 }  // namespace tanim
