@@ -23,40 +23,40 @@ void MoveKeyframe(Curve& curve, int keyframe_index, ImVec2 new_pos);
 // === Mode Changes (Context Menu Actions) ===
 
 // Set keyframe to SMOOTH mode with specified type.
-// Both tangents get the same SmoothType, BrokenTypes set to UNUSED.
-// Tangent directions are mirrored.
-void SetKeyframeSmoothType(Curve& curve, int keyframe_index, Tangent::SmoothType type);
+// Both handles get the same SmoothType, BrokenTypes set to UNUSED.
+// Handle directions are mirrored.
+void SetKeyframeSmoothType(Curve& curve, int keyframe_index, Handle::SmoothType type);
 
-// Set keyframe to BROKEN mode with specified types for both tangents.
+// Set keyframe to BROKEN mode with specified types for both handles.
 // SmoothTypes set to UNUSED.
-void SetKeyframeBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType in_type, Tangent::BrokenType out_type);
+void SetKeyframeBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType in_type, Handle::BrokenType out_type);
 
-// === Individual Tangent Changes (for In Tangent / Out Tangent submenus) ===
+// === Individual Handle Changes (for In Handle / Out Handle submenus) ===
 
-// Set in-tangent to BROKEN mode with specified type.
+// Set in-handle to BROKEN mode with specified type.
 // If keyframe was SMOOTH, it becomes BROKEN.
-// If type is CONSTANT, also sets previous keyframe's out-tangent to CONSTANT.
-void SetInTangentBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType type);
+// If type is CONSTANT, also sets previous keyframe's out-handle to CONSTANT.
+void SetInHandleBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType type);
 
-// Set out-tangent to BROKEN mode with specified type.
+// Set out-handle to BROKEN mode with specified type.
 // If keyframe was SMOOTH, it becomes BROKEN.
-// If type is CONSTANT, also sets next keyframe's in-tangent to CONSTANT.
-void SetOutTangentBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType type);
+// If type is CONSTANT, also sets next keyframe's in-handle to CONSTANT.
+void SetOutHandleBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType type);
 
-// Set both tangents to BROKEN mode with specified type (for "Both Tangents" submenu).
+// Set both handles to BROKEN mode with specified type (for "Both Handles" submenu).
 // Propagates CONSTANT to adjacent keyframes if applicable.
-void SetBothTangentsBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType type);
+void SetBothHandlesBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType type);
 
 // === Weight Toggle ===
 
-void SetInTangentWeighted(Curve& curve, int keyframe_index, bool weighted);
-void SetOutTangentWeighted(Curve& curve, int keyframe_index, bool weighted);
-void SetBothTangentsWeighted(Curve& curve, int keyframe_index, bool weighted);
+void SetInHandleWeighted(Curve& curve, int keyframe_index, bool weighted);
+void SetOutHandleWeighted(Curve& curve, int keyframe_index, bool weighted);
+void SetBothHandlesWeighted(Curve& curve, int keyframe_index, bool weighted);
 
-// === Tangent Manipulation (for handle dragging) ===
+// === Handle Manipulation (for handle dragging) ===
 
-void SetInTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset);
-void SetOutTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset);
+void SetInHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset);
+void SetOutHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset);
 
 // === Query Functions ===
 
@@ -66,19 +66,16 @@ inline const Keyframe& GetKeyframe(const Curve& curve, int index) { return curve
 
 inline Keyframe& GetKeyframeMut(Curve& curve, int index) { return curve.m_keyframes.at(index); }
 
-// Check if in-tangent handle should be shown (not first keyframe, not LINEAR/CONSTANT in BROKEN mode)
-bool ShouldShowInTangentHandle(const Curve& curve, int keyframe_index);
+// Check if in-handle handle should be shown (not first keyframe, not LINEAR/CONSTANT in BROKEN mode)
+bool ShouldShowInHandleHandle(const Curve& curve, int keyframe_index);
 
-// Check if out-tangent handle should be shown (not last keyframe, not LINEAR/CONSTANT in BROKEN mode)
-bool ShouldShowOutTangentHandle(const Curve& curve, int keyframe_index);
+// Check if out-handle handle should be shown (not last keyframe, not LINEAR/CONSTANT in BROKEN mode)
+bool ShouldShowOutHandle(const Curve& curve, int keyframe_index);
 
-// Check if in-tangent is editable (not first keyframe)
-inline bool IsInTangentEditable(int keyframe_index) { return keyframe_index > 0; }
+// Check if in-handle is editable (not first keyframe)
+inline bool IsInHandleEditable(int keyframe_index) { return keyframe_index > 0; }
 
-// Check if out-tangent is editable (not last keyframe)
-inline bool IsOutTangentEditable(const Curve& curve, int keyframe_index)
-{
-    return keyframe_index < GetKeyframeCount(curve) - 1;
-}
+// Check if out-handle is editable (not last keyframe)
+inline bool IsOutHandleEditable(const Curve& curve, int keyframe_index) { return keyframe_index < GetKeyframeCount(curve) - 1; }
 
 }  // namespace tanim

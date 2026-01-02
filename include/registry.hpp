@@ -78,8 +78,8 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        SetKeyframeBrokenType(curve, 0, Tangent::BrokenType::LINEAR, Tangent::BrokenType::LINEAR);
-                        SetKeyframeBrokenType(curve, 1, Tangent::BrokenType::LINEAR, Tangent::BrokenType::LINEAR);
+                        SetKeyframeBrokenType(curve, 0, Handle::BrokenType::LINEAR, Handle::BrokenType::LINEAR);
+                        SetKeyframeBrokenType(curve, 1, Handle::BrokenType::LINEAR, Handle::BrokenType::LINEAR);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, static_cast<float>(field)});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, static_cast<float>(field)});
                     }
@@ -91,8 +91,8 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        SetKeyframeBrokenType(curve, 0, Tangent::BrokenType::CONSTANT, Tangent::BrokenType::CONSTANT);
-                        SetKeyframeBrokenType(curve, 1, Tangent::BrokenType::CONSTANT, Tangent::BrokenType::CONSTANT);
+                        SetKeyframeBrokenType(curve, 0, Handle::BrokenType::CONSTANT, Handle::BrokenType::CONSTANT);
+                        SetKeyframeBrokenType(curve, 1, Handle::BrokenType::CONSTANT, Handle::BrokenType::CONSTANT);
                         float f = field == true ? 1.0f : 0.0f;
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, f});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, f});
@@ -196,7 +196,7 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "Spins";
-                        SetKeyframeBrokenType(curve, 4, Tangent::BrokenType::CONSTANT, Tangent::BrokenType::CONSTANT);
+                        SetKeyframeBrokenType(curve, 4, Handle::BrokenType::CONSTANT, Handle::BrokenType::CONSTANT);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, 0});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, 0});
                     }

@@ -10,20 +10,20 @@
 namespace tanim
 {
 
-enum class TangentType : uint8_t
+enum class HandleType : uint8_t
 {
-    SMOOTH,  // In/out tangents linked: same SmoothType, mirrored direction
-    BROKEN,  // In/out tangents fully independent
+    SMOOTH,  // In/out handles linked: same SmoothType, mirrored direction
+    BROKEN,  // In/out handles fully independent
 };
 
-struct Tangent
+struct Handle
 {
     enum class SmoothType : uint8_t
     {
         UNUSED,  // Currently in BROKEN mode
         AUTO,    // Clamped Catmull-Rom: auto-calculated, prevents overshoot
         FREE,    // User-adjustable direction, in/out remain mirrored
-        FLAT,    // Zero slope (horizontal tangent)
+        FLAT,    // Zero slope (horizontal handle)
     };
 
     enum class BrokenType : uint8_t
@@ -34,9 +34,6 @@ struct Tangent
         CONSTANT,  // Step function: holds value until next keyframe
     };
 
-    // Tangent offset vector from keyframe position (like Bezier control point offset).
-    // In-tangent points left (negative x), out-tangent points right (positive x).
-    // This is the actual offset in curve space, used directly for Hermite evaluation (* 3).
     ImVec2 m_offset{1.0f, 0.0f};
 
     bool m_weighted{false};
@@ -49,10 +46,10 @@ struct Keyframe
 {
     ImVec2 m_pos{0.0f, 0.0f};  // x = time/frame, y = value
 
-    TangentType m_tangent_type{TangentType::SMOOTH};
+    HandleType m_handle_type{HandleType::SMOOTH};
 
-    Tangent m_in;   // Incoming tangent. Not editable for first keyframe.
-    Tangent m_out;  // Outgoing tangent. Not editable for last keyframe.
+    Handle m_in;   // Incoming handle. Not editable for first keyframe.
+    Handle m_out;  // Outgoing handle. Not editable for last keyframe.
 
     Keyframe()
     {

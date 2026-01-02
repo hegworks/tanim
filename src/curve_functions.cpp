@@ -1,5 +1,5 @@
 ﻿#include "tanim/include/curve_functions.hpp"
-#include "tanim/include/hermite.hpp"
+#include "tanim/include/bezier.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -34,8 +34,8 @@ int AddKeyframe(Curve& curve, float time, float value)
     // Insert
     keyframes.insert(keyframes.begin() + insert_idx, new_key);
 
-    // Resolve all tangents (AUTO tangents need neighbor info)
-    ResolveCurveTangents(curve);
+    // Resolve all handles (AUTO handles need neighbor info)
+    ResolveCurveHandles(curve);
 
     return insert_idx;
 }
@@ -49,8 +49,8 @@ bool RemoveKeyframe(Curve& curve, int keyframe_index)
 
     curve.m_keyframes.erase(curve.m_keyframes.begin() + keyframe_index);
 
-    // Resolve tangents for affected keyframes
-    ResolveCurveTangents(curve);
+    // Resolve handles for affected keyframes
+    ResolveCurveHandles(curve);
 
     return true;
 }
@@ -77,165 +77,165 @@ void MoveKeyframe(Curve& curve, int keyframe_index, ImVec2 new_pos)
 
     key.m_pos = new_pos;
 
-    // Resolve tangents (segment durations may have changed)
-    ResolveCurveTangents(curve);
+    // Resolve handles (segment durations may have changed)
+    ResolveCurveHandles(curve);
 }
 
 // === Mode Changes ===
 
-void SetKeyframeSmoothType(Curve& curve, int keyframe_index, Tangent::SmoothType type)
+void SetKeyframeSmoothType(Curve& curve, int keyframe_index, Handle::SmoothType type)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count) return;
 
     Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
-    key.m_tangent_type = TangentType::SMOOTH;
+    key.m_handle_type = HandleType::SMOOTH;
     key.m_in.m_smooth_type = type;
     key.m_out.m_smooth_type = type;
-    key.m_in.m_broken_type = Tangent::BrokenType::UNUSED;
-    key.m_out.m_broken_type = Tangent::BrokenType::UNUSED;
+    key.m_in.m_broken_type = Handle::BrokenType::UNUSED;
+    key.m_out.m_broken_type = Handle::BrokenType::UNUSED;
 
     // For FREE mode, ensure directions are mirrored
-    if (type == Tangent::SmoothType::FREE)
+    if (type == Handle::SmoothType::FREE)
     {
-        MirrorTangentDir(key, true);  // out -> in
+        MirrorHandlesDir(key, true);  // out -> in
     }
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-void SetKeyframeBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType in_type, Tangent::BrokenType out_type)
+void SetKeyframeBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType in_type, Handle::BrokenType out_type)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count) return;
 
     Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
-    key.m_tangent_type = TangentType::BROKEN;
+    key.m_handle_type = HandleType::BROKEN;
     key.m_in.m_broken_type = in_type;
     key.m_out.m_broken_type = out_type;
-    key.m_in.m_smooth_type = Tangent::SmoothType::UNUSED;
-    key.m_out.m_smooth_type = Tangent::SmoothType::UNUSED;
+    key.m_in.m_smooth_type = Handle::SmoothType::UNUSED;
+    key.m_out.m_smooth_type = Handle::SmoothType::UNUSED;
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-// === Individual Tangent Changes ===
+// === Individual Handle Changes ===
 
-void SetInTangentBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType type)
+void SetInHandleBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType type)
 {
     int count = GetKeyframeCount(curve);
-    if (keyframe_index <= 0 || keyframe_index >= count) return;  // First keyframe has no in-tangent
+    if (keyframe_index <= 0 || keyframe_index >= count) return;  // First keyframe has no in-handle
 
     Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
-    // If was SMOOTH, convert other tangent to BROKEN FREE
-    if (key.m_tangent_type == TangentType::SMOOTH)
+    // If was SMOOTH, convert other handle to BROKEN FREE
+    if (key.m_handle_type == HandleType::SMOOTH)
     {
-        key.m_out.m_broken_type = Tangent::BrokenType::FREE;
-        key.m_out.m_smooth_type = Tangent::SmoothType::UNUSED;
+        key.m_out.m_broken_type = Handle::BrokenType::FREE;
+        key.m_out.m_smooth_type = Handle::SmoothType::UNUSED;
     }
 
-    key.m_tangent_type = TangentType::BROKEN;
+    key.m_handle_type = HandleType::BROKEN;
     key.m_in.m_broken_type = type;
-    key.m_in.m_smooth_type = Tangent::SmoothType::UNUSED;
+    key.m_in.m_smooth_type = Handle::SmoothType::UNUSED;
 
-    // If CONSTANT, propagate to previous keyframe's out-tangent
-    if (type == Tangent::BrokenType::CONSTANT && keyframe_index > 0)
+    // If CONSTANT, propagate to previous keyframe's out-handle
+    if (type == Handle::BrokenType::CONSTANT && keyframe_index > 0)
     {
         Keyframe& prev = curve.m_keyframes.at(keyframe_index - 1);
 
-        if (prev.m_tangent_type == TangentType::SMOOTH)
+        if (prev.m_handle_type == HandleType::SMOOTH)
         {
-            prev.m_in.m_broken_type = Tangent::BrokenType::FREE;
-            prev.m_in.m_smooth_type = Tangent::SmoothType::UNUSED;
+            prev.m_in.m_broken_type = Handle::BrokenType::FREE;
+            prev.m_in.m_smooth_type = Handle::SmoothType::UNUSED;
         }
 
-        prev.m_tangent_type = TangentType::BROKEN;
-        prev.m_out.m_broken_type = Tangent::BrokenType::CONSTANT;
-        prev.m_out.m_smooth_type = Tangent::SmoothType::UNUSED;
+        prev.m_handle_type = HandleType::BROKEN;
+        prev.m_out.m_broken_type = Handle::BrokenType::CONSTANT;
+        prev.m_out.m_smooth_type = Handle::SmoothType::UNUSED;
     }
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-void SetOutTangentBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType type)
+void SetOutHandleBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType type)
 {
     int count = GetKeyframeCount(curve);
-    if (keyframe_index < 0 || keyframe_index >= count - 1) return;  // Last keyframe has no out-tangent
+    if (keyframe_index < 0 || keyframe_index >= count - 1) return;  // Last keyframe has no out-handle
 
     Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
-    // If was SMOOTH, convert other tangent to BROKEN FREE
-    if (key.m_tangent_type == TangentType::SMOOTH)
+    // If was SMOOTH, convert other handle to BROKEN FREE
+    if (key.m_handle_type == HandleType::SMOOTH)
     {
-        key.m_in.m_broken_type = Tangent::BrokenType::FREE;
-        key.m_in.m_smooth_type = Tangent::SmoothType::UNUSED;
+        key.m_in.m_broken_type = Handle::BrokenType::FREE;
+        key.m_in.m_smooth_type = Handle::SmoothType::UNUSED;
     }
 
-    key.m_tangent_type = TangentType::BROKEN;
+    key.m_handle_type = HandleType::BROKEN;
     key.m_out.m_broken_type = type;
-    key.m_out.m_smooth_type = Tangent::SmoothType::UNUSED;
+    key.m_out.m_smooth_type = Handle::SmoothType::UNUSED;
 
-    // If CONSTANT, propagate to next keyframe's in-tangent
-    if (type == Tangent::BrokenType::CONSTANT && keyframe_index < count - 1)
+    // If CONSTANT, propagate to next keyframe's in-handle
+    if (type == Handle::BrokenType::CONSTANT && keyframe_index < count - 1)
     {
         Keyframe& next = curve.m_keyframes.at(keyframe_index + 1);
 
-        if (next.m_tangent_type == TangentType::SMOOTH)
+        if (next.m_handle_type == HandleType::SMOOTH)
         {
-            next.m_out.m_broken_type = Tangent::BrokenType::FREE;
-            next.m_out.m_smooth_type = Tangent::SmoothType::UNUSED;
+            next.m_out.m_broken_type = Handle::BrokenType::FREE;
+            next.m_out.m_smooth_type = Handle::SmoothType::UNUSED;
         }
 
-        next.m_tangent_type = TangentType::BROKEN;
-        next.m_in.m_broken_type = Tangent::BrokenType::CONSTANT;
-        next.m_in.m_smooth_type = Tangent::SmoothType::UNUSED;
+        next.m_handle_type = HandleType::BROKEN;
+        next.m_in.m_broken_type = Handle::BrokenType::CONSTANT;
+        next.m_in.m_smooth_type = Handle::SmoothType::UNUSED;
     }
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-void SetBothTangentsBrokenType(Curve& curve, int keyframe_index, Tangent::BrokenType type)
+void SetBothHandlesBrokenType(Curve& curve, int keyframe_index, Handle::BrokenType type)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count) return;
 
-    // Set in-tangent (if not first keyframe)
+    // Set in-handle (if not first keyframe)
     if (keyframe_index > 0)
     {
-        SetInTangentBrokenType(curve, keyframe_index, type);
+        SetInHandleBrokenType(curve, keyframe_index, type);
     }
 
-    // Set out-tangent (if not last keyframe)
+    // Set out-handle (if not last keyframe)
     if (keyframe_index < count - 1)
     {
-        SetOutTangentBrokenType(curve, keyframe_index, type);
+        SetOutHandleBrokenType(curve, keyframe_index, type);
     }
 }
 
 // === Weight Toggle ===
 
-void SetInTangentWeighted(Curve& curve, int keyframe_index, bool weighted)
+void SetInHandleWeighted(Curve& curve, int keyframe_index, bool weighted)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index <= 0 || keyframe_index >= count) return;
 
     curve.m_keyframes.at(keyframe_index).m_in.m_weighted = weighted;
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-void SetOutTangentWeighted(Curve& curve, int keyframe_index, bool weighted)
+void SetOutHandleWeighted(Curve& curve, int keyframe_index, bool weighted)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count - 1) return;
 
     curve.m_keyframes.at(keyframe_index).m_out.m_weighted = weighted;
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-void SetBothTangentsWeighted(Curve& curve, int keyframe_index, bool weighted)
+void SetBothHandlesWeighted(Curve& curve, int keyframe_index, bool weighted)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count) return;
@@ -252,12 +252,12 @@ void SetBothTangentsWeighted(Curve& curve, int keyframe_index, bool weighted)
         key.m_out.m_weighted = weighted;
     }
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-// === Tangent Manipulation ===
+// === Handle Manipulation ===
 
-void SetInTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
+void SetInHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index <= 0 || keyframe_index >= count) return;
@@ -265,12 +265,12 @@ void SetInTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
     Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
     // If AUTO or FLAT, convert to FREE
-    if (key.m_tangent_type == TangentType::SMOOTH)
+    if (key.m_handle_type == HandleType::SMOOTH)
     {
-        if (key.m_in.m_smooth_type == Tangent::SmoothType::AUTO || key.m_in.m_smooth_type == Tangent::SmoothType::FLAT)
+        if (key.m_in.m_smooth_type == Handle::SmoothType::AUTO || key.m_in.m_smooth_type == Handle::SmoothType::FLAT)
         {
-            key.m_in.m_smooth_type = Tangent::SmoothType::FREE;
-            key.m_out.m_smooth_type = Tangent::SmoothType::FREE;
+            key.m_in.m_smooth_type = Handle::SmoothType::FREE;
+            key.m_out.m_smooth_type = Handle::SmoothType::FREE;
         }
     }
 
@@ -278,16 +278,16 @@ void SetInTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
     if (offset.x > 0) offset.x = -offset.x;
     key.m_in.m_offset = offset;
 
-    // If SMOOTH, mirror to out-tangent
-    if (key.m_tangent_type == TangentType::SMOOTH)
+    // If SMOOTH, mirror to out-handle
+    if (key.m_handle_type == HandleType::SMOOTH)
     {
-        MirrorTangentDir(key, false);  // in -> out
+        MirrorHandlesDir(key, false);  // in -> out
     }
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
-void SetOutTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
+void SetOutHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index < 0 || keyframe_index >= count - 1) return;
@@ -295,12 +295,12 @@ void SetOutTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
     Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
     // If AUTO or FLAT, convert to FREE
-    if (key.m_tangent_type == TangentType::SMOOTH)
+    if (key.m_handle_type == HandleType::SMOOTH)
     {
-        if (key.m_out.m_smooth_type == Tangent::SmoothType::AUTO || key.m_out.m_smooth_type == Tangent::SmoothType::FLAT)
+        if (key.m_out.m_smooth_type == Handle::SmoothType::AUTO || key.m_out.m_smooth_type == Handle::SmoothType::FLAT)
         {
-            key.m_in.m_smooth_type = Tangent::SmoothType::FREE;
-            key.m_out.m_smooth_type = Tangent::SmoothType::FREE;
+            key.m_in.m_smooth_type = Handle::SmoothType::FREE;
+            key.m_out.m_smooth_type = Handle::SmoothType::FREE;
         }
     }
 
@@ -308,27 +308,27 @@ void SetOutTangentOffset(Curve& curve, int keyframe_index, ImVec2 offset)
     if (offset.x < 0) offset.x = -offset.x;
     key.m_out.m_offset = offset;
 
-    // If SMOOTH, mirror to in-tangent
-    if (key.m_tangent_type == TangentType::SMOOTH)
+    // If SMOOTH, mirror to in-handle
+    if (key.m_handle_type == HandleType::SMOOTH)
     {
-        MirrorTangentDir(key, true);  // out -> in
+        MirrorHandlesDir(key, true);  // out -> in
     }
 
-    ResolveCurveTangents(curve);
+    ResolveCurveHandles(curve);
 }
 
 // === Query Functions ===
 
-bool ShouldShowInTangentHandle(const Curve& curve, int keyframe_index)
+bool ShouldShowInHandleHandle(const Curve& curve, int keyframe_index)
 {
     if (keyframe_index <= 0) return false;  // First keyframe
 
     const Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
-    if (key.m_tangent_type == TangentType::BROKEN)
+    if (key.m_handle_type == HandleType::BROKEN)
     {
         // Don't show for LINEAR or CONSTANT
-        if (key.m_in.m_broken_type == Tangent::BrokenType::LINEAR || key.m_in.m_broken_type == Tangent::BrokenType::CONSTANT)
+        if (key.m_in.m_broken_type == Handle::BrokenType::LINEAR || key.m_in.m_broken_type == Handle::BrokenType::CONSTANT)
         {
             return false;
         }
@@ -337,17 +337,17 @@ bool ShouldShowInTangentHandle(const Curve& curve, int keyframe_index)
     return true;
 }
 
-bool ShouldShowOutTangentHandle(const Curve& curve, int keyframe_index)
+bool ShouldShowOutHandle(const Curve& curve, int keyframe_index)
 {
     int count = GetKeyframeCount(curve);
     if (keyframe_index >= count - 1) return false;  // Last keyframe
 
     const Keyframe& key = curve.m_keyframes.at(keyframe_index);
 
-    if (key.m_tangent_type == TangentType::BROKEN)
+    if (key.m_handle_type == HandleType::BROKEN)
     {
         // Don't show for LINEAR or CONSTANT
-        if (key.m_out.m_broken_type == Tangent::BrokenType::LINEAR || key.m_out.m_broken_type == Tangent::BrokenType::CONSTANT)
+        if (key.m_out.m_broken_type == Handle::BrokenType::LINEAR || key.m_out.m_broken_type == Handle::BrokenType::CONSTANT)
         {
             return false;
         }

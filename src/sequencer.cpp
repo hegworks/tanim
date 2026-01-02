@@ -29,7 +29,7 @@
 #include "tanim/include/sequencer.hpp"
 
 #include "tanim/include/curve_functions.hpp"
-#include "tanim/include/hermite.hpp"
+#include "tanim/include/bezier.hpp"
 #include "tanim/include/includes.hpp"
 #include "tanim/include/sequence.hpp"
 
@@ -47,18 +47,6 @@
 
 namespace tanim::sequencer
 {
-
-#ifndef IMGUI_DEFINE_MATH_OPERATORS
-static ImVec2 operator+(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x + b.x, a.y + b.y); }
-
-static ImVec2 operator-(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x - b.x, a.y - b.y); }
-
-static ImVec2 operator*(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x * b.x, a.y * b.y); }
-
-static ImVec2 operator/(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x / b.x, a.y / b.y); }
-
-static ImVec2 operator*(const ImVec2& a, const float b) { return ImVec2(a.x * b, a.y * b); }
-#endif
 
 static float Distance(float x, float y, float x1, float y1, float x2, float y2)
 {
@@ -95,11 +83,11 @@ static float Distance(float x, float y, float x1, float y1, float x2, float y2)
     return sqrtf(dx * dx + dy * dy);
 }
 
-static int DrawTangentHandle(ImDrawList* draw_list,
-                             const ImVec2& handle_screen_pos,
-                             const ImVec2& keyframe_screen_pos,
-                             bool is_in_handle,
-                             bool is_selected)
+static int DrawHandle(ImDrawList* draw_list,
+                      const ImVec2& handle_screen_pos,
+                      const ImVec2& keyframe_screen_pos,
+                      bool is_in_handle,
+                      bool is_selected)
 {
     int ret = 0;
     ImGuiIO& io = ImGui::GetIO();
@@ -165,16 +153,16 @@ static int DrawKeyframe(ImDrawList* draw_list, const ImVec2& pos, const ImVec2& 
     return ret;
 }
 
-static ImVec2 GetTangentHandleScreenPos(const Keyframe& keyframe,
-                                        bool is_in_tangent,
-                                        const ImVec2& keyframe_screen_pos,
-                                        const ImVec2& view_size,
-                                        const ImVec2& range)
+static ImVec2 GetHandleScreenPos(const Keyframe& keyframe,
+                                 bool is_in_handle,
+                                 const ImVec2& keyframe_screen_pos,
+                                 const ImVec2& view_size,
+                                 const ImVec2& range)
 {
-    const Tangent& tangent = is_in_tangent ? keyframe.m_in : keyframe.m_out;
+    const Handle& handle = is_in_handle ? keyframe.m_in : keyframe.m_out;
 
     // m_offset is in curve space, convert to screen space
-    ImVec2 screen_offset = ImVec2(tangent.m_offset.x * view_size.x / range.x, tangent.m_offset.y * view_size.y / range.y);
+    ImVec2 screen_offset = ImVec2(handle.m_offset.x * view_size.x / range.x, handle.m_offset.y * view_size.y / range.y);
 
     return keyframe_screen_pos + screen_offset;
 }
@@ -192,7 +180,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     static int right_clicked_curve = -1;
     static int right_clicked_keyframe = -1;
 
-    // For tangent handles
+    // For handles
     static std::set<EditPoint> handle_selection;  // m_keyframe_index encodes: keyframe_idx * 2 + (is_out ? 1 : 0)
     static bool over_handle = false;
 
@@ -303,7 +291,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
             // Check for CONSTANT segment
             bool is_constant =
-                (k0.m_tangent_type == TangentType::BROKEN && k0.m_out.m_broken_type == Tangent::BrokenType::CONSTANT);
+                (k0.m_handle_type == HandleType::BROKEN && k0.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
 
             if (is_constant)
             {
@@ -354,7 +342,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
         }
 
-        // Draw tangent handles
+        // Draw handles
         for (int k = 0; k < keyframe_count; k++)
         {
             const Keyframe& keyframe = curve.m_keyframes.at(k);
@@ -362,12 +350,12 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             ImVec2 keyframe_screen = keyframe_range * view_size + offset;
 
             // Draw in-handle
-            if (ShouldShowInTangentHandle(curve, k))
+            if (ShouldShowInHandleHandle(curve, k))
             {
-                ImVec2 handle_screen = GetTangentHandleScreenPos(keyframe, true, keyframe_screen, view_size, range);
+                ImVec2 handle_screen = GetHandleScreenPos(keyframe, true, keyframe_screen, view_size, range);
                 bool is_handle_selected = handle_selection.find({c, k * 2}) != handle_selection.end();
 
-                int handle_state = DrawTangentHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
+                int handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
                 if (handle_state && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
@@ -383,12 +371,12 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
 
             // Draw out-handle
-            if (ShouldShowOutTangentHandle(curve, k))
+            if (ShouldShowOutHandle(curve, k))
             {
-                ImVec2 handle_screen = GetTangentHandleScreenPos(keyframe, false, keyframe_screen, view_size, range);
+                ImVec2 handle_screen = GetHandleScreenPos(keyframe, false, keyframe_screen, view_size, range);
                 bool is_handle_selected = handle_selection.find({c, k * 2 + 1}) != handle_selection.end();
 
-                int handle_state = DrawTangentHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
+                int handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
                 if (handle_state && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
@@ -503,7 +491,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         }
     }
 
-    // Move tangent handle selection
+    // Move handle selection
     static bool handles_moved = false;
     if (over_handle && io.MouseDown[0] && !handle_selection.empty())
     {
@@ -534,11 +522,11 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
                 if (is_out)
                 {
-                    SetOutTangentOffset(curve, keyframe_idx, curve_offset);
+                    SetOutHandleOffset(curve, keyframe_idx, curve_offset);
                 }
                 else
                 {
-                    SetInTangentOffset(curve, keyframe_idx, curve_offset);
+                    SetInHandleOffset(curve, keyframe_idx, curve_offset);
                 }
             }
         }
@@ -666,19 +654,19 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             // Smooth submenu
             if (ImGui::BeginMenu("Smooth"))
             {
-                bool is_smooth_auto = (keyframe.m_tangent_type == TangentType::SMOOTH &&
-                                       keyframe.m_in.m_smooth_type == Tangent::SmoothType::AUTO);
-                bool is_smooth_free = (keyframe.m_tangent_type == TangentType::SMOOTH &&
-                                       keyframe.m_in.m_smooth_type == Tangent::SmoothType::FREE);
-                bool is_smooth_flat = (keyframe.m_tangent_type == TangentType::SMOOTH &&
-                                       keyframe.m_in.m_smooth_type == Tangent::SmoothType::FLAT);
+                bool is_smooth_auto =
+                    (keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::AUTO);
+                bool is_smooth_free =
+                    (keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::FREE);
+                bool is_smooth_flat =
+                    (keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::FLAT);
 
                 if (ImGui::MenuItem("Auto", nullptr, is_smooth_auto))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
                     SetKeyframeSmoothType(seq.m_curves.at(right_clicked_curve),
                                           right_clicked_keyframe,
-                                          Tangent::SmoothType::AUTO);
+                                          Handle::SmoothType::AUTO);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Free", nullptr, is_smooth_free))
@@ -686,7 +674,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                     Sequence::BeginEdit(right_clicked_curve);
                     SetKeyframeSmoothType(seq.m_curves.at(right_clicked_curve),
                                           right_clicked_keyframe,
-                                          Tangent::SmoothType::FREE);
+                                          Handle::SmoothType::FREE);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Flat", nullptr, is_smooth_flat))
@@ -694,7 +682,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                     Sequence::BeginEdit(right_clicked_curve);
                     SetKeyframeSmoothType(seq.m_curves.at(right_clicked_curve),
                                           right_clicked_keyframe,
-                                          Tangent::SmoothType::FLAT);
+                                          Handle::SmoothType::FLAT);
                     Sequence::EndEdit();
                 }
                 ImGui::EndMenu();
@@ -703,23 +691,23 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             // Broken submenu
             if (ImGui::BeginMenu("Broken"))
             {
-                bool all_broken_free = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                        keyframe.m_in.m_broken_type == Tangent::BrokenType::FREE &&
-                                        keyframe.m_out.m_broken_type == Tangent::BrokenType::FREE);
-                bool all_broken_linear = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                          keyframe.m_in.m_broken_type == Tangent::BrokenType::LINEAR &&
-                                          keyframe.m_out.m_broken_type == Tangent::BrokenType::LINEAR);
-                bool all_broken_constant = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                            keyframe.m_in.m_broken_type == Tangent::BrokenType::CONSTANT &&
-                                            keyframe.m_out.m_broken_type == Tangent::BrokenType::CONSTANT);
+                bool all_broken_free =
+                    (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::FREE &&
+                     keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
+                bool all_broken_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                          keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR &&
+                                          keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR);
+                bool all_broken_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                            keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT &&
+                                            keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
 
                 if (ImGui::MenuItem("Free", nullptr, all_broken_free))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
                     SetKeyframeBrokenType(seq.m_curves.at(right_clicked_curve),
                                           right_clicked_keyframe,
-                                          Tangent::BrokenType::FREE,
-                                          Tangent::BrokenType::FREE);
+                                          Handle::BrokenType::FREE,
+                                          Handle::BrokenType::FREE);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Linear", nullptr, all_broken_linear))
@@ -727,8 +715,8 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                     Sequence::BeginEdit(right_clicked_curve);
                     SetKeyframeBrokenType(seq.m_curves.at(right_clicked_curve),
                                           right_clicked_keyframe,
-                                          Tangent::BrokenType::LINEAR,
-                                          Tangent::BrokenType::LINEAR);
+                                          Handle::BrokenType::LINEAR,
+                                          Handle::BrokenType::LINEAR);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Constant", nullptr, all_broken_constant))
@@ -736,8 +724,8 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                     Sequence::BeginEdit(right_clicked_curve);
                     SetKeyframeBrokenType(seq.m_curves.at(right_clicked_curve),
                                           right_clicked_keyframe,
-                                          Tangent::BrokenType::CONSTANT,
-                                          Tangent::BrokenType::CONSTANT);
+                                          Handle::BrokenType::CONSTANT,
+                                          Handle::BrokenType::CONSTANT);
                     Sequence::EndEdit();
                 }
                 ImGui::EndMenu();
@@ -745,139 +733,139 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
             ImGui::Separator();
 
-            // In Tangent submenu
-            if (ImGui::BeginMenu("In Tangent", in_editable))
+            // In handle submenu
+            if (ImGui::BeginMenu("Left Handle", in_editable))
             {
-                bool is_in_free = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                   keyframe.m_in.m_broken_type == Tangent::BrokenType::FREE);
-                bool is_in_linear = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                     keyframe.m_in.m_broken_type == Tangent::BrokenType::LINEAR);
-                bool is_in_constant = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                       keyframe.m_in.m_broken_type == Tangent::BrokenType::CONSTANT);
+                bool is_in_free =
+                    (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::FREE);
+                bool is_in_linear =
+                    (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR);
+                bool is_in_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                       keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT);
                 bool is_in_weighted = keyframe.m_in.m_weighted;
 
                 if (ImGui::MenuItem("Free", nullptr, is_in_free))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetInTangentBrokenType(seq.m_curves.at(right_clicked_curve),
-                                           right_clicked_keyframe,
-                                           Tangent::BrokenType::FREE);
+                    SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
+                                          right_clicked_keyframe,
+                                          Handle::BrokenType::FREE);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Linear", nullptr, is_in_linear))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetInTangentBrokenType(seq.m_curves.at(right_clicked_curve),
-                                           right_clicked_keyframe,
-                                           Tangent::BrokenType::LINEAR);
+                    SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
+                                          right_clicked_keyframe,
+                                          Handle::BrokenType::LINEAR);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Constant", nullptr, is_in_constant))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetInTangentBrokenType(seq.m_curves.at(right_clicked_curve),
-                                           right_clicked_keyframe,
-                                           Tangent::BrokenType::CONSTANT);
+                    SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
+                                          right_clicked_keyframe,
+                                          Handle::BrokenType::CONSTANT);
                     Sequence::EndEdit();
                 }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Weighted", nullptr, is_in_weighted))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetInTangentWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !is_in_weighted);
+                    SetInHandleWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !is_in_weighted);
                     Sequence::EndEdit();
                 }
                 ImGui::EndMenu();
             }
 
-            // Out Tangent submenu
-            if (ImGui::BeginMenu("Out Tangent", out_editable))
+            // Out handle submenu
+            if (ImGui::BeginMenu("Out Handle", out_editable))
             {
-                bool is_out_free = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                    keyframe.m_out.m_broken_type == Tangent::BrokenType::FREE);
-                bool is_out_linear = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                      keyframe.m_out.m_broken_type == Tangent::BrokenType::LINEAR);
-                bool is_out_constant = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                        keyframe.m_out.m_broken_type == Tangent::BrokenType::CONSTANT);
+                bool is_out_free =
+                    (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
+                bool is_out_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                      keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR);
+                bool is_out_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                        keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
                 bool is_out_weighted = keyframe.m_out.m_weighted;
 
                 if (ImGui::MenuItem("Free", nullptr, is_out_free))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetOutTangentBrokenType(seq.m_curves.at(right_clicked_curve),
-                                            right_clicked_keyframe,
-                                            Tangent::BrokenType::FREE);
+                    SetOutHandleBrokenType(seq.m_curves.at(right_clicked_curve),
+                                           right_clicked_keyframe,
+                                           Handle::BrokenType::FREE);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Linear", nullptr, is_out_linear))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetOutTangentBrokenType(seq.m_curves.at(right_clicked_curve),
-                                            right_clicked_keyframe,
-                                            Tangent::BrokenType::LINEAR);
+                    SetOutHandleBrokenType(seq.m_curves.at(right_clicked_curve),
+                                           right_clicked_keyframe,
+                                           Handle::BrokenType::LINEAR);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Constant", nullptr, is_out_constant))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetOutTangentBrokenType(seq.m_curves.at(right_clicked_curve),
-                                            right_clicked_keyframe,
-                                            Tangent::BrokenType::CONSTANT);
+                    SetOutHandleBrokenType(seq.m_curves.at(right_clicked_curve),
+                                           right_clicked_keyframe,
+                                           Handle::BrokenType::CONSTANT);
                     Sequence::EndEdit();
                 }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Weighted", nullptr, is_out_weighted))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetOutTangentWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !is_out_weighted);
+                    SetOutHandleWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !is_out_weighted);
                     Sequence::EndEdit();
                 }
                 ImGui::EndMenu();
             }
 
-            // Both Tangents submenu
-            if (ImGui::BeginMenu("Both Tangents"))
+            // Both handles submenu
+            if (ImGui::BeginMenu("Both Handles"))
             {
-                bool both_free = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                  keyframe.m_in.m_broken_type == Tangent::BrokenType::FREE &&
-                                  keyframe.m_out.m_broken_type == Tangent::BrokenType::FREE);
-                bool both_linear = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                    keyframe.m_in.m_broken_type == Tangent::BrokenType::LINEAR &&
-                                    keyframe.m_out.m_broken_type == Tangent::BrokenType::LINEAR);
-                bool both_constant = (keyframe.m_tangent_type == TangentType::BROKEN &&
-                                      keyframe.m_in.m_broken_type == Tangent::BrokenType::CONSTANT &&
-                                      keyframe.m_out.m_broken_type == Tangent::BrokenType::CONSTANT);
+                bool both_free =
+                    (keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::FREE &&
+                     keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
+                bool both_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                    keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR &&
+                                    keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR);
+                bool both_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
+                                      keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT &&
+                                      keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
                 bool both_weighted = keyframe.m_in.m_weighted && keyframe.m_out.m_weighted;
 
                 if (ImGui::MenuItem("Free", nullptr, both_free))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetBothTangentsBrokenType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Tangent::BrokenType::FREE);
+                    SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),
+                                             right_clicked_keyframe,
+                                             Handle::BrokenType::FREE);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Linear", nullptr, both_linear))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetBothTangentsBrokenType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Tangent::BrokenType::LINEAR);
+                    SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),
+                                             right_clicked_keyframe,
+                                             Handle::BrokenType::LINEAR);
                     Sequence::EndEdit();
                 }
                 if (ImGui::MenuItem("Constant", nullptr, both_constant))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetBothTangentsBrokenType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Tangent::BrokenType::CONSTANT);
+                    SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),
+                                             right_clicked_keyframe,
+                                             Handle::BrokenType::CONSTANT);
                     Sequence::EndEdit();
                 }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Weighted", nullptr, both_weighted))
                 {
                     Sequence::BeginEdit(right_clicked_curve);
-                    SetBothTangentsWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !both_weighted);
+                    SetBothHandlesWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !both_weighted);
                     Sequence::EndEdit();
                 }
                 ImGui::EndMenu();
@@ -885,11 +873,11 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
             ImGui::Separator();
 
-            // Reset Tangents
-            if (ImGui::MenuItem("Reset Tangents"))
+            // Reset handles
+            if (ImGui::MenuItem("Reset Handles"))
             {
                 Sequence::BeginEdit(right_clicked_curve);
-                seq.ResetTangentsForKeyframe(right_clicked_curve, right_clicked_keyframe);
+                seq.ResetHandlesForKeyframe(right_clicked_curve, right_clicked_keyframe);
                 Sequence::EndEdit();
             }
 

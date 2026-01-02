@@ -6,7 +6,7 @@
 #include "tanim/include/enums.hpp"
 #include "tanim/include/keyframe.hpp"
 #include "tanim/include/curve_functions.hpp"
-#include "tanim/include/hermite.hpp"
+#include "tanim/include/bezier.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -246,10 +246,10 @@ struct Sequence
     // TODO(tanim) replace hardcoded value (maybe?)
     static unsigned int GetBackgroundColor() { return 0x00000000; }
 
-    void ResetTangentsForKeyframe(int curve_idx, int keyframe_idx)
+    void ResetHandlesForKeyframe(int curve_idx, int keyframe_idx)
     {
         Curve& curve = m_curves.at(curve_idx);
-        SetKeyframeSmoothType(curve, keyframe_idx, Tangent::SmoothType::AUTO);
+        SetKeyframeSmoothType(curve, keyframe_idx, Handle::SmoothType::AUTO);
     }
 
     void EditFirstFrame(int new_first_frame)
@@ -295,7 +295,7 @@ struct Sequence
                                                   keyframe.m_pos.x);
             }
 
-            ResolveCurveTangents(curve);
+            ResolveCurveHandles(curve);
         }
 
         m_last_frame = new_last_frame;
@@ -316,7 +316,7 @@ struct Sequence
             {
                 key.m_pos.x += frame_diff_f;
             }
-            ResolveCurveTangents(curve);
+            ResolveCurveHandles(curve);
         }
     }
 
@@ -361,7 +361,7 @@ private:
             if (keyframe_count > 0)
             {
                 curve.m_keyframes.at(0).m_pos.x = static_cast<float>(m_first_frame);
-                ResolveCurveTangents(curve);
+                ResolveCurveHandles(curve);
             }
         }
     }
@@ -376,7 +376,7 @@ private:
             if (keyframe_count > 0)
             {
                 curve.m_keyframes.at(keyframe_count - 1).m_pos.x = static_cast<float>(m_last_frame);
-                ResolveCurveTangents(curve);
+                ResolveCurveHandles(curve);
             }
         }
     }
