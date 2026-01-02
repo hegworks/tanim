@@ -53,7 +53,7 @@ float CalculateLinearHandleSlope(const Keyframe& current, const Keyframe& adjace
 // === Handle Constraint Helpers ===
 
 // Mirror the out-handle direction to create in-handle (or vice versa).
-// Only affects m_dir, preserves individual m_weight values.
+// Preserve in-handle's length if weighted, otherwise keep its current length
 void MirrorHandlesDir(Keyframe& keyframe, bool from_out_to_in);
 
 // Ensure handle m_dir points in valid direction and is normalized.

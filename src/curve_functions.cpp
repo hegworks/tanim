@@ -278,6 +278,9 @@ void SetInHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset)
     if (offset.x > 0) offset.x = -offset.x;
     key.m_in.m_offset = offset;
 
+    // Resolve before mirroring to apply clamping handles
+    ResolveCurveHandles(curve);
+
     // If SMOOTH, mirror to out-handle
     if (key.m_handle_type == HandleType::SMOOTH)
     {
@@ -307,6 +310,9 @@ void SetOutHandleOffset(Curve& curve, int keyframe_index, ImVec2 offset)
     // Ensure it points right
     if (offset.x < 0) offset.x = -offset.x;
     key.m_out.m_offset = offset;
+
+    // Resolve before mirroring to apply clamping handles
+    ResolveCurveHandles(curve);
 
     // If SMOOTH, mirror to in-handle
     if (key.m_handle_type == HandleType::SMOOTH)

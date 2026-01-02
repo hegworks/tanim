@@ -248,37 +248,37 @@ void ResolveKeyframeHandles(Keyframe& keyframe, const Keyframe* prev_key, const 
     // Resolve in-handle
     if (prev_key)
     {
-        Handle& in_tan = keyframe.m_in;
-        float segment_duration = keyframe.Time() - prev_key->Time();
-        float default_x = -segment_duration / 3.0f;  // Points left
+        Handle& in = keyframe.m_in;
+        const float segment_duration = keyframe.Time() - prev_key->Time();
+        const float default_x = -segment_duration / 3.0f;  // Points left
 
         if (keyframe.m_handle_type == HandleType::SMOOTH)
         {
-            switch (in_tan.m_smooth_type)
+            switch (in.m_smooth_type)
             {
                 case Handle::SmoothType::AUTO:
                 {
-                    float slope = CalculateAutoHandleSlope(prev_key, keyframe, next_key);
-                    in_tan.m_offset = ImVec2(default_x, default_x * slope);
+                    const float slope = CalculateAutoHandleSlope(prev_key, keyframe, next_key);
+                    in.m_offset = ImVec2(default_x, default_x * slope);
                     break;
                 }
                 case Handle::SmoothType::FLAT:
-                    in_tan.m_offset = ImVec2(default_x, 0.0f);
+                    in.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Handle::SmoothType::FREE:
-                    if (!in_tan.m_weighted)
+                    if (!in.m_weighted)
                     {
                         // Preserve direction, reset length
-                        float len = Vec2Length(in_tan.m_offset);
+                        const float len = Vec2Length(in.m_offset);
                         if (len > 1e-6f)
                         {
-                            float scale = std::abs(default_x) / std::abs(in_tan.m_offset.x + 1e-6f);
-                            in_tan.m_offset.x = default_x;
-                            in_tan.m_offset.y *= scale;
+                            const float scale = std::abs(default_x) / std::abs(in.m_offset.x + 1e-6f);
+                            in.m_offset.x = default_x;
+                            in.m_offset.y *= scale;
                         }
                         else
                         {
-                            in_tan.m_offset = ImVec2(default_x, 0.0f);
+                            in.m_offset = ImVec2(default_x, 0.0f);
                         }
                     }
                     break;
@@ -288,30 +288,30 @@ void ResolveKeyframeHandles(Keyframe& keyframe, const Keyframe* prev_key, const 
         }
         else  // BROKEN
         {
-            switch (in_tan.m_broken_type)
+            switch (in.m_broken_type)
             {
                 case Handle::BrokenType::LINEAR:
                 {
-                    float slope = CalculateLinearHandleSlope(keyframe, *prev_key);
-                    in_tan.m_offset = ImVec2(default_x, default_x * slope);
+                    const float slope = CalculateLinearHandleSlope(keyframe, *prev_key);
+                    in.m_offset = ImVec2(default_x, default_x * slope);
                     break;
                 }
                 case Handle::BrokenType::CONSTANT:
-                    in_tan.m_offset = ImVec2(default_x, 0.0f);
+                    in.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Handle::BrokenType::FREE:
-                    if (!in_tan.m_weighted)
+                    if (!in.m_weighted)
                     {
-                        float len = Vec2Length(in_tan.m_offset);
+                        const float len = Vec2Length(in.m_offset);
                         if (len > 1e-6f)
                         {
-                            float scale = std::abs(default_x) / std::abs(in_tan.m_offset.x + 1e-6f);
-                            in_tan.m_offset.x = default_x;
-                            in_tan.m_offset.y *= scale;
+                            const float scale = std::abs(default_x) / std::abs(in.m_offset.x + 1e-6f);
+                            in.m_offset.x = default_x;
+                            in.m_offset.y *= scale;
                         }
                         else
                         {
-                            in_tan.m_offset = ImVec2(default_x, 0.0f);
+                            in.m_offset = ImVec2(default_x, 0.0f);
                         }
                     }
                     break;
@@ -319,41 +319,44 @@ void ResolveKeyframeHandles(Keyframe& keyframe, const Keyframe* prev_key, const 
                     break;
             }
         }
+
+        // Clamp to not exceed previous keyframe
+        in.m_offset.x = std::max(in.m_offset.x, prev_key->m_pos.x - keyframe.m_pos.x);
     }
 
     // Resolve out-handle
     if (next_key)
     {
-        Handle& out_tan = keyframe.m_out;
-        float segment_duration = next_key->Time() - keyframe.Time();
-        float default_x = segment_duration / 3.0f;  // Points right
+        Handle& out = keyframe.m_out;
+        const float segment_duration = next_key->Time() - keyframe.Time();
+        const float default_x = segment_duration / 3.0f;  // Points right
 
         if (keyframe.m_handle_type == HandleType::SMOOTH)
         {
-            switch (out_tan.m_smooth_type)
+            switch (out.m_smooth_type)
             {
                 case Handle::SmoothType::AUTO:
                 {
-                    float slope = CalculateAutoHandleSlope(prev_key, keyframe, next_key);
-                    out_tan.m_offset = ImVec2(default_x, default_x * slope);
+                    const float slope = CalculateAutoHandleSlope(prev_key, keyframe, next_key);
+                    out.m_offset = ImVec2(default_x, default_x * slope);
                     break;
                 }
                 case Handle::SmoothType::FLAT:
-                    out_tan.m_offset = ImVec2(default_x, 0.0f);
+                    out.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Handle::SmoothType::FREE:
-                    if (!out_tan.m_weighted)
+                    if (!out.m_weighted)
                     {
-                        float len = Vec2Length(out_tan.m_offset);
+                        const float len = Vec2Length(out.m_offset);
                         if (len > 1e-6f)
                         {
-                            float scale = default_x / std::abs(out_tan.m_offset.x + 1e-6f);
-                            out_tan.m_offset.x = default_x;
-                            out_tan.m_offset.y *= scale;
+                            const float scale = default_x / std::abs(out.m_offset.x + 1e-6f);
+                            out.m_offset.x = default_x;
+                            out.m_offset.y *= scale;
                         }
                         else
                         {
-                            out_tan.m_offset = ImVec2(default_x, 0.0f);
+                            out.m_offset = ImVec2(default_x, 0.0f);
                         }
                     }
                     break;
@@ -363,30 +366,30 @@ void ResolveKeyframeHandles(Keyframe& keyframe, const Keyframe* prev_key, const 
         }
         else  // BROKEN
         {
-            switch (out_tan.m_broken_type)
+            switch (out.m_broken_type)
             {
                 case Handle::BrokenType::LINEAR:
                 {
-                    float slope = CalculateLinearHandleSlope(keyframe, *next_key);
-                    out_tan.m_offset = ImVec2(default_x, default_x * slope);
+                    const float slope = CalculateLinearHandleSlope(keyframe, *next_key);
+                    out.m_offset = ImVec2(default_x, default_x * slope);
                     break;
                 }
                 case Handle::BrokenType::CONSTANT:
-                    out_tan.m_offset = ImVec2(default_x, 0.0f);
+                    out.m_offset = ImVec2(default_x, 0.0f);
                     break;
                 case Handle::BrokenType::FREE:
-                    if (!out_tan.m_weighted)
+                    if (!out.m_weighted)
                     {
-                        float len = Vec2Length(out_tan.m_offset);
+                        const float len = Vec2Length(out.m_offset);
                         if (len > 1e-6f)
                         {
-                            float scale = default_x / std::abs(out_tan.m_offset.x + 1e-6f);
-                            out_tan.m_offset.x = default_x;
-                            out_tan.m_offset.y *= scale;
+                            const float scale = default_x / std::abs(out.m_offset.x + 1e-6f);
+                            out.m_offset.x = default_x;
+                            out.m_offset.y *= scale;
                         }
                         else
                         {
-                            out_tan.m_offset = ImVec2(default_x, 0.0f);
+                            out.m_offset = ImVec2(default_x, 0.0f);
                         }
                     }
                     break;
@@ -394,6 +397,9 @@ void ResolveKeyframeHandles(Keyframe& keyframe, const Keyframe* prev_key, const 
                     break;
             }
         }
+
+        // Clamp to not exceed next keyframe
+        out.m_offset.x = std::min(out.m_offset.x, next_key->m_pos.x - keyframe.m_pos.x);
     }
 }
 
@@ -416,13 +422,43 @@ void MirrorHandlesDir(Keyframe& keyframe, bool from_out_to_in)
 {
     if (from_out_to_in)
     {
-        // Mirror out-handle to in-handle (negate both components)
-        keyframe.m_in.m_offset = ImVec2(-keyframe.m_out.m_offset.x, -keyframe.m_out.m_offset.y);
+        // Mirror out-handle direction to in-handle
+        const float source_len = Vec2Length(keyframe.m_out.m_offset);
+        float target_len = Vec2Length(keyframe.m_in.m_offset);
+
+        if (source_len < 1e-6f)
+        {
+            keyframe.m_in.m_offset = ImVec2(-1.0f, 0.0f);
+            return;
+        }
+
+        // Get direction from out-handle, negate for in-handle
+        const ImVec2 dir = ImVec2(-keyframe.m_out.m_offset.x / source_len, -keyframe.m_out.m_offset.y / source_len);
+
+        // Use target's existing length (will be recalculated by Resolve if not weighted)
+        if (target_len < 1e-6f) target_len = source_len;
+
+        keyframe.m_in.m_offset = ImVec2(dir.x * target_len, dir.y * target_len);
     }
     else
     {
-        // Mirror in-handle to out-handle (negate both components)
-        keyframe.m_out.m_offset = ImVec2(-keyframe.m_in.m_offset.x, -keyframe.m_in.m_offset.y);
+        // Mirror in-handle direction to out-handle
+        const float source_len = Vec2Length(keyframe.m_in.m_offset);
+        float target_len = Vec2Length(keyframe.m_out.m_offset);
+
+        if (source_len < 1e-6f)
+        {
+            keyframe.m_out.m_offset = ImVec2(1.0f, 0.0f);
+            return;
+        }
+
+        // Get direction from in-handle, negate for out-handle
+        const ImVec2 dir = ImVec2(-keyframe.m_in.m_offset.x / source_len, -keyframe.m_in.m_offset.y / source_len);
+
+        // Use target's existing length (will be recalculated by Resolve if not weighted)
+        if (target_len < 1e-6f) target_len = source_len;
+
+        keyframe.m_out.m_offset = ImVec2(dir.x * target_len, dir.y * target_len);
     }
 }
 
