@@ -122,33 +122,101 @@ static int DrawHandle(ImDrawList* draw_list,
     return ret;
 }
 
-static int DrawKeyframe(ImDrawList* draw_list, const ImVec2& pos, const ImVec2& size, const ImVec2& offset, bool edited)
+static int DrawKeyframe(ImDrawList* draw_list,
+                        const ImVec2& pos,
+                        const ImVec2& size,
+                        const ImVec2& offset,
+                        bool edited,
+                        bool x_moveable,
+                        bool y_moveable)
 {
     int ret = 0;
     ImGuiIO& io = ImGui::GetIO();
 
-    static constexpr ImVec2 LOCAL_OFFSETS[4] = {ImVec2(1, 0), ImVec2(0, 1), ImVec2(-1, 0), ImVec2(0, -1)};
-    ImVec2 offsets[4];
-    for (int i = 0; i < 4; i++)
+    const ImVec2 center = pos * size + offset;
+
+    // Shape sizes
+    static constexpr float k_square_half_size = 4.5f;
+    static constexpr float k_rect_long = 6.0f;
+    static constexpr float k_rect_short = 3.0f;
+    static constexpr float k_diamond_radius = 4.5f;
+    static constexpr float k_anchor_half_size = 5.0f;
+
+    // Outline thickness
+    static constexpr float k_outline_thickness_edited = 3.0f;
+    static constexpr float k_outline_thickness_normal = 2.0f;
+
+    // Colors
+    static constexpr ImU32 k_fill_color = 0xFF000000;
+    static constexpr ImU32 k_outline_color_edited = 0xFFFFFFFF;
+    static constexpr ImU32 k_outline_color_hovered = 0xFF80B0FF;
+    static constexpr ImU32 k_outline_color_normal = 0xFF0080FF;
+
+    ImVec2 half_size;
+    bool draw_diamond = false;
+
+    if (x_moveable && y_moveable)
     {
-        offsets[i] = pos * size + LOCAL_OFFSETS[i] * 4.5f + offset;
+        half_size = ImVec2(k_square_half_size, k_square_half_size);
+    }
+    else if (x_moveable)
+    {
+        half_size = ImVec2(k_rect_long, k_rect_short);
+    }
+    else if (y_moveable)
+    {
+        half_size = ImVec2(k_rect_short, k_rect_long);
+    }
+    else
+    {
+        draw_diamond = true;
     }
 
-    const ImVec2 center = pos * size + offset;
-    const ImRect anchor(center - ImVec2(5, 5), center + ImVec2(5, 5));
-    draw_list->AddConvexPolyFilled(offsets, 4, 0xFF000000);
+    const ImRect anchor(center - ImVec2(k_anchor_half_size, k_anchor_half_size),
+                        center + ImVec2(k_anchor_half_size, k_anchor_half_size));
     if (anchor.Contains(io.MousePos))
     {
         ret = 1;
         if (io.MouseDown[0]) ret = 2;
     }
 
+    ImU32 outline_color;
+    float outline_thickness;
+
     if (edited)
-        draw_list->AddPolyline(offsets, 4, 0xFFFFFFFF, true, 3.0f);
+    {
+        outline_color = k_outline_color_edited;
+        outline_thickness = k_outline_thickness_edited;
+    }
     else if (ret)
-        draw_list->AddPolyline(offsets, 4, 0xFF80B0FF, true, 2.0f);
+    {
+        outline_color = k_outline_color_hovered;
+        outline_thickness = k_outline_thickness_normal;
+    }
     else
-        draw_list->AddPolyline(offsets, 4, 0xFF0080FF, true, 2.0f);
+    {
+        outline_color = k_outline_color_normal;
+        outline_thickness = k_outline_thickness_normal;
+    }
+
+    if (draw_diamond)
+    {
+        static constexpr ImVec2 LOCAL_OFFSETS[4] = {ImVec2(1, 0), ImVec2(0, 1), ImVec2(-1, 0), ImVec2(0, -1)};
+        ImVec2 offsets[4];
+        for (int i = 0; i < 4; i++)
+        {
+            offsets[i] = center + LOCAL_OFFSETS[i] * k_diamond_radius;
+        }
+        draw_list->AddConvexPolyFilled(offsets, 4, k_fill_color);
+        draw_list->AddPolyline(offsets, 4, outline_color, true, outline_thickness);
+    }
+    else
+    {
+        ImVec2 rect_min = center - half_size;
+        ImVec2 rect_max = center + half_size;
+        draw_list->AddRectFilled(rect_min, rect_max, k_fill_color);
+        draw_list->AddRect(rect_min, rect_max, outline_color, 0.0f, 0, outline_thickness);
+    }
 
     return ret;
 }
@@ -426,7 +494,9 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                              keyframe_range,
                              view_size,
                              offset,
-                             (selection.find({c, k}) != selection.end() && moving_curve == -1 && !scrolling_v));
+                             (selection.find({c, k}) != selection.end() && moving_curve == -1 && !scrolling_v),
+                             seq.IsKeyframeXMoveable(c, k),
+                             seq.IsKeyframeYMoveable(c, k));
 
             // Display keyframe value near point
             char point_val_text[128];
@@ -487,19 +557,18 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             int original_index = 0;
             for (const auto& sel : selection)
             {
-                const ImVec2 p = range_to_point(point_to_range(original_points[original_index]) +
-                                                (io.MousePos - mouse_pos_origin) * size_of_pixel);
+                const ImVec2 original = original_points.at(original_index);
+                const ImVec2 delta = (io.MousePos - mouse_pos_origin) * size_of_pixel;
+
+                const bool x_moveable = seq.IsKeyframeXMoveable(sel.m_curve_index, sel.m_keyframe_index);
+                const bool y_moveable = seq.IsKeyframeYMoveable(sel.m_curve_index, sel.m_keyframe_index);
+
+                const ImVec2 constrained_delta = ImVec2(x_moveable ? delta.x : 0.0f, y_moveable ? delta.y : 0.0f);
+
+                const ImVec2 p = range_to_point(point_to_range(original) + constrained_delta);
 
                 seq.EditKeyframe(sel.m_curve_index, sel.m_keyframe_index, p);
                 original_index++;
-
-                // const int newIndex = seq.EditKeyframe(sel.m_curve_index, sel.m_keyframe_index, p);
-                // if (newIndex != sel.m_keyframe_index)
-                // {
-                //     selection.erase(sel);
-                //     selection.insert({sel.m_curve_index, newIndex});
-                // }
-                // original_index++;
             }
         }
     }

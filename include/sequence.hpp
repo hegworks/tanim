@@ -66,6 +66,30 @@ struct Sequence
         return false;
     }
 
+    bool IsKeyframeXMoveable(int curve_idx, int frame_idx) const
+    {
+        const bool is_quat = m_representation_meta == RepresentationMeta::QUAT;
+        if (is_quat) return false;
+
+        const bool is_first_keyframe = frame_idx <= 0;
+        if (is_first_keyframe) return false;
+
+        const Curve& curve = m_curves.at(curve_idx);
+
+        const bool is_last_keyframe = frame_idx >= GetKeyframeCount(curve) - 1;
+        if (is_last_keyframe) return false;
+
+        return true;
+    }
+
+    bool IsKeyframeYMoveable(int /*curve_idx*/, int /*frame_idx*/) const
+    {
+        const bool is_quat = m_representation_meta == RepresentationMeta::QUAT;
+        if (is_quat) return false;
+
+        return true;
+    }
+
     void AddNewKeyframe(int frame_num)
     {
         for (int curve_idx = 0; curve_idx < GetCurveCount(); ++curve_idx)
