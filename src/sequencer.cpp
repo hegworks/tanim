@@ -161,10 +161,32 @@ static ImVec2 GetHandleScreenPos(const Keyframe& keyframe,
 {
     const Handle& handle = is_in_handle ? keyframe.m_in : keyframe.m_out;
 
-    // m_offset is in curve space, convert to screen space
-    ImVec2 screen_offset = ImVec2(handle.m_offset.x * view_size.x / range.x, handle.m_offset.y * view_size.y / range.y);
+    if (handle.m_weighted)
+    {
+        // Weighted: use actual offset converted to screen space
+        const ImVec2 screen_offset =
+            ImVec2(handle.m_offset.x * view_size.x / range.x, handle.m_offset.y * view_size.y / range.y);
+        return keyframe_screen_pos + screen_offset;
+    }
+    else
+    {
+        // Non-weighted: fixed screen-space radius, direction from offset
+        const float radius = std::abs(view_size.x) * 0.0075f;  // 0.75% of view width
 
-    return keyframe_screen_pos + screen_offset;
+        // Get direction in screen space
+        const ImVec2 screen_dir = ImVec2(handle.m_offset.x * view_size.x / range.x, handle.m_offset.y * view_size.y / range.y);
+
+        const float len = std::sqrt(screen_dir.x * screen_dir.x + screen_dir.y * screen_dir.y);
+        if (len > 1e-6f)
+        {
+            return keyframe_screen_pos + ImVec2(screen_dir.x / len * radius, screen_dir.y / len * radius);
+        }
+        else
+        {
+            const float sign = is_in_handle ? -1.0f : 1.0f;
+            return keyframe_screen_pos + ImVec2(sign * radius, 0.0f);
+        }
+    }
 }
 
 int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipping_rect, ImVector<EditPoint>* selected_points)
@@ -648,7 +670,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             const bool is_first = (right_clicked_keyframe == 0);
             const bool is_last = (right_clicked_keyframe == keyframe_count - 1);
             const bool in_editable = IsInHandleEditable(curve, right_clicked_keyframe);
-            const bool out_editable = IsOutHandleEditable(curve, right_clicked_curve);
+            const bool out_editable = IsOutHandleEditable(curve, right_clicked_keyframe);
             const bool both_editable = in_editable && out_editable;
             const bool is_curve_type_locked = curve.m_handle_type_locked;
 
