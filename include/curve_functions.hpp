@@ -7,9 +7,15 @@ namespace tanim
 
 // === Curve Management ===
 
-void EnforceCurveType(Curve& curve, EnforcedType enforced_type);
+void SetCurveHandleType(Curve& curve, CurveHandleType curve_handle_type);
 
-void ApplyEnforcedCurveTypeOnKeyframe(Curve& curve, int keyframe_index);
+void LockCurveHandleType(Curve& curve);
+
+void UnlockCurveHandleType(Curve& curve);
+
+void ApplyCurveHandleTypeOnKeyframe(Curve& curve, int keyframe_index);
+
+void ApplyCurveHandleTypeOnCurve(Curve& curve);
 
 // === Keyframe Management ===
 

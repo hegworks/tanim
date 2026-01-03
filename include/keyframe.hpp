@@ -16,9 +16,9 @@ enum class HandleType : uint8_t
     BROKEN,  // In/out handles fully independent
 };
 
-enum class EnforcedType : uint8_t
+enum class CurveHandleType : uint8_t
 {
-    UNENFORCED,
+    UNCONSTRAINED,
     AUTO,      // Smooth
     FLAT,      // Smooth
     LINEAR,    // Broken
@@ -86,7 +86,8 @@ struct Keyframe
 struct Curve
 {
     std::vector<Keyframe> m_keyframes{};
-    EnforcedType m_enforced_type{EnforcedType::UNENFORCED};
+    CurveHandleType m_curve_handle_type{CurveHandleType::UNCONSTRAINED};
+    bool m_handle_type_locked{false};
     bool m_visibility{true};
     std::string m_name{"new_curve"};
 };

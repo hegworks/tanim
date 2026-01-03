@@ -9,42 +9,44 @@ namespace tanim
 
 // === Curve Management ===
 
-void EnforceCurveType(Curve& curve, EnforcedType enforced_type)
+void SetCurveHandleType(Curve& curve, CurveHandleType curve_handle_type) { curve.m_curve_handle_type = curve_handle_type; }
+
+void LockCurveHandleType(Curve& curve) { curve.m_handle_type_locked = true; }
+
+void UnlockCurveHandleType(Curve& curve) { curve.m_handle_type_locked = false; }
+
+void ApplyCurveHandleTypeOnKeyframe(Curve& curve, int keyframe_index)
 {
-    curve.m_enforced_type = enforced_type;
+    if (curve.m_curve_handle_type == CurveHandleType::UNCONSTRAINED) return;
 
-    if (enforced_type == EnforcedType::UNENFORCED) return;
-
-    const int count = GetKeyframeCount(curve);
-    for (int k = 0; k < count; k++)
+    switch (curve.m_curve_handle_type)
     {
-        ApplyEnforcedCurveTypeOnKeyframe(curve, k);
-    }
-}
-
-void ApplyEnforcedCurveTypeOnKeyframe(Curve& curve, int keyframe_index)
-{
-    if (curve.m_enforced_type == EnforcedType::UNENFORCED) return;
-
-    switch (curve.m_enforced_type)
-    {
-        case EnforcedType::UNENFORCED:
+        case CurveHandleType::UNCONSTRAINED:
             // do nothing
             break;
-        case EnforcedType::AUTO:
+        case CurveHandleType::AUTO:
             SetKeyframeSmoothType(curve, keyframe_index, Handle::SmoothType::AUTO);
             break;
-        case EnforcedType::FLAT:
+        case CurveHandleType::FLAT:
             SetKeyframeSmoothType(curve, keyframe_index, Handle::SmoothType::FLAT);
             break;
-        case EnforcedType::LINEAR:
+        case CurveHandleType::LINEAR:
             SetKeyframeBrokenType(curve, keyframe_index, Handle::BrokenType::LINEAR, Handle::BrokenType::LINEAR);
             break;
-        case EnforcedType::CONSTANT:
+        case CurveHandleType::CONSTANT:
             SetKeyframeBrokenType(curve, keyframe_index, Handle::BrokenType::CONSTANT, Handle::BrokenType::CONSTANT);
             break;
         default:
             assert(0 && "unhandled enforced type");
+    }
+}
+
+void ApplyCurveHandleTypeOnCurve(Curve& curve)
+{
+    const int count = GetKeyframeCount(curve);
+    for (int k = 0; k < count; k++)
+    {
+        ApplyCurveHandleTypeOnKeyframe(curve, k);
     }
 }
 
@@ -74,7 +76,10 @@ int AddKeyframe(Curve& curve, float time, float value)
     // Insert
     keyframes.insert(keyframes.begin() + insert_idx, new_key);
 
-    ApplyEnforcedCurveTypeOnKeyframe(curve, insert_idx);
+    if (curve.m_handle_type_locked)
+    {
+        ApplyCurveHandleTypeOnKeyframe(curve, insert_idx);
+    }
 
     // Resolve all handles (AUTO handles need neighbor info)
     ResolveCurveHandles(curve);
@@ -405,8 +410,7 @@ bool ShouldShowOutHandle(const Curve& curve, int keyframe_index)
 
 bool IsInHandleEditable(const Curve& curve, int keyframe_index)
 {
-    const bool is_enforced = curve.m_enforced_type != EnforcedType::UNENFORCED;
-    if (is_enforced) return false;
+    if (curve.m_handle_type_locked) return false;
 
     const bool is_first_frame = keyframe_index <= 0;
     if (is_first_frame) return false;
@@ -420,8 +424,7 @@ bool IsInHandleEditable(const Curve& curve, int keyframe_index)
 
 bool IsOutHandleEditable(const Curve& curve, int keyframe_index)
 {
-    const bool is_enforced = curve.m_enforced_type != EnforcedType::UNENFORCED;
-    if (is_enforced) return false;
+    if (curve.m_handle_type_locked) return false;
 
     const bool is_last_frame = keyframe_index >= GetKeyframeCount(curve) - 1;
     if (is_last_frame) return false;

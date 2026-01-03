@@ -78,7 +78,8 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        EnforceCurveType(curve, EnforcedType::LINEAR);
+                        SetCurveHandleType(curve, CurveHandleType::LINEAR);
+                        LockCurveHandleType(curve);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, static_cast<float>(field)});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, static_cast<float>(field)});
                     }
@@ -90,7 +91,8 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = field_name_str;
-                        EnforceCurveType(curve, EnforcedType::CONSTANT);
+                        SetCurveHandleType(curve, CurveHandleType::CONSTANT);
+                        LockCurveHandleType(curve);
                         float f = field == true ? 1.0f : 0.0f;
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0.0f, f});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, f});
@@ -170,35 +172,40 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "W";
-                        EnforceCurveType(curve, EnforcedType::LINEAR);
+                        SetCurveHandleType(curve, CurveHandleType::LINEAR);
+                        LockCurveHandleType(curve);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.w});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.w});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "X";
-                        EnforceCurveType(curve, EnforcedType::LINEAR);
+                        SetCurveHandleType(curve, CurveHandleType::LINEAR);
+                        LockCurveHandleType(curve);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.x});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.x});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "Y";
-                        EnforceCurveType(curve, EnforcedType::LINEAR);
+                        SetCurveHandleType(curve, CurveHandleType::LINEAR);
+                        LockCurveHandleType(curve);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.y});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.y});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "Z";
-                        EnforceCurveType(curve, EnforcedType::LINEAR);
+                        SetCurveHandleType(curve, CurveHandleType::LINEAR);
+                        LockCurveHandleType(curve);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, field.z});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, field.z});
                     }
                     {
                         Curve& curve = seq.AddCurve();
                         curve.m_name = "Spins";
-                        EnforceCurveType(curve, EnforcedType::CONSTANT);
+                        SetCurveHandleType(curve, CurveHandleType::CONSTANT);
+                        LockCurveHandleType(curve);
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {0, 0});
                         seq.AddKeyframeAtPos(seq.GetCurveCount() - 1, {last_frame, 0});
                     }
@@ -287,6 +294,30 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
         });
 }
 
+inline void SyncAllHandleTypesInCurve(Sequence& seq, CurveHandleType curve_handle_type, int curves_count)
+{
+    for (int c = 0; c < curves_count; ++c)
+    {
+        SetCurveHandleType(seq.m_curves.at(c), curve_handle_type);
+        ApplyCurveHandleTypeOnCurve(seq.m_curves.at(c));
+    }
+}
+
+inline void SyncAllHandleTypeLocksInCurve(Sequence& seq, bool lock_state, int curves_count)
+{
+    for (int c = 0; c < curves_count; ++c)
+    {
+        if (lock_state)
+        {
+            LockCurveHandleType(seq.m_curves.at(c));
+        }
+        else
+        {
+            UnlockCurveHandleType(seq.m_curves.at(c));
+        }
+    }
+}
+
 template <typename T>
 static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 {
@@ -315,8 +346,16 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
-                    // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
+                    {
+                        Curve& curve = seq.m_curves.at(0);
+                        ImGui::Checkbox("Lock All Handles", &curve.m_handle_type_locked);
+                        if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Handles' Type"))
+                        {
+                            ApplyCurveHandleTypeOnCurve(curve);
+                        }
+                    }
+
+                    ImGui::Separator();
 
                     if (curve_0_disabled)
                     {
@@ -335,8 +374,16 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER});
+                    {
+                        Curve& curve = seq.m_curves.at(0);
+                        ImGui::Checkbox("Lock All Handles", &curve.m_handle_type_locked);
+                        if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Handles' Type"))
+                        {
+                            ApplyCurveHandleTypeOnCurve(curve);
+                        }
+                    }
+
+                    ImGui::Separator();
 
                     if (curve_0_disabled)
                     {
@@ -355,6 +402,19 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
+                    {
+                        ImGui::BeginDisabled();
+                        Curve& curve = seq.m_curves.at(0);
+                        ImGui::Checkbox("Lock All Handles", &curve.m_handle_type_locked);
+                        if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Handles' Type"))
+                        {
+                            ApplyCurveHandleTypeOnCurve(curve);
+                        }
+                        ImGui::EndDisabled();
+                    }
+
+                    ImGui::Separator();
+
                     if (curve_0_disabled)
                     {
                         ImGui::BeginDisabled();
@@ -372,13 +432,28 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec2>)
                 {
-                    // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                    //                      "X LerpType");
+                    {
+                        ImGui::PushID(0);
+                        Curve& curve = seq.m_curves.at(0);
+                        ImGui::Checkbox("X Lock All Handles", &curve.m_handle_type_locked);
+                        if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "X All Handles' Type"))
+                        {
+                            ApplyCurveHandleTypeOnCurve(curve);
+                        }
+                        ImGui::PopID();
+                    }
+                    {
+                        ImGui::PushID(1);
+                        Curve& curve = seq.m_curves.at(1);
+                        ImGui::Checkbox("Y Lock All Handles", &curve.m_handle_type_locked);
+                        if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "Y All Handles' Type"))
+                        {
+                            ApplyCurveHandleTypeOnCurve(curve);
+                        }
+                        ImGui::PopID();
+                    }
 
-                    // helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
-                    //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                    //                      "Y LerpType");
+                    ImGui::Separator();
 
                     if (curve_0_disabled)
                     {
@@ -408,23 +483,52 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec3>)
                 {
-                    helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::QUAT});
+                    if (helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::QUAT}))
+                    {
+                        if (seq.m_representation_meta == RepresentationMeta::COLOR)
+                        {
+                            SyncAllHandleTypesInCurve(seq, seq.m_curves.at(0).m_curve_handle_type, 3);
+                        }
+                    }
+
+                    ImGui::Separator();
 
                     switch (seq.m_representation_meta)
                     {
                         case RepresentationMeta::VECTOR:
                         {
-                            // helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                            //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                            //                      "X LerpType");
-                            //
-                            // helpers::InspectEnum(seq.m_curves.at(1).m_lerp_type,
-                            //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                            //                      "Y LerpType");
-                            //
-                            // helpers::InspectEnum(seq.m_curves.at(2).m_lerp_type,
-                            //                      {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER},
-                            //                      "Z LerpType");
+                            {
+                                ImGui::PushID(0);
+                                Curve& curve = seq.m_curves.at(0);
+                                ImGui::Checkbox("X Lock All Handles", &curve.m_handle_type_locked);
+                                if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "X All Handles' Type"))
+                                {
+                                    ApplyCurveHandleTypeOnCurve(curve);
+                                }
+                                ImGui::PopID();
+                            }
+                            {
+                                ImGui::PushID(1);
+                                Curve& curve = seq.m_curves.at(1);
+                                ImGui::Checkbox("Y Lock All Handles", &curve.m_handle_type_locked);
+                                if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "Y All Handles' Type"))
+                                {
+                                    ApplyCurveHandleTypeOnCurve(curve);
+                                }
+                                ImGui::PopID();
+                            }
+                            {
+                                ImGui::PushID(2);
+                                Curve& curve = seq.m_curves.at(2);
+                                ImGui::Checkbox("Z Lock All Handles", &curve.m_handle_type_locked);
+                                if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "Z All Handles' Type"))
+                                {
+                                    ApplyCurveHandleTypeOnCurve(curve);
+                                }
+                                ImGui::PopID();
+                            }
+
+                            ImGui::Separator();
 
                             if (curve_0_disabled)
                             {
@@ -471,12 +575,14 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                         {
                             const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled;
 
-                            // if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                            //                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
-                            // {
-                            //     seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                            //     seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                            // }
+                            {
+                                Curve& curve = seq.m_curves.at(0);
+                                ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
+                                if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Curves' Handles' Type"))
+                                {
+                                    SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 3);
+                                }
+                            }
 
                             if (disabled)
                             {
@@ -505,14 +611,6 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
-                    // if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                    //                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
-                    // {
-                    //     seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    //     seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    //     seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    // }
-
                     if (helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::VECTOR}))
                     {
                         switch (seq.m_representation_meta)
@@ -522,6 +620,9 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                                 seq.m_curves.at(1).m_name = "G";
                                 seq.m_curves.at(2).m_name = "B";
                                 seq.m_curves.at(3).m_name = "A";
+                                SyncAllHandleTypesInCurve(seq, CurveHandleType::LINEAR, 4);
+                                SyncAllHandleTypeLocksInCurve(seq, false, 4);
+
                                 break;
                             case RepresentationMeta::QUAT:
                                 seq.m_curves.at(0).m_name = "W";
@@ -529,6 +630,10 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                                 seq.m_curves.at(2).m_name = "Y";
                                 seq.m_curves.at(3).m_name = "Z";
                                 seq.m_curves.at(4).m_name = "Spins";
+
+                                SyncAllHandleTypesInCurve(seq, CurveHandleType::LINEAR, 4);
+                                SetCurveHandleType(seq.m_curves.at(4), CurveHandleType::CONSTANT);
+                                SyncAllHandleTypeLocksInCurve(seq, true, 5);
                                 break;
                             case RepresentationMeta::VECTOR:
                             case RepresentationMeta::NONE:
@@ -541,6 +646,19 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                     {
                         case RepresentationMeta::QUAT:
                         {
+                            {
+                                Curve& curve = seq.m_curves.at(0);
+                                ImGui::BeginDisabled();
+                                ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
+                                ImGui::EndDisabled();
+                                if (helpers::InspectEnum(curve.m_curve_handle_type,
+                                                         {CurveHandleType::UNCONSTRAINED, CurveHandleType::AUTO},
+                                                         "All Curves' Handles' Type"))
+                                {
+                                    SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 4);
+                                }
+                            }
+
                             ImGui::BeginDisabled();
 
                             ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
@@ -554,6 +672,15 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                         }
                         case RepresentationMeta::COLOR:
                         {
+                            {
+                                Curve& curve = seq.m_curves.at(0);
+                                ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
+                                if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Curves' Handles' Type"))
+                                {
+                                    SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 4);
+                                }
+                            }
+
                             const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled || curve_3_disabled;
 
                             if (disabled)
@@ -584,13 +711,18 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    // if (helpers::InspectEnum(seq.m_curves.at(0).m_lerp_type,
-                    //                          {sequencer::LerpType::NONE, sequencer::LerpType::BEZIER}))
-                    // {
-                    //     seq.m_curves.at(1).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    //     seq.m_curves.at(2).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    //     seq.m_curves.at(3).m_lerp_type = seq.m_curves.at(0).m_lerp_type;
-                    // }
+                    {
+                        Curve& curve = seq.m_curves.at(0);
+                        ImGui::BeginDisabled();
+                        ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
+                        ImGui::EndDisabled();
+                        if (helpers::InspectEnum(curve.m_curve_handle_type,
+                                                 {CurveHandleType::UNCONSTRAINED, CurveHandleType::AUTO},
+                                                 "All Curves' Handles' Type"))
+                        {
+                            SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 4);
+                        }
+                    }
 
                     glm::quat q = field;
                     glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(q));
