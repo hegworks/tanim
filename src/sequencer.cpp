@@ -83,13 +83,13 @@ static float Distance(float x, float y, float x1, float y1, float x2, float y2)
     return sqrtf(dx * dx + dy * dy);
 }
 
-static int DrawHandle(ImDrawList* draw_list,
-                      const ImVec2& handle_screen_pos,
-                      const ImVec2& keyframe_screen_pos,
-                      bool is_in_handle,
-                      bool is_selected)
+static HandleState DrawHandle(ImDrawList* draw_list,
+                              const ImVec2& handle_screen_pos,
+                              const ImVec2& keyframe_screen_pos,
+                              bool is_in_handle,
+                              bool is_selected)
 {
-    int ret = 0;
+    HandleState ret = HandleState::NONE;
     ImGuiIO& io = ImGui::GetIO();
 
     // Draw line from keyframe to handle
@@ -105,9 +105,9 @@ static int DrawHandle(ImDrawList* draw_list,
     bool hovered = handle_rect.Contains(io.MousePos);
     if (hovered)
     {
-        ret = 1;
+        ret = HandleState::HOVERED;
         fill_color = 0xFFFFFFFF;  // White fill on hover
-        if (io.MouseDown[0]) ret = 2;
+        if (io.MouseDown[0]) ret = HandleState::CLICKED;
     }
 
     if (is_selected)
@@ -266,9 +266,6 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     static bool scrolling_v = false;
     static std::set<EditPoint> selection;
     static bool over_selected_point = false;
-
-    static int right_clicked_curve = -1;
-    static int right_clicked_keyframe = -1;
 
     // For handles
     static std::set<EditPoint> handle_selection;  // m_keyframe_index encodes: keyframe_idx * 2 + (is_out ? 1 : 0)
@@ -445,14 +442,14 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 ImVec2 handle_screen = GetHandleScreenPos(keyframe, true, keyframe_screen, view_size, range);
                 bool is_handle_selected = handle_selection.find({c, k * 2}) != handle_selection.end();
 
-                int handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
-                if (handle_state && moving_curve == -1 && !selecting_quad)
+                HandleState handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
+                if (handle_state != HandleState::NONE && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
                     over_handle = true;
                     over_curve = -1;
 
-                    if (handle_state == 2)
+                    if (handle_state == HandleState::CLICKED)
                     {
                         if (!io.KeyShift) handle_selection.clear();
                         handle_selection.insert({c, k * 2});
@@ -466,14 +463,14 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 ImVec2 handle_screen = GetHandleScreenPos(keyframe, false, keyframe_screen, view_size, range);
                 bool is_handle_selected = handle_selection.find({c, k * 2 + 1}) != handle_selection.end();
 
-                int handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
-                if (handle_state && moving_curve == -1 && !selecting_quad)
+                HandleState handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
+                if (handle_state != HandleState::NONE && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
                     over_handle = true;
                     over_curve = -1;
 
-                    if (handle_state == 2)
+                    if (handle_state == HandleState::CLICKED)
                     {
                         if (!io.KeyShift) handle_selection.clear();
                         handle_selection.insert({c, k * 2 + 1});
@@ -521,10 +518,12 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             // Right-click on keyframe - open context menu
             if (draw_state && io.MouseClicked[1])
             {
-                selection.clear();
-                selection.insert({c, k});
-                right_clicked_curve = c;
-                right_clicked_keyframe = k;
+                // If right-clicked keyframe is not in selection, replace selection with it
+                if (selection.find({c, k}) == selection.end())
+                {
+                    selection.clear();
+                    selection.insert({c, k});
+                }
                 ImGui::OpenPopup("KeyframeContextMenu");
             }
         }
@@ -726,7 +725,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         }
     }
     if (!over_curve_or_point && ImGui::IsMouseClicked(0) && !selecting_quad && moving_curve == -1 && !over_selected_point &&
-        container.Contains(io.MousePos))
+        container.Contains(io.MousePos) && !ImGui::IsPopupOpen("KeyframeContextMenu"))
     {
         selecting_quad = true;
         quad_selection = io.MousePos;
@@ -737,20 +736,88 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     // Context menu
     if (ImGui::BeginPopup("KeyframeContextMenu"))
     {
-        if (right_clicked_curve >= 0 && right_clicked_keyframe >= 0)
+        if (!selection.empty())
         {
-            const Curve& curve = seq.m_curves.at(right_clicked_curve);
-            const Keyframe& keyframe = curve.m_keyframes.at(right_clicked_keyframe);
-            const int keyframe_count = GetKeyframeCount(curve);
-            const bool is_first = (right_clicked_keyframe == 0);
-            const bool is_last = (right_clicked_keyframe == keyframe_count - 1);
-            const bool in_editable = IsInHandleEditable(curve, right_clicked_keyframe);
-            const bool out_editable = IsOutHandleEditable(curve, right_clicked_keyframe);
-            const bool both_editable = in_editable && out_editable;
-            const bool is_curve_type_locked = curve.m_handle_type_locked;
+            // Gather info about selection
+            bool all_smooth_editable = true;
+            bool all_in_editable = true;
+            bool all_out_editable = true;
+            bool all_both_editable = true;
+            bool all_deletable = true;
+            bool any_locked = false;
+
+            // For checkmarks - track if ALL selected keyframes have this property
+            bool all_smooth_auto = true;
+            bool all_smooth_free = true;
+            bool all_smooth_flat = true;
+            bool all_in_free = true;
+            bool all_in_linear = true;
+            bool all_in_constant = true;
+            bool all_in_weighted = true;
+            bool all_out_free = true;
+            bool all_out_linear = true;
+            bool all_out_constant = true;
+            bool all_out_weighted = true;
+
+            for (const auto& sel : selection)
+            {
+                const Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                const Keyframe& keyframe = curve.m_keyframes.at(sel.m_keyframe_index);
+                const int keyframe_count = GetKeyframeCount(curve);
+                const bool is_first = (sel.m_keyframe_index == 0);
+                const bool is_last = (sel.m_keyframe_index == keyframe_count - 1);
+
+                if (curve.m_handle_type_locked)
+                {
+                    any_locked = true;
+                    all_smooth_editable = false;
+                    all_in_editable = false;
+                    all_out_editable = false;
+                    all_both_editable = false;
+                }
+                else
+                {
+                    if (!IsInHandleEditable(curve, sel.m_keyframe_index)) all_in_editable = false;
+                    if (!IsOutHandleEditable(curve, sel.m_keyframe_index)) all_out_editable = false;
+                    if (!IsInHandleEditable(curve, sel.m_keyframe_index) || !IsOutHandleEditable(curve, sel.m_keyframe_index))
+                        all_both_editable = false;
+                }
+
+                if (is_first || is_last) all_deletable = false;
+
+                // Check smooth types
+                if (!(keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::AUTO))
+                    all_smooth_auto = false;
+                if (!(keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::FREE))
+                    all_smooth_free = false;
+                if (!(keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::FLAT))
+                    all_smooth_flat = false;
+
+                // Check in handle types
+                if (!(keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_in.m_broken_type == Handle::BrokenType::FREE))
+                    all_in_free = false;
+                if (!(keyframe.m_handle_type == HandleType::BROKEN &&
+                      keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR))
+                    all_in_linear = false;
+                if (!(keyframe.m_handle_type == HandleType::BROKEN &&
+                      keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT))
+                    all_in_constant = false;
+                if (!keyframe.m_in.m_weighted) all_in_weighted = false;
+
+                // Check out handle types
+                if (!(keyframe.m_handle_type == HandleType::BROKEN && keyframe.m_out.m_broken_type == Handle::BrokenType::FREE))
+                    all_out_free = false;
+                if (!(keyframe.m_handle_type == HandleType::BROKEN &&
+                      keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR))
+                    all_out_linear = false;
+                if (!(keyframe.m_handle_type == HandleType::BROKEN &&
+                      keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT))
+                    all_out_constant = false;
+                if (!keyframe.m_out.m_weighted) all_out_weighted = false;
+            }
 
             // Smooth submenu
-            if (is_curve_type_locked)
+            if (any_locked)
             {
                 if (ImGui::BeginMenu("Locked By Curve Handle Type", false))
                 {
@@ -759,175 +826,169 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
             else
             {
-                if (ImGui::BeginMenu("Smooth", !is_curve_type_locked))
+                if (ImGui::BeginMenu("Smooth", all_smooth_editable))
                 {
-                    bool is_smooth_auto = (keyframe.m_handle_type == HandleType::SMOOTH &&
-                                           keyframe.m_in.m_smooth_type == Handle::SmoothType::AUTO);
-                    bool is_smooth_free = (keyframe.m_handle_type == HandleType::SMOOTH &&
-                                           keyframe.m_in.m_smooth_type == Handle::SmoothType::FREE);
-                    bool is_smooth_flat = (keyframe.m_handle_type == HandleType::SMOOTH &&
-                                           keyframe.m_in.m_smooth_type == Handle::SmoothType::FLAT);
-
-                    if (ImGui::MenuItem("Auto", nullptr, is_smooth_auto))
+                    if (ImGui::MenuItem("Auto", nullptr, all_smooth_auto))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetKeyframeSmoothType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Handle::SmoothType::AUTO);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetKeyframeSmoothType(curve, sel.m_keyframe_index, Handle::SmoothType::AUTO);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Free", nullptr, is_smooth_free))
+                    if (ImGui::MenuItem("Free", nullptr, all_smooth_free))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetKeyframeSmoothType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Handle::SmoothType::FREE);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetKeyframeSmoothType(curve, sel.m_keyframe_index, Handle::SmoothType::FREE);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Flat", nullptr, is_smooth_flat))
+                    if (ImGui::MenuItem("Flat", nullptr, all_smooth_flat))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetKeyframeSmoothType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Handle::SmoothType::FLAT);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetKeyframeSmoothType(curve, sel.m_keyframe_index, Handle::SmoothType::FLAT);
+                        }
                         Sequence::EndEdit();
                     }
                     ImGui::EndMenu();
                 }
 
-                // In handle submenu
-                if (ImGui::BeginMenu("Left Handle", in_editable))
+                // Left Handle submenu
+                if (ImGui::BeginMenu("Left Handle", all_in_editable))
                 {
-                    bool is_in_free = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                       keyframe.m_in.m_broken_type == Handle::BrokenType::FREE);
-                    bool is_in_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                         keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR);
-                    bool is_in_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                           keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT);
-                    bool is_in_weighted = keyframe.m_in.m_weighted;
-
-                    if (ImGui::MenuItem("Free", nullptr, is_in_free))
+                    if (ImGui::MenuItem("Free", nullptr, all_in_free))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Handle::BrokenType::FREE);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetInHandleBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::FREE);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Linear", nullptr, is_in_linear))
+                    if (ImGui::MenuItem("Linear", nullptr, all_in_linear))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Handle::BrokenType::LINEAR);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetInHandleBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::LINEAR);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Constant", nullptr, is_in_constant, false))
+                    if (ImGui::MenuItem("Constant", nullptr, all_in_constant, false))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetInHandleBrokenType(seq.m_curves.at(right_clicked_curve),
-                                              right_clicked_keyframe,
-                                              Handle::BrokenType::CONSTANT);
-                        Sequence::EndEdit();
+                        // Disabled for in-handle
                     }
                     ImGui::Separator();
-                    if (ImGui::MenuItem("Weighted", nullptr, is_in_weighted))
+                    if (ImGui::MenuItem("Weighted", nullptr, all_in_weighted))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetInHandleWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !is_in_weighted);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetInHandleWeighted(curve, sel.m_keyframe_index, !all_in_weighted);
+                        }
                         Sequence::EndEdit();
                     }
                     ImGui::EndMenu();
                 }
 
-                // Out handle submenu
-                if (ImGui::BeginMenu("Right Handle", out_editable))
+                // Right Handle submenu
+                if (ImGui::BeginMenu("Right Handle", all_out_editable))
                 {
-                    bool is_out_free = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                        keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
-                    bool is_out_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                          keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR);
-                    bool is_out_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                            keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
-                    bool is_out_weighted = keyframe.m_out.m_weighted;
-
-                    if (ImGui::MenuItem("Free", nullptr, is_out_free))
+                    if (ImGui::MenuItem("Free", nullptr, all_out_free))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetOutHandleBrokenType(seq.m_curves.at(right_clicked_curve),
-                                               right_clicked_keyframe,
-                                               Handle::BrokenType::FREE);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetOutHandleBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::FREE);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Linear", nullptr, is_out_linear))
+                    if (ImGui::MenuItem("Linear", nullptr, all_out_linear))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetOutHandleBrokenType(seq.m_curves.at(right_clicked_curve),
-                                               right_clicked_keyframe,
-                                               Handle::BrokenType::LINEAR);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetOutHandleBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::LINEAR);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Constant", nullptr, is_out_constant))
+                    if (ImGui::MenuItem("Constant", nullptr, all_out_constant))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetOutHandleBrokenType(seq.m_curves.at(right_clicked_curve),
-                                               right_clicked_keyframe,
-                                               Handle::BrokenType::CONSTANT);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetOutHandleBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::CONSTANT);
+                        }
                         Sequence::EndEdit();
                     }
                     ImGui::Separator();
-                    if (ImGui::MenuItem("Weighted", nullptr, is_out_weighted))
+                    if (ImGui::MenuItem("Weighted", nullptr, all_out_weighted))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetOutHandleWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !is_out_weighted);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetOutHandleWeighted(curve, sel.m_keyframe_index, !all_out_weighted);
+                        }
                         Sequence::EndEdit();
                     }
                     ImGui::EndMenu();
                 }
 
-                // Both handles submenu
-                if (ImGui::BeginMenu("Both Handles", both_editable))
+                // Both Handles submenu
+                if (ImGui::BeginMenu("Both Handles", all_both_editable))
                 {
-                    bool both_free = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                      keyframe.m_in.m_broken_type == Handle::BrokenType::FREE &&
-                                      keyframe.m_out.m_broken_type == Handle::BrokenType::FREE);
-                    bool both_linear = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                        keyframe.m_in.m_broken_type == Handle::BrokenType::LINEAR &&
-                                        keyframe.m_out.m_broken_type == Handle::BrokenType::LINEAR);
-                    bool both_constant = (keyframe.m_handle_type == HandleType::BROKEN &&
-                                          keyframe.m_in.m_broken_type == Handle::BrokenType::CONSTANT &&
-                                          keyframe.m_out.m_broken_type == Handle::BrokenType::CONSTANT);
-                    bool both_weighted = keyframe.m_in.m_weighted && keyframe.m_out.m_weighted;
+                    bool all_both_free = all_in_free && all_out_free;
+                    bool all_both_linear = all_in_linear && all_out_linear;
+                    bool all_both_weighted = all_in_weighted && all_out_weighted;
 
-                    if (ImGui::MenuItem("Free", nullptr, both_free))
+                    if (ImGui::MenuItem("Free", nullptr, all_both_free))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),
-                                                 right_clicked_keyframe,
-                                                 Handle::BrokenType::FREE);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetBothHandlesBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::FREE);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Linear", nullptr, both_linear))
+                    if (ImGui::MenuItem("Linear", nullptr, all_both_linear))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),
-                                                 right_clicked_keyframe,
-                                                 Handle::BrokenType::LINEAR);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetBothHandlesBrokenType(curve, sel.m_keyframe_index, Handle::BrokenType::LINEAR);
+                        }
                         Sequence::EndEdit();
                     }
-                    if (ImGui::MenuItem("Constant", nullptr, both_constant, false))
+                    if (ImGui::MenuItem("Constant", nullptr, false, false))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetBothHandlesBrokenType(seq.m_curves.at(right_clicked_curve),
-                                                 right_clicked_keyframe,
-                                                 Handle::BrokenType::CONSTANT);
-                        Sequence::EndEdit();
+                        // Disabled for both
                     }
                     ImGui::Separator();
-                    if (ImGui::MenuItem("Weighted", nullptr, both_weighted))
+                    if (ImGui::MenuItem("Weighted", nullptr, all_both_weighted))
                     {
-                        Sequence::BeginEdit(right_clicked_curve);
-                        SetBothHandlesWeighted(seq.m_curves.at(right_clicked_curve), right_clicked_keyframe, !both_weighted);
+                        Sequence::BeginEdit(0);
+                        for (const auto& sel : selection)
+                        {
+                            Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                            SetBothHandlesWeighted(curve, sel.m_keyframe_index, !all_both_weighted);
+                        }
                         Sequence::EndEdit();
                     }
                     ImGui::EndMenu();
@@ -936,31 +997,50 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 ImGui::Separator();
 
                 // Reset handles
-                if (ImGui::MenuItem("Reset Handles", nullptr, false, !is_curve_type_locked))
+                if (ImGui::MenuItem("Reset Handles", nullptr, false, !any_locked))
                 {
-                    Sequence::BeginEdit(right_clicked_curve);
-                    seq.ResetHandlesForKeyframe(right_clicked_curve, right_clicked_keyframe);
+                    Sequence::BeginEdit(0);
+                    for (const auto& sel : selection)
+                    {
+                        seq.ResetHandlesForKeyframe(sel.m_curve_index, sel.m_keyframe_index);
+                    }
                     Sequence::EndEdit();
                 }
             }
 
-            // Delete Keyframe
-            bool can_delete = !is_first && !is_last;
-            if (ImGui::MenuItem("Delete Keyframe", nullptr, false, can_delete))
+            // Delete Keyframes
+            if (ImGui::MenuItem("Delete Keyframes", nullptr, false, all_deletable))
             {
-                Sequence::BeginEdit(right_clicked_curve);
-                seq.RemoveKeyframeAtIdx(right_clicked_curve, right_clicked_keyframe);
+                Sequence::BeginEdit(0);
+                std::vector<EditPoint> to_delete;
+                for (const auto& sel : selection)
+                {
+                    const Curve& curve = seq.m_curves.at(sel.m_curve_index);
+                    const int keyframe_count = GetKeyframeCount(curve);
+                    const bool is_first = (sel.m_keyframe_index == 0);
+                    const bool is_last = (sel.m_keyframe_index == keyframe_count - 1);
+                    if (!is_first && !is_last)
+                    {
+                        to_delete.push_back(sel);
+                    }
+                }
+                std::sort(to_delete.begin(),
+                          to_delete.end(),
+                          [](const EditPoint& a, const EditPoint& b)
+                          {
+                              if (a.m_curve_index != b.m_curve_index) return a.m_curve_index > b.m_curve_index;
+                              return a.m_keyframe_index > b.m_keyframe_index;
+                          });
+                for (const auto& sel : to_delete)
+                {
+                    seq.RemoveKeyframeAtIdx(sel.m_curve_index, sel.m_keyframe_index);
+                }
                 Sequence::EndEdit();
                 selection.clear();
             }
         }
 
         ImGui::EndPopup();
-    }
-    else
-    {
-        right_clicked_curve = -1;
-        right_clicked_keyframe = -1;
     }
 
     ImGui::EndChild();

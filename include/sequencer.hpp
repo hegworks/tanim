@@ -40,6 +40,13 @@ struct Sequence;
 namespace tanim::sequencer
 {
 
+enum class HandleState : uint8_t
+{
+    NONE,
+    HOVERED,
+    CLICKED
+};
+
 struct EditPoint
 {
     int m_curve_index;
