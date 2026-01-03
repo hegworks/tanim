@@ -544,11 +544,17 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
                 if (is_out)
                 {
-                    SetOutHandleOffset(curve, keyframe_idx, curve_offset);
+                    if (keyframe_screen.x < io.MousePos.x)
+                    {
+                        SetOutHandleOffset(curve, keyframe_idx, curve_offset);
+                    }
                 }
                 else
                 {
-                    SetInHandleOffset(curve, keyframe_idx, curve_offset);
+                    if (keyframe_screen.x > io.MousePos.x)
+                    {
+                        SetInHandleOffset(curve, keyframe_idx, curve_offset);
+                    }
                 }
             }
         }
