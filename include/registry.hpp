@@ -61,6 +61,7 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
                 Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
                 seq.m_seq_id = seq_id;
                 const float last_frame = (float)Timeline::GetTimelineLastFrame(timeline_data);
+                seq.m_last_frame = last_frame;
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
