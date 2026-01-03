@@ -40,7 +40,7 @@ struct Sequence;
 namespace tanim::sequencer
 {
 
-enum class HandleState : uint8_t
+enum class DrawingSelectionState : uint8_t
 {
     NONE,
     HOVERED,

@@ -83,13 +83,13 @@ static float Distance(float x, float y, float x1, float y1, float x2, float y2)
     return sqrtf(dx * dx + dy * dy);
 }
 
-static HandleState DrawHandle(ImDrawList* draw_list,
-                              const ImVec2& handle_screen_pos,
-                              const ImVec2& keyframe_screen_pos,
-                              bool is_in_handle,
-                              bool is_selected)
+static DrawingSelectionState DrawHandle(ImDrawList* draw_list,
+                                        const ImVec2& handle_screen_pos,
+                                        const ImVec2& keyframe_screen_pos,
+                                        bool is_in_handle,
+                                        bool is_selected)
 {
-    HandleState ret = HandleState::NONE;
+    DrawingSelectionState ret = DrawingSelectionState::NONE;
     ImGuiIO& io = ImGui::GetIO();
 
     // Draw line from keyframe to handle
@@ -105,9 +105,9 @@ static HandleState DrawHandle(ImDrawList* draw_list,
     bool hovered = handle_rect.Contains(io.MousePos);
     if (hovered)
     {
-        ret = HandleState::HOVERED;
+        ret = DrawingSelectionState::HOVERED;
         fill_color = 0xFFFFFFFF;  // White fill on hover
-        if (io.MouseDown[0]) ret = HandleState::CLICKED;
+        if (io.MouseDown[0]) ret = DrawingSelectionState::CLICKED;
     }
 
     if (is_selected)
@@ -122,15 +122,15 @@ static HandleState DrawHandle(ImDrawList* draw_list,
     return ret;
 }
 
-static int DrawKeyframe(ImDrawList* draw_list,
-                        const ImVec2& pos,
-                        const ImVec2& size,
-                        const ImVec2& offset,
-                        bool edited,
-                        bool x_moveable,
-                        bool y_moveable)
+static DrawingSelectionState DrawKeyframe(ImDrawList* draw_list,
+                                          const ImVec2& pos,
+                                          const ImVec2& size,
+                                          const ImVec2& offset,
+                                          bool edited,
+                                          bool x_moveable,
+                                          bool y_moveable)
 {
-    int ret = 0;
+    DrawingSelectionState ret = DrawingSelectionState::NONE;
     ImGuiIO& io = ImGui::GetIO();
 
     const ImVec2 center = pos * size + offset;
@@ -176,8 +176,8 @@ static int DrawKeyframe(ImDrawList* draw_list,
                         center + ImVec2(k_anchor_half_size, k_anchor_half_size));
     if (anchor.Contains(io.MousePos))
     {
-        ret = 1;
-        if (io.MouseDown[0]) ret = 2;
+        ret = DrawingSelectionState::HOVERED;
+        if (io.MouseDown[0]) ret = DrawingSelectionState::CLICKED;
     }
 
     ImU32 outline_color;
@@ -188,7 +188,7 @@ static int DrawKeyframe(ImDrawList* draw_list,
         outline_color = k_outline_color_edited;
         outline_thickness = k_outline_thickness_edited;
     }
-    else if (ret)
+    else if (ret != DrawingSelectionState::NONE)
     {
         outline_color = k_outline_color_hovered;
         outline_thickness = k_outline_thickness_normal;
@@ -268,7 +268,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     static bool over_selected_point = false;
 
     // For handles
-    static std::set<EditPoint> handle_selection;  // m_keyframe_index encodes: keyframe_idx * 2 + (is_out ? 1 : 0)
+    static std::optional<EditPoint> selected_handle;
     static bool over_handle = false;
 
     int ret = 0;
@@ -440,19 +440,20 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             if (ShouldShowInHandleHandle(curve, k))
             {
                 ImVec2 handle_screen = GetHandleScreenPos(keyframe, true, keyframe_screen, view_size, range);
-                bool is_handle_selected = handle_selection.find({c, k * 2}) != handle_selection.end();
+                bool is_handle_selected = selected_handle.has_value() && selected_handle->m_curve_index == c &&
+                                          selected_handle->m_keyframe_index == k * 2;
 
-                HandleState handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
-                if (handle_state != HandleState::NONE && moving_curve == -1 && !selecting_quad)
+                DrawingSelectionState handle_state =
+                    DrawHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
+                if (handle_state != DrawingSelectionState::NONE && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
                     over_handle = true;
                     over_curve = -1;
 
-                    if (handle_state == HandleState::CLICKED)
+                    if (handle_state == DrawingSelectionState::CLICKED)
                     {
-                        if (!io.KeyShift) handle_selection.clear();
-                        handle_selection.insert({c, k * 2});
+                        selected_handle = EditPoint{c, k * 2};
                     }
                 }
             }
@@ -461,19 +462,20 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             if (ShouldShowOutHandle(curve, k))
             {
                 ImVec2 handle_screen = GetHandleScreenPos(keyframe, false, keyframe_screen, view_size, range);
-                bool is_handle_selected = handle_selection.find({c, k * 2 + 1}) != handle_selection.end();
+                bool is_handle_selected = selected_handle.has_value() && selected_handle->m_curve_index == c &&
+                                          selected_handle->m_keyframe_index == k * 2 + 1;
 
-                HandleState handle_state = DrawHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
-                if (handle_state != HandleState::NONE && moving_curve == -1 && !selecting_quad)
+                DrawingSelectionState handle_state =
+                    DrawHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
+                if (handle_state != DrawingSelectionState::NONE && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
                     over_handle = true;
                     over_curve = -1;
 
-                    if (handle_state == HandleState::CLICKED)
+                    if (handle_state == DrawingSelectionState::CLICKED)
                     {
-                        if (!io.KeyShift) handle_selection.clear();
-                        handle_selection.insert({c, k * 2 + 1});
+                        selected_handle = EditPoint{c, k * 2 + 1};
                     }
                 }
             }
@@ -486,7 +488,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
             ImVec2 keyframe_range = point_to_range(keyframe.m_pos);
 
-            const int draw_state =
+            const DrawingSelectionState keyframe_selection_state =
                 DrawKeyframe(draw_list,
                              keyframe_range,
                              view_size,
@@ -501,14 +503,14 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             ImFormatString(point_val_text, IM_ARRAYSIZE(point_val_text), "%.0f|%.2f", keyframe.m_pos.x, keyframe.m_pos.y);
             draw_list->AddText({point_draw_pos.x - 4.0f, point_draw_pos.y + 7.0f}, 0xFFFFFFFF, point_val_text);
 
-            if (draw_state && moving_curve == -1 && !selecting_quad)
+            if (keyframe_selection_state != DrawingSelectionState::NONE && moving_curve == -1 && !selecting_quad)
             {
                 over_curve_or_point = true;
                 over_selected_point = true;
                 over_curve = -1;
                 over_handle = false;
 
-                if (draw_state == 2)
+                if (keyframe_selection_state == DrawingSelectionState::CLICKED)
                 {
                     if (!io.KeyShift && selection.find({c, k}) == selection.end()) selection.clear();
                     selection.insert({c, k});
@@ -516,7 +518,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
 
             // Right-click on keyframe - open context menu
-            if (draw_state && io.MouseClicked[1])
+            if (keyframe_selection_state != DrawingSelectionState::NONE && io.MouseClicked[1])
             {
                 // If right-clicked keyframe is not in selection, replace selection with it
                 if (selection.find({c, k}) == selection.end())
@@ -583,7 +585,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
     // Move handle selection
     static bool handles_moved = false;
-    if (over_handle && io.MouseDown[0] && !handle_selection.empty())
+    if (over_handle && io.MouseDown[0] && selected_handle.has_value())
     {
         if (fabsf(io.MouseDelta.x) > 0.f || fabsf(io.MouseDelta.y) > 0.f)
         {
@@ -594,35 +596,32 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
             ret = 1;
 
-            for (const auto& sel : handle_selection)
+            Curve& curve = seq.m_curves.at(selected_handle->m_curve_index);
+            int keyframe_idx = selected_handle->m_keyframe_index / 2;
+            bool is_out = (selected_handle->m_keyframe_index % 2) == 1;
+            const Keyframe& keyframe = curve.m_keyframes.at(keyframe_idx);
+
+            // Get keyframe screen position
+            ImVec2 keyframe_screen = point_to_range(keyframe.m_pos) * view_size + offset;
+
+            // Mouse position relative to keyframe in screen space
+            ImVec2 screen_delta = io.MousePos - keyframe_screen;
+
+            // Convert screen delta to curve space offset
+            ImVec2 curve_offset = ImVec2(screen_delta.x * range.x / view_size.x, screen_delta.y * range.y / view_size.y);
+
+            if (is_out)
             {
-                Curve& curve = seq.m_curves.at(sel.m_curve_index);
-                int keyframe_idx = sel.m_keyframe_index / 2;
-                bool is_out = (sel.m_keyframe_index % 2) == 1;
-                const Keyframe& keyframe = curve.m_keyframes.at(keyframe_idx);
-
-                // Get keyframe screen position
-                ImVec2 keyframe_screen = point_to_range(keyframe.m_pos) * view_size + offset;
-
-                // Mouse position relative to keyframe in screen space
-                ImVec2 screen_delta = io.MousePos - keyframe_screen;
-
-                // Convert screen delta to curve space offset
-                ImVec2 curve_offset = ImVec2(screen_delta.x * range.x / view_size.x, screen_delta.y * range.y / view_size.y);
-
-                if (is_out)
+                if (keyframe_screen.x < io.MousePos.x)
                 {
-                    if (keyframe_screen.x < io.MousePos.x)
-                    {
-                        SetOutHandleOffset(curve, keyframe_idx, curve_offset);
-                    }
+                    SetOutHandleOffset(curve, keyframe_idx, curve_offset);
                 }
-                else
+            }
+            else
+            {
+                if (keyframe_screen.x > io.MousePos.x)
                 {
-                    if (keyframe_screen.x > io.MousePos.x)
-                    {
-                        SetInHandleOffset(curve, keyframe_idx, curve_offset);
-                    }
+                    SetInHandleOffset(curve, keyframe_idx, curve_offset);
                 }
             }
         }
@@ -635,6 +634,10 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             handles_moved = false;
             Sequence::EndEdit();
         }
+    }
+    if (!io.MouseDown[0])
+    {
+        selected_handle.reset();
     }
 
     // Remove keyframe (double-click)
