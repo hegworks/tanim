@@ -177,7 +177,7 @@ static DrawingSelectionState DrawKeyframe(ImDrawList* draw_list,
     if (anchor.Contains(io.MousePos))
     {
         ret = DrawingSelectionState::HOVERED;
-        if (io.MouseDown[0]) ret = DrawingSelectionState::CLICKED;
+        if (ImGui::IsMouseClicked(0)) ret = DrawingSelectionState::CLICKED;
     }
 
     ImU32 outline_color;
@@ -255,6 +255,17 @@ static ImVec2 GetHandleScreenPos(const Keyframe& keyframe,
             return keyframe_screen_pos + ImVec2(sign * radius, 0.0f);
         }
     }
+}
+
+void SortEditPointByIndex(std::vector<EditPoint>& to_sort)
+{
+    std::sort(to_sort.begin(),
+              to_sort.end(),
+              [](const EditPoint& a, const EditPoint& b)
+              {
+                  if (a.m_curve_index != b.m_curve_index) return a.m_curve_index > b.m_curve_index;
+                  return a.m_keyframe_index > b.m_keyframe_index;
+              });
 }
 
 int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipping_rect, ImVector<EditPoint>* selected_points)
@@ -512,8 +523,58 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
 
                 if (keyframe_selection_state == DrawingSelectionState::CLICKED)
                 {
-                    if (!io.KeyShift && selection.find({c, k}) == selection.end()) selection.clear();
-                    selection.insert({c, k});
+                    const bool already_selected = selection.find({c, k}) != selection.end();
+                    const bool any_selected = !selection.empty();
+                    if (io.KeyCtrl && already_selected)
+                    {
+                        selection.erase({c, k});
+                    }
+                    else if (io.KeyCtrl && !already_selected)
+                    {
+                        selection.insert({c, k});
+                    }
+                    else if (io.KeyShift && any_selected && !already_selected)
+                    {
+                        bool selection_has_clicked_keyframes_curve{false};
+                        int first_selected_keyframe_in_curve = k;
+                        int last_selected_keyframe_in_curve = k;
+                        for (const auto& selected_pt : selection)
+                        {
+                            if (selected_pt.m_curve_index == c)
+                            {
+                                selection_has_clicked_keyframes_curve = true;
+                                if (selected_pt.m_keyframe_index < first_selected_keyframe_in_curve)
+                                {
+                                    first_selected_keyframe_in_curve = selected_pt.m_keyframe_index;
+                                }
+                                if (selected_pt.m_keyframe_index > last_selected_keyframe_in_curve)
+                                {
+                                    last_selected_keyframe_in_curve = selected_pt.m_keyframe_index;
+                                }
+                            }
+                        }
+
+                        if (selection_has_clicked_keyframes_curve)
+                        {
+                            for (int k_to_add = first_selected_keyframe_in_curve; k_to_add <= k; ++k_to_add)
+                            {
+                                selection.insert({c, k_to_add});
+                            }
+                            for (int k_to_add = last_selected_keyframe_in_curve; k_to_add >= k; --k_to_add)
+                            {
+                                selection.insert({c, k_to_add});
+                            }
+                        }
+                        else
+                        {
+                            selection.insert({c, k});
+                        }
+                    }
+                    else
+                    {
+                        selection.clear();
+                        selection.insert({c, k});
+                    }
                 }
             }
 
@@ -707,9 +768,8 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         draw_list->AddRectFilled(bmin, bmax, 0x40FF0000, 1.f);
         draw_list->AddRect(bmin, bmax, 0xFFFF0000, 1.f);
         const ImRect selection_quad(bmin, bmax);
-        if (!io.MouseDown[0])
+        if (!io.MouseDown[0])  // on left-click release
         {
-            if (!io.KeyShift) selection.clear();
             for (int c = 0; c < curve_count; c++)
             {
                 if (!seq.GetCurveVisibility(c)) continue;
@@ -730,6 +790,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     if (!over_curve_or_point && ImGui::IsMouseClicked(0) && !selecting_quad && moving_curve == -1 && !over_selected_point &&
         container.Contains(io.MousePos) && !ImGui::IsPopupOpen("KeyframeContextMenu"))
     {
+        if (!io.KeyShift) selection.clear();
         selecting_quad = true;
         quad_selection = io.MousePos;
     }
@@ -1027,13 +1088,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                         to_delete.push_back(sel);
                     }
                 }
-                std::sort(to_delete.begin(),
-                          to_delete.end(),
-                          [](const EditPoint& a, const EditPoint& b)
-                          {
-                              if (a.m_curve_index != b.m_curve_index) return a.m_curve_index > b.m_curve_index;
-                              return a.m_keyframe_index > b.m_keyframe_index;
-                          });
+                SortEditPointByIndex(to_delete);
                 for (const auto& sel : to_delete)
                 {
                     seq.RemoveKeyframeAtIdx(sel.m_curve_index, sel.m_keyframe_index);
