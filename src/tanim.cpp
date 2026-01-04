@@ -518,30 +518,38 @@ void Tanim::Draw()
     //*****************************************************
 }
 
-std::string Tanim::Serialize(TimelineData& data)
+std::string Tanim::Serialize(TimelineData& tdata)
 {
     nlohmann::ordered_json json{};
 
     json["about"] = {"Tanim Serialized JSON", "more info: https://github.com/hegworks/tanim"};
-    json["version"] = 1;
+
+    json["version"] = 2;
+    /*
+     * version history:
+     * 1:
+     *     varying curves: smoothstep, linear, constant
+     * 2: NOT backward compatible
+     *     removed varying curves, replaced all of them with bezier curves
+     *     added handles (control points) for bezier curves
+     */
 
     nlohmann::ordered_json timeline_js{};
-    timeline_js["m_name"] = data.m_name;
-    timeline_js["m_first_frame"] = data.m_first_frame;
-    timeline_js["m_last_frame"] = data.m_last_frame;
-    timeline_js["m_min_frame"] = data.m_min_frame;
-    timeline_js["m_max_frame"] = data.m_max_frame;
-    timeline_js["m_play_immediately"] = data.m_play_immediately;
-    timeline_js["m_player_samples"] = data.m_player_samples;
-    // timeline_js["m_uid"] = data.m_uid;
-    timeline_js["m_playback_type"] = std::string(magic_enum::enum_name(data.m_playback_type));
+    timeline_js["m_name"] = tdata.m_name;
+    timeline_js["m_first_frame"] = tdata.m_first_frame;
+    timeline_js["m_last_frame"] = tdata.m_last_frame;
+    timeline_js["m_min_frame"] = tdata.m_min_frame;
+    timeline_js["m_max_frame"] = tdata.m_max_frame;
+    timeline_js["m_play_immediately"] = tdata.m_play_immediately;
+    timeline_js["m_player_samples"] = tdata.m_player_samples;
+    timeline_js["m_playback_type"] = std::string(magic_enum::enum_name(tdata.m_playback_type));
 
     nlohmann::ordered_json sequences_js_array = nlohmann::ordered_json::array();
-    for (int seq_idx = 0; seq_idx < static_cast<int>(data.m_sequences.size()); ++seq_idx)
+    for (int seq_idx = 0; seq_idx < static_cast<int>(tdata.m_sequences.size()); ++seq_idx)
     {
         nlohmann::ordered_json seq_js{};
 
-        Sequence& seq = data.m_sequences.at(seq_idx);
+        const Sequence& seq = tdata.m_sequences.at(seq_idx);
 
         nlohmann::ordered_json seq_id_js{};
         seq_id_js["m_entity_data"]["m_uid"] = seq.m_seq_id.m_entity_data.m_uid;
@@ -553,23 +561,45 @@ std::string Tanim::Serialize(TimelineData& data)
         seq_js["m_type_meta"] = std::string(magic_enum::enum_name(seq.m_type_meta));
         seq_js["m_representation_meta"] = std::string(magic_enum::enum_name(seq.m_representation_meta));
         seq_js["m_last_frame"] = seq.m_last_frame;
+        seq_js["m_first_frame"] = seq.m_first_frame;
 
         nlohmann::ordered_json curves_js_array = nlohmann::ordered_json::array();
         for (int curve_idx = 0; curve_idx < seq.GetCurveCount(); ++curve_idx)
         {
             nlohmann::ordered_json curve_js{};
 
-            Curve& curve = seq.m_curves.at(curve_idx);
+            const Curve& curve = seq.m_curves.at(curve_idx);
             curve_js["m_name"] = curve.m_name;
-            // curve_js["m_lerp_type"] = std::string(magic_enum::enum_name(curve.m_lerp_type));
+            curve_js["m_handle_type_locked"] = curve.m_handle_type_locked;
+            curve_js["m_curve_handle_type"] = std::string(magic_enum::enum_name(curve.m_curve_handle_type));
 
-            nlohmann::ordered_json pts_js_array = nlohmann::ordered_json::array();
-            for (int pt_idx = 0; pt_idx < seq.GetCurveKeyframeCount(curve_idx); ++pt_idx)
+            nlohmann::ordered_json kfs_js_array = nlohmann::ordered_json::array();
+            int keyframe_count = GetKeyframeCount(curve);
+            for (int k = 0; k < keyframe_count; ++k)
             {
-                const auto& pt = curve.m_keyframes.at(pt_idx);
-                pts_js_array.push_back({pt.Time(), pt.Value()});
+                nlohmann::ordered_json kf_js{};
+
+                const auto& keyframe = curve.m_keyframes.at(k);
+                kf_js["m_pos"] = {keyframe.m_pos.x, keyframe.m_pos.y};
+                kf_js["m_handle_type"] = std::string(magic_enum::enum_name(keyframe.m_handle_type));
+
+                auto serialize_handle = [](nlohmann::ordered_json::reference js, const Handle& handle)
+                {
+                    js["m_offset"] = {handle.m_offset.x, handle.m_offset.y};
+                    js["m_weighted"] = handle.m_weighted;
+                    js["m_smooth_type"] = std::string(magic_enum::enum_name(handle.m_smooth_type));
+                    js["m_broken_type"] = std::string(magic_enum::enum_name(handle.m_broken_type));
+                };
+                nlohmann::ordered_json in_js{};
+                serialize_handle(in_js, keyframe.m_in);
+                nlohmann::ordered_json out_js{};
+                serialize_handle(out_js, keyframe.m_out);
+
+                kf_js["m_in"] = in_js;
+                kf_js["m_out"] = out_js;
+                kfs_js_array.push_back(kf_js);
             }
-            curve_js["m_points"] = pts_js_array;
+            curve_js["m_keyframes"] = kfs_js_array;
 
             curves_js_array.push_back(curve_js);
         }
@@ -581,69 +611,94 @@ std::string Tanim::Serialize(TimelineData& data)
     timeline_js["m_sequences"] = sequences_js_array;
     json["timeline_data"] = timeline_js;
 
-    return json.dump(4);
+    return json.dump(2);
 }
 
-void Tanim::Deserialize(entt::entity /*root_entity*/, TimelineData& data, const std::string& serialized_string)
+void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string)
 {
     assert(!serialized_string.empty());
     const nlohmann::ordered_json json = nlohmann::ordered_json::parse(serialized_string);
     assert(!json.empty());
 
-    const auto& timeline_js = json["timeline_data"];
-    data.m_name = timeline_js["m_name"].get<std::string>();
-    data.m_first_frame = timeline_js["m_first_frame"].get<int>();
-    data.m_last_frame = timeline_js["m_last_frame"].get<int>();
-    data.m_min_frame = timeline_js["m_min_frame"].get<int>();
-    data.m_max_frame = timeline_js["m_max_frame"].get<int>();
-    data.m_play_immediately = timeline_js["m_play_immediately"].get<bool>();
-    data.m_player_samples = timeline_js["m_player_samples"].get<int>();
-    // data.m_uid = timeline_js["m_uid"].get<std::string>();
-    // data.m_root_entity = root_entity;
+    const int version = json.value("version", 1);
+    if (version < 2)
+    {
+        LogError("Versions prior to 2 are not supported. Can not deserialize.");
+        return;
+    }
 
-    const std::string playback_type_str = timeline_js["m_playback_type"].get<std::string>();
+    const auto& timeline_js = json.at("timeline_data");
+    data.m_name = timeline_js.at("m_name").get<std::string>();
+    data.m_first_frame = timeline_js.at("m_first_frame").get<int>();
+    data.m_last_frame = timeline_js.at("m_last_frame").get<int>();
+    data.m_min_frame = timeline_js.at("m_min_frame").get<int>();
+    data.m_max_frame = timeline_js.at("m_max_frame").get<int>();
+    data.m_play_immediately = timeline_js.at("m_play_immediately").get<bool>();
+    data.m_player_samples = timeline_js.at("m_player_samples").get<int>();
+
+    const std::string playback_type_str = timeline_js.at("m_playback_type").get<std::string>();
     data.m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
 
     data.m_sequences.clear();
-    for (const auto& seq_js : timeline_js["m_sequences"])
+    for (const auto& seq_js : timeline_js.at("m_sequences"))
     {
         Sequence& seq = data.m_sequences.emplace_back();
 
-        const auto& seq_id_js = seq_js["m_seq_id"];
+        const auto& seq_id_js = seq_js.at("m_seq_id");
+        seq.m_seq_id.m_entity_data.m_uid = seq_id_js.at("m_entity_data").at("m_uid").get<std::string>();
+        seq.m_seq_id.m_entity_data.m_display = seq_id_js.at("m_entity_data").at("m_display").get<std::string>();
+        seq.m_seq_id.m_struct_name = seq_id_js.at("m_struct_name").get<std::string>();
+        seq.m_seq_id.m_field_name = seq_id_js.at("m_field_name").get<std::string>();
 
-        const std::string uid = seq_id_js["m_entity_data"]["m_uid"];
-        seq.m_seq_id.m_entity_data.m_uid = uid;
-        // seq.m_seq_id.m_entity_data.m_entity = GetNestedEntityOfUID(root_entity, uid);
-        seq.m_seq_id.m_entity_data.m_display = seq_id_js["m_entity_data"]["m_display"];
-        seq.m_seq_id.m_struct_name = seq_id_js["m_struct_name"];
-        seq.m_seq_id.m_field_name = seq_id_js["m_field_name"];
-
-        const std::string type_meta_str = seq_js["m_type_meta"].get<std::string>();
+        const std::string type_meta_str = seq_js.at("m_type_meta").get<std::string>();
         seq.m_type_meta = magic_enum::enum_cast<Sequence::TypeMeta>(type_meta_str).value_or(Sequence::TypeMeta::NONE);
 
-        const std::string representation_meta_str = seq_js["m_representation_meta"].get<std::string>();
+        const std::string representation_meta_str = seq_js.at("m_representation_meta").get<std::string>();
         seq.m_representation_meta =
             magic_enum::enum_cast<RepresentationMeta>(representation_meta_str).value_or(RepresentationMeta::NONE);
 
-        seq.m_last_frame = seq_js["m_last_frame"];
+        seq.m_last_frame = seq_js.at("m_last_frame").get<int>();
+        seq.m_first_frame = seq_js.at("m_first_frame").get<int>();
 
         seq.m_curves.clear();
-        for (const auto& curve_js : seq_js["m_curves"])
+        for (const auto& curve_js : seq_js.at("m_curves"))
         {
             Curve& curve = seq.m_curves.emplace_back();
 
-            curve.m_name = curve_js["m_name"].get<std::string>();
+            curve.m_name = curve_js.at("m_name").get<std::string>();
+            curve.m_handle_type_locked = curve_js.at("m_handle_type_locked").get<bool>();
 
-            const std::string lerp_type_str = curve_js["m_lerp_type"].get<std::string>();
-            // curve.m_lerp_type =
-            // magic_enum::enum_cast<sequencer::LerpType>(lerp_type_str).value_or(sequencer::LerpType::SMOOTH);
+            const std::string curve_handle_type_str = curve_js.at("m_curve_handle_type").get<std::string>();
+            curve.m_curve_handle_type =
+                magic_enum::enum_cast<CurveHandleType>(curve_handle_type_str).value_or(CurveHandleType::UNCONSTRAINED);
 
             curve.m_keyframes.clear();
-            for (const auto& pt_js : curve_js["m_points"])
+            for (const auto& kf_js : curve_js.at("m_keyframes"))
             {
-                const float x = pt_js[0].get<float>();
-                const float y = pt_js[1].get<float>();
-                curve.m_keyframes.emplace_back(x, y);
+                const auto& pos_arr = kf_js.at("m_pos");
+                Keyframe& kf = curve.m_keyframes.emplace_back(pos_arr.at(0).get<float>(), pos_arr.at(1).get<float>());
+
+                const std::string handle_type_str = kf_js.at("m_handle_type").get<std::string>();
+                kf.m_handle_type = magic_enum::enum_cast<HandleType>(handle_type_str).value_or(HandleType::SMOOTH);
+
+                auto deserialize_handle = [](const nlohmann::ordered_json& js, Handle& handle)
+                {
+                    const auto& offset_arr = js.at("m_offset");
+                    handle.m_offset.x = offset_arr.at(0).get<float>();
+                    handle.m_offset.y = offset_arr.at(1).get<float>();
+                    handle.m_weighted = js.at("m_weighted").get<bool>();
+
+                    const std::string smooth_type_str = js.at("m_smooth_type").get<std::string>();
+                    handle.m_smooth_type =
+                        magic_enum::enum_cast<Handle::SmoothType>(smooth_type_str).value_or(Handle::SmoothType::AUTO);
+
+                    const std::string broken_type_str = js.at("m_broken_type").get<std::string>();
+                    handle.m_broken_type =
+                        magic_enum::enum_cast<Handle::BrokenType>(broken_type_str).value_or(Handle::BrokenType::UNUSED);
+                };
+
+                deserialize_handle(kf_js.at("m_in"), kf.m_in);
+                deserialize_handle(kf_js.at("m_out"), kf.m_out);
             }
         }
     }

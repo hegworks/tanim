@@ -9,21 +9,8 @@ namespace tanim
 
 struct EntityData
 {
-    // entt::entity m_entity{entt::null};
     std::string m_uid{};      // unique identifier
     std::string m_display{};  // optional
-
-    /*
-    EntityData(entt::entity entity, const std::string& uid, const std::string& display) : m_entity(entity), m_uid(uid)
-    {
-        if (display.empty())
-        {
-            m_display = uid;
-        }
-    }
-
-    EntityData(entt::entity entity, const std::string& uid) : m_entity(entity), m_uid(uid), m_display(uid) {}
-    */
 };
 
 struct SequenceId
