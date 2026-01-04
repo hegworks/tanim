@@ -63,13 +63,26 @@ public:
         Sequence& seq = data.m_sequences.at(seq_idx);
         for (int curve_idx = 0; curve_idx < seq.GetCurveCount(); curve_idx++)
         {
-            ImVec2 pta(legend_rect.Min.x + 30, legend_rect.Min.y + (float)curve_idx * 14.f);
-            ImVec2 ptb(legend_rect.Max.x, legend_rect.Min.y + (float)(curve_idx + 1) * 14.f);
-            draw_list->AddText(pta,
+            ImVec2 pta(legend_rect.Min.x + 30, legend_rect.Min.y + static_cast<float>(curve_idx) * 14.f);
+            ImVec2 ptb(legend_rect.Max.x, legend_rect.Min.y + static_cast<float>(curve_idx + 1) * 14.f);
+
+            const ImU32 color = Sequence::GetCurveColor(curve_idx);
+            constexpr float color_box_size = 10.f;
+            const float font_height = ImGui::GetFontSize();
+            const float vertical_offset = (font_height - color_box_size) * 0.5f;
+            ImVec2 color_min(pta.x, pta.y + vertical_offset);
+            ImVec2 color_max(pta.x + color_box_size, pta.y + vertical_offset + color_box_size);
+            draw_list->AddRectFilled(color_min, color_max, color);
+
+            ImVec2 text_pos(pta.x + 14.f, pta.y);
+            draw_list->AddText(text_pos,
                                seq.GetCurveVisibility(curve_idx) ? 0xFFFFFFFF : 0x80FFFFFF,
                                seq.m_curves.at(curve_idx).m_name.c_str());
+
             if (ImRect(pta, ptb).Contains(ImGui::GetMousePos()) && ImGui::IsMouseClicked(0))
+            {
                 seq.SetCurveVisibility(curve_idx, !seq.GetCurveVisibility(curve_idx));
+            }
         }
         draw_list->PopClipRect();
 
