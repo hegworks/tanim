@@ -86,38 +86,50 @@ static float Distance(float x, float y, float x1, float y1, float x2, float y2)
 static DrawingSelectionState DrawHandle(ImDrawList* draw_list,
                                         const ImVec2& handle_screen_pos,
                                         const ImVec2& keyframe_screen_pos,
-                                        bool is_in_handle,
+                                        bool is_weighted,
                                         bool is_selected)
 {
+    static constexpr ImU32 LINE_COLOR{0xFF707070};
+    static constexpr ImU32 UNSELECTED_COLOR{0xFFB0B0B0};
+    static constexpr ImU32 SELECTED_COLOR{0xFFFFFFFF};
+    static constexpr ImU32 BORDER_COLOR{0xFFE0E0E0};
+    static constexpr float RADIUS{4.0f};
+
     DrawingSelectionState ret = DrawingSelectionState::NONE;
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
 
     // Draw line from keyframe to handle
-    draw_list->AddLine(keyframe_screen_pos, handle_screen_pos, 0xFF808080, 1.0f);
+    draw_list->AddLine(keyframe_screen_pos, handle_screen_pos, LINE_COLOR, 1.0f);
 
     // Handle colors
-    ImU32 border_color = is_in_handle ? 0xFF0000FF : 0xFFFF0000;  // Red for in, Blue for out (BGR)
-    ImU32 fill_color = 0x00000000;                                // Transparent by default
+    ImU32 color = UNSELECTED_COLOR;
 
-    const float radius = 4.0f;
-    const ImRect handle_rect(handle_screen_pos - ImVec2(radius, radius), handle_screen_pos + ImVec2(radius, radius));
+    const ImRect handle_rect(handle_screen_pos - ImVec2(RADIUS, RADIUS), handle_screen_pos + ImVec2(RADIUS, RADIUS));
 
-    bool hovered = handle_rect.Contains(io.MousePos);
+    const bool hovered = handle_rect.Contains(io.MousePos);
     if (hovered)
     {
         ret = DrawingSelectionState::HOVERED;
-        fill_color = 0xFFFFFFFF;  // White fill on hover
-        if (io.MouseDown[0]) ret = DrawingSelectionState::CLICKED;
+        color = SELECTED_COLOR;
+        if (ImGui::IsMouseClicked(0)) ret = DrawingSelectionState::CLICKED;
     }
 
     if (is_selected)
     {
-        fill_color = 0xFFFFFFFF;
+        color = SELECTED_COLOR;
     }
 
     // Draw handle circle
-    if (fill_color != 0x00000000) draw_list->AddCircleFilled(handle_screen_pos, radius, fill_color);
-    draw_list->AddCircle(handle_screen_pos, radius, border_color, 0, 2.0f);
+    if (is_weighted)
+    {
+        draw_list->AddRectFilled(handle_rect.Min, handle_rect.Max, color);
+        draw_list->AddRect(handle_rect.Min, handle_rect.Max, BORDER_COLOR);
+    }
+    else
+    {
+        draw_list->AddCircleFilled(handle_screen_pos, RADIUS, color);
+        draw_list->AddCircle(handle_screen_pos, RADIUS, BORDER_COLOR);
+    }
 
     return ret;
 }
@@ -455,7 +467,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                                           selected_handle->m_keyframe_index == k * 2;
 
                 DrawingSelectionState handle_state =
-                    DrawHandle(draw_list, handle_screen, keyframe_screen, true, is_handle_selected);
+                    DrawHandle(draw_list, handle_screen, keyframe_screen, keyframe.m_in.m_weighted, is_handle_selected);
                 if (handle_state != DrawingSelectionState::NONE && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
@@ -477,7 +489,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                                           selected_handle->m_keyframe_index == k * 2 + 1;
 
                 DrawingSelectionState handle_state =
-                    DrawHandle(draw_list, handle_screen, keyframe_screen, false, is_handle_selected);
+                    DrawHandle(draw_list, handle_screen, keyframe_screen, keyframe.m_out.m_weighted, is_handle_selected);
                 if (handle_state != DrawingSelectionState::NONE && moving_curve == -1 && !selecting_quad)
                 {
                     over_curve_or_point = true;
