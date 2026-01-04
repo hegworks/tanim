@@ -504,6 +504,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
         }
 
+        bool click_handled = false;
         // Draw keyframes
         for (int k = 0; k < keyframe_count; k++)
         {
@@ -533,17 +534,25 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 over_curve = -1;
                 over_handle = false;
 
-                if (keyframe_selection_state == DrawingSelectionState::CLICKED)
+                if (keyframe_selection_state == DrawingSelectionState::CLICKED && !click_handled)
                 {
                     const bool already_selected = selection.find({c, k}) != selection.end();
                     const bool any_selected = !selection.empty();
-                    if (io.KeyCtrl && already_selected)
+
+                    if (already_selected && !io.KeyCtrl && !io.KeyShift)
+                    {
+                        // Do nothing - keep current selection for dragging
+                        click_handled = true;
+                    }
+                    else if (io.KeyCtrl && already_selected)
                     {
                         selection.erase({c, k});
+                        click_handled = true;
                     }
                     else if (io.KeyCtrl && !already_selected)
                     {
                         selection.insert({c, k});
+                        click_handled = true;
                     }
                     else if (io.KeyShift && any_selected && !already_selected)
                     {
@@ -581,11 +590,13 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                         {
                             selection.insert({c, k});
                         }
+                        click_handled = true;
                     }
                     else
                     {
                         selection.clear();
                         selection.insert({c, k});
+                        click_handled = true;
                     }
                 }
             }
@@ -729,6 +740,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         const ImVec2 np = range_to_point((io.MousePos - offset) / view_size);
         Sequence::BeginEdit(over_curve);
         seq.AddKeyframeAtPos(over_curve, np);
+        selection.clear();
         Sequence::EndEdit();
         ret = 1;
     }
@@ -768,8 +780,19 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     }
     if (moving_curve == -1 && over_curve != -1 && ImGui::IsMouseClicked(0) && selection.empty() && !selecting_quad)
     {
-        moving_curve = over_curve;
-        Sequence::BeginEdit(over_curve);
+        // commented out to disable the feature of moving the whole curve by dragging it
+        // moving_curve = over_curve;
+        // Sequence::BeginEdit(over_curve);
+    }
+    if (over_curve != -1 && ImGui::IsMouseClicked(0) && io.KeyShift)
+    {
+        selection.clear();
+        Curve& curve = seq.m_curves.at(over_curve);
+        const int keyframe_count = GetKeyframeCount(curve);
+        for (int k = 0; k < keyframe_count; ++k)
+        {
+            selection.insert({over_curve, k});
+        }
     }
 
     // Quad selection
