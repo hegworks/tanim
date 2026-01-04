@@ -305,7 +305,7 @@ public:
 
     static bool HasPassedLastFrame(const TimelineData& tdata, const ComponentData& cdata)
     {
-        return GetPlayerFrame(tdata, cdata) > GetTimelineLastFrame(tdata);
+        return GetPlayerFrame(tdata, cdata) >= GetTimelineLastFrame(tdata);
     }
 
     static void EditSnapY(TimelineData& data, float value)
