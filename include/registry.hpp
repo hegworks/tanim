@@ -730,10 +730,57 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
 
                     ImGui::BeginDisabled();
 
+                    auto apply = [&](const glm::quat& to_apply)
+                    {
+                        seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, to_apply.w});
+                        seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, to_apply.x});
+                        seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, to_apply.y});
+                        seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {player_frame_f, to_apply.z});
+                    };
+
+                    auto nudge_btn = [&](int wxyz, bool enabled)
+                    {
+                        if (enabled) ImGui::EndDisabled();
+                        ImGui::PushID(wxyz);
+                        ImGui::SameLine();
+                        ImGui::Text("Nudge");
+                        float sign{1.0f};
+                        bool clicked{false};
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("+"))
+                        {
+                            sign = 1.0f;
+                            clicked = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("-"))
+                        {
+                            sign = -1.0f;
+                            clicked = true;
+                        }
+                        if (clicked)
+                        {
+                            glm::quat q_c = field;
+                            const glm::quat q_d = {(wxyz == 0) * sign * 1e-3f,
+                                                   (wxyz == 1) * sign * 1e-3f,
+                                                   (wxyz == 2) * sign * 1e-3f,
+                                                   (wxyz == 3) * sign * 1e-3f};
+                            q_c += q_d;
+                            apply(glm::normalize(q_c));
+                        }
+                        ImGui::PopID();
+                        if (enabled) ImGui::BeginDisabled();
+                    };
+
+                    const bool is_keyframe = curve_0_optional_point_idx.has_value();
                     ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
+                    nudge_btn(0, is_keyframe);
                     ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
+                    nudge_btn(1, is_keyframe);
                     ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
+                    nudge_btn(2, is_keyframe);
                     ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
+                    nudge_btn(3, is_keyframe);
 
                     ImGui::DragFloat3("euler", &euler_angles.x);
 
@@ -742,18 +789,14 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                     if (curve_4_optional_point_idx.has_value())
                     {
                         float spins = seq.m_curves.at(4).m_keyframes.at(curve_4_optional_point_idx.value()).Value();
-                        int spins_int = (int)spins;
+                        int spins_int = static_cast<int>(spins);
                         if (ImGui::InputInt("Spins", &spins_int))
                         {
-                            spins = (float)spins_int;
+                            spins = static_cast<float>(spins_int);
                             seq.EditKeyframe(4, curve_4_optional_point_idx.value(), {player_frame_f, spins});
 
-                            field = sequencer::SampleQuatForAnimation(seq, player_frame_f);
-
-                            seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.w});
-                            seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.x});
-                            seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.y});
-                            seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {player_frame_f, field.z});
+                            const glm::quat sampled = sequencer::SampleQuatForAnimation(seq, player_frame_f);
+                            apply(sampled);
                         }
                     }
                 }
