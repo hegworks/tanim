@@ -229,10 +229,11 @@ struct Sequence
         MoveKeyframe(curve, keyframe_idx, new_pos);
     }
 
-    void AddKeyframeAtPos(int curve_idx, ImVec2 pos)
+    // Returns the index of the new keyframe, or -1 if a keyframe already exists at that time.
+    int AddKeyframeAtPos(int curve_idx, ImVec2 pos)
     {
         pos.x = std::floor(pos.x);
-        AddKeyframe(m_curves.at(curve_idx), pos.x, pos.y);
+        return AddKeyframe(m_curves.at(curve_idx), pos.x, pos.y);
     }
 
     void RemoveKeyframeAtIdx(int curve_idx, int keyframe_idx) { RemoveKeyframe(m_curves.at(curve_idx), keyframe_idx); }

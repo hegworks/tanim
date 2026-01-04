@@ -726,8 +726,12 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     {
         const ImVec2 np = range_to_point((io.MousePos - offset) / view_size);
         Sequence::BeginEdit(over_curve);
-        seq.AddKeyframeAtPos(over_curve, np);
+        const int index_of_added = seq.AddKeyframeAtPos(over_curve, np);
         selection.clear();
+        if (index_of_added > -1)
+        {
+            selection.insert({over_curve, index_of_added});
+        }
         Sequence::EndEdit();
         ret = 1;
     }
