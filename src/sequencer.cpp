@@ -90,7 +90,7 @@ static DrawingSelectionState DrawHandle(ImDrawList* draw_list,
                                         bool is_selected)
 {
     static constexpr ImU32 LINE_COLOR{0xFF707070};
-    static constexpr ImU32 UNSELECTED_COLOR{0xFFB0B0B0};
+    static constexpr ImU32 UNSELECTED_COLOR{0xFF777777};
     static constexpr ImU32 SELECTED_COLOR{0xFFFFFFFF};
     static constexpr ImU32 BORDER_COLOR{0xFFE0E0E0};
     static constexpr float RADIUS{4.0f};
@@ -138,96 +138,82 @@ static DrawingSelectionState DrawKeyframe(ImDrawList* draw_list,
                                           const ImVec2& pos,
                                           const ImVec2& size,
                                           const ImVec2& offset,
-                                          bool edited,
+                                          bool selected,
                                           bool x_moveable,
-                                          bool y_moveable)
+                                          bool y_moveable,
+                                          ImU32 line_color)
 {
     DrawingSelectionState ret = DrawingSelectionState::NONE;
-    ImGuiIO& io = ImGui::GetIO();
+    const ImGuiIO& io = ImGui::GetIO();
 
     const ImVec2 center = pos * size + offset;
 
     // Shape sizes
-    static constexpr float k_square_half_size = 4.5f;
-    static constexpr float k_rect_long = 6.0f;
-    static constexpr float k_rect_short = 3.0f;
-    static constexpr float k_diamond_radius = 4.5f;
-    static constexpr float k_anchor_half_size = 5.0f;
+    static constexpr float CIRCLE_RADIUS = 6.0f;
+    static constexpr float DIAMOND_RADIUS = 6.0f;
+    static constexpr float ANCHOR_HALF_SIZE = 6.0f;
+    static constexpr float CONSTRAINT_LINE_LENGTH = 6.0f;
 
-    // Outline thickness
-    static constexpr float k_outline_thickness_edited = 3.0f;
-    static constexpr float k_outline_thickness_normal = 2.0f;
+    // Border thickness
+    static constexpr float THICK_BORDER_THICKNESS = 3.0f;
+    static constexpr float THIN_BORDER_THICKNESS = 0.75f;
 
     // Colors
-    static constexpr ImU32 k_fill_color = 0xFF000000;
-    static constexpr ImU32 k_outline_color_edited = 0xFFFFFFFF;
-    static constexpr ImU32 k_outline_color_hovered = 0xFF80B0FF;
-    static constexpr ImU32 k_outline_color_normal = 0xFF0080FF;
+    static constexpr ImU32 BORDER_COLOR_SELECTED = 0xFFFFFFFF;
+    static constexpr ImU32 BORDER_COLOR_HOVERED = 0xFFCCCCCC;
+    static constexpr ImU32 THIN_BORDER_COLOR = 0xFFFFFFFF;
 
-    ImVec2 half_size;
-    bool draw_diamond = false;
-
-    if (x_moveable && y_moveable)
-    {
-        half_size = ImVec2(k_square_half_size, k_square_half_size);
-    }
-    else if (x_moveable)
-    {
-        half_size = ImVec2(k_rect_long, k_rect_short);
-    }
-    else if (y_moveable)
-    {
-        half_size = ImVec2(k_rect_short, k_rect_long);
-    }
-    else
-    {
-        draw_diamond = true;
-    }
-
-    const ImRect anchor(center - ImVec2(k_anchor_half_size, k_anchor_half_size),
-                        center + ImVec2(k_anchor_half_size, k_anchor_half_size));
+    // Hit detection
+    const ImRect anchor(center - ImVec2(ANCHOR_HALF_SIZE, ANCHOR_HALF_SIZE),
+                        center + ImVec2(ANCHOR_HALF_SIZE, ANCHOR_HALF_SIZE));
     if (anchor.Contains(io.MousePos))
     {
         ret = DrawingSelectionState::HOVERED;
         if (ImGui::IsMouseClicked(0)) ret = DrawingSelectionState::CLICKED;
     }
 
-    ImU32 outline_color;
-    float outline_thickness;
+    const bool hovered = ret != DrawingSelectionState::NONE;
 
-    if (edited)
+    if (selected)
     {
-        outline_color = k_outline_color_edited;
-        outline_thickness = k_outline_thickness_edited;
-    }
-    else if (ret != DrawingSelectionState::NONE)
-    {
-        outline_color = k_outline_color_hovered;
-        outline_thickness = k_outline_thickness_normal;
-    }
-    else
-    {
-        outline_color = k_outline_color_normal;
-        outline_thickness = k_outline_thickness_normal;
-    }
-
-    if (draw_diamond)
-    {
+        // Draw diamond shape
         static constexpr ImVec2 LOCAL_OFFSETS[4] = {ImVec2(1, 0), ImVec2(0, 1), ImVec2(-1, 0), ImVec2(0, -1)};
-        ImVec2 offsets[4];
+        ImVec2 points[4];
         for (int i = 0; i < 4; i++)
         {
-            offsets[i] = center + LOCAL_OFFSETS[i] * k_diamond_radius;
+            points[i] = center + LOCAL_OFFSETS[i] * DIAMOND_RADIUS;
         }
-        draw_list->AddConvexPolyFilled(offsets, 4, k_fill_color);
-        draw_list->AddPolyline(offsets, 4, outline_color, true, outline_thickness);
+        draw_list->AddConvexPolyFilled(points, 4, line_color);
+        draw_list->AddPolyline(points, 4, BORDER_COLOR_SELECTED, true, THICK_BORDER_THICKNESS);
     }
     else
     {
-        ImVec2 rect_min = center - half_size;
-        ImVec2 rect_max = center + half_size;
-        draw_list->AddRectFilled(rect_min, rect_max, k_fill_color);
-        draw_list->AddRect(rect_min, rect_max, outline_color, 0.0f, 0, outline_thickness);
+        // Draw circle
+        draw_list->AddCircleFilled(center, CIRCLE_RADIUS, line_color);
+        draw_list->AddCircle(center, CIRCLE_RADIUS, THIN_BORDER_COLOR, 0, THIN_BORDER_THICKNESS);
+        if (hovered)
+        {
+            draw_list->AddCircle(center, CIRCLE_RADIUS, BORDER_COLOR_HOVERED, 0, THICK_BORDER_THICKNESS);
+        }
+    }
+
+    // Draw constraint indicators (lines through center)
+    if (!x_moveable || !y_moveable)
+    {
+        static constexpr ImU32 CONSTRAINT_LINE_COLOR = 0xFFFFFFFF;
+
+        if (!y_moveable)  // Can only move horizontally (or not at all)
+        {
+            draw_list->AddLine(center - ImVec2(CONSTRAINT_LINE_LENGTH, 0),
+                               center + ImVec2(CONSTRAINT_LINE_LENGTH, 0),
+                               CONSTRAINT_LINE_COLOR);
+        }
+        if (!x_moveable)  // Can only move vertically (or not at all)
+        {
+            draw_list->AddLine(center - ImVec2(0, CONSTRAINT_LINE_LENGTH),
+                               center + ImVec2(0, CONSTRAINT_LINE_LENGTH),
+                               CONSTRAINT_LINE_COLOR);
+        }
     }
 
     return ret;
@@ -519,7 +505,8 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                              offset,
                              (selection.find({c, k}) != selection.end() && moving_curve == -1 && !scrolling_v),
                              seq.IsKeyframeXMoveable(c, k),
-                             seq.IsKeyframeYMoveable(c, k));
+                             seq.IsKeyframeYMoveable(c, k),
+                             Sequence::GetCurveColor(c));
 
             // Display keyframe value near point
             char point_val_text[128];
