@@ -346,6 +346,59 @@ struct Sequence
 
     void EditSnapY(float value) { m_snap_y_value = value; }
 
+    // Finds extrema of a cubic Bezier curve (Y component only)
+    // Updates min_y and max_y if extrema are found within t in [0,1]
+    static void FindBezierExtremaY(float p0, float p1, float p2, float p3, float& min_y, float& max_y)
+    {
+        // Derivative of cubic Bezier: B'(t) = 3(1-t)^2*(p1-p0) + 6(1-t)t(p2-p1) + 3t^2*(p3-p2)
+        // This simplifies to a quadratic: at^2 + bt + c = 0
+        // where:
+        const float a = -p0 + 3.0f * p1 - 3.0f * p2 + p3;
+        const float b = 2.0f * p0 - 4.0f * p1 + 2.0f * p2;
+        const float c = -p0 + p1;
+
+        // Solve quadratic equation
+        std::array<float, 2> roots;
+        int root_count = 0;
+
+        if (std::abs(a) < 1e-6f)
+        {
+            // Linear case: bt + c = 0
+            if (std::abs(b) > 1e-6f)
+            {
+                roots.at(root_count++) = -c / b;
+            }
+        }
+        else
+        {
+            // Quadratic case
+            const float discriminant = b * b - 4.0f * a * c;
+            if (discriminant >= 0.0f)
+            {
+                const float sqrt_d = std::sqrt(discriminant);
+                const float inv_2a = 1.0f / (2.0f * a);
+                roots.at(root_count++) = (-b + sqrt_d) * inv_2a;
+                roots.at(root_count++) = (-b - sqrt_d) * inv_2a;
+            }
+        }
+
+        // Evaluate Bezier at valid roots
+        for (int i = 0; i < root_count; i++)
+        {
+            const float t = roots.at(i);
+            if (t > 0.0f && t < 1.0f)
+            {
+                // Evaluate cubic Bezier at t
+                const float one_minus_t = 1.0f - t;
+                const float y = one_minus_t * one_minus_t * one_minus_t * p0 + 3.0f * one_minus_t * one_minus_t * t * p1 +
+                                3.0f * one_minus_t * t * t * p2 + t * t * t * p3;
+
+                min_y = std::min(min_y, y);
+                max_y = std::max(max_y, y);
+            }
+        }
+    }
+
     void Fit()
     {
         m_draw_min.x = 0;
@@ -357,14 +410,38 @@ struct Sequence
         for (int c = 0; c < curve_count; c++)
         {
             Curve& curve = m_curves.at(c);
-
             const int keyframe_count = GetKeyframeCount(curve);
+
             for (int k = 0; k < keyframe_count; k++)
             {
-                float y = curve.m_keyframes.at(k).Value();
-                max_y = std::max(max_y, y);
-                min_y = std::min(min_y, y);
+                const Keyframe& kf = curve.m_keyframes.at(k);
+
+                // Always include keyframe value
+                max_y = std::max(max_y, kf.Value());
+                min_y = std::min(min_y, kf.Value());
+
+                // For segments between keyframes, find Bezier extrema
+                if (k < keyframe_count - 1)
+                {
+                    const Keyframe& kf_next = curve.m_keyframes.at(k + 1);
+
+                    // Get Bezier control points (Y values only)
+                    const float p0 = kf.Value();
+                    const float p1 = kf.Value() + kf.m_out.m_offset.y;
+                    const float p2 = kf_next.Value() + kf_next.m_in.m_offset.y;
+                    const float p3 = kf_next.Value();
+
+                    // Find extrema of the cubic Bezier in Y
+                    FindBezierExtremaY(p0, p1, p2, p3, min_y, max_y);
+                }
             }
+        }
+
+        // Handle empty or single-value case
+        if (min_y > max_y)
+        {
+            min_y = -1.0f;
+            max_y = 1.0f;
         }
 
         const float range = max_y - min_y;
