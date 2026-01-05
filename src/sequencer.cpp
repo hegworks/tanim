@@ -723,18 +723,52 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         selected_handle.reset();
     }
 
-    // Remove keyframe (double-click)
-    if (over_selected_point && selection.size() == 1 && io.MouseDoubleClicked[0])
+    auto delete_keyframes_in_selection = [&seq]()
     {
-        Sequence::BeginEdit(selection.begin()->m_curve_index);
-        seq.RemoveKeyframeAtIdx(selection.begin()->m_curve_index, selection.begin()->m_keyframe_index);
-        selection.clear();
-        over_selected_point = false;
-        Sequence::EndEdit();
+        std::vector<EditPoint> to_delete{};
+        for (const auto& sel : selection)
+        {
+            const Curve& curve = seq.m_curves.at(sel.m_curve_index);
+            const int keyframe_count = GetKeyframeCount(curve);
+            const bool is_first = (sel.m_keyframe_index == 0);
+            const bool is_last = (sel.m_keyframe_index == keyframe_count - 1);
+            if (!is_first && !is_last)
+            {
+                to_delete.push_back(sel);
+            }
+        }
+        if (!to_delete.empty())
+        {
+            Sequence::BeginEdit(0);
+            SortEditPointByIndex(to_delete);
+            for (const auto& sel : to_delete)
+            {
+                seq.RemoveKeyframeAtIdx(sel.m_curve_index, sel.m_keyframe_index);
+            }
+            Sequence::EndEdit();
+            selection.clear();
+        }
+    };
+
+    // Remove keyframe (double-click)
+    // if (over_selected_point && selection.size() == 1 && io.MouseDoubleClicked[0])
+    // {
+    //     Sequence::BeginEdit(selection.begin()->m_curve_index);
+    //     seq.RemoveKeyframeAtIdx(selection.begin()->m_curve_index, selection.begin()->m_keyframe_index);
+    //     selection.clear();
+    //     over_selected_point = false;
+    //     Sequence::EndEdit();
+    // }
+
+    // Remove keyframes (keyboard delete key)
+    if (!selection.empty() && ImGui::IsKeyPressed(ImGuiKey_Delete))
+    {
+        delete_keyframes_in_selection();
     }
 
     // Add keyframe (double-click on curve)
-    if (over_curve != -1 && io.MouseDoubleClicked[0])
+    bool single_keyframe_addable = seq.m_representation_meta != RepresentationMeta::QUAT;
+    if (single_keyframe_addable && over_curve != -1 && io.MouseDoubleClicked[0])
     {
         const ImVec2 np = range_to_point((io.MousePos - offset) / view_size);
         Sequence::BeginEdit(over_curve);
@@ -886,6 +920,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 }
 
                 if (is_first || is_last) all_deletable = false;
+                if (!single_keyframe_addable) all_deletable = false;
 
                 // Check smooth types
                 if (!(keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::AUTO))
@@ -1113,26 +1148,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             // Delete Keyframes
             if (ImGui::MenuItem("Delete Keyframes", nullptr, false, all_deletable))
             {
-                Sequence::BeginEdit(0);
-                std::vector<EditPoint> to_delete;
-                for (const auto& sel : selection)
-                {
-                    const Curve& curve = seq.m_curves.at(sel.m_curve_index);
-                    const int keyframe_count = GetKeyframeCount(curve);
-                    const bool is_first = (sel.m_keyframe_index == 0);
-                    const bool is_last = (sel.m_keyframe_index == keyframe_count - 1);
-                    if (!is_first && !is_last)
-                    {
-                        to_delete.push_back(sel);
-                    }
-                }
-                SortEditPointByIndex(to_delete);
-                for (const auto& sel : to_delete)
-                {
-                    seq.RemoveKeyframeAtIdx(sel.m_curve_index, sel.m_keyframe_index);
-                }
-                Sequence::EndEdit();
-                selection.clear();
+                delete_keyframes_in_selection();
             }
         }
 
