@@ -148,16 +148,58 @@ void Tanim::Draw()
     TimelineData& tdata = *m_editor_timeline_data;
     ComponentData& cdata = *m_editor_component_data;
 
-    //*****************************************************
+#pragma region TanimAndDockspace
 
-    ImGui::Begin("Tanim");
-    // empty parent window
+    ImGui::Begin("Tanim", nullptr, ImGuiWindowFlags_NoCollapse);
+
+    ImGuiID dockspace_id = ImGui::GetID("TanimDockSpace");
+    ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+
+    if (!ImGui::DockBuilderGetNode(dockspace_id))
+    {
+        ImGui::DockBuilderRemoveNode(dockspace_id);
+        ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetWindowSize());
+
+        // Split main into left, center, right
+        ImGuiID dock_left, dock_center_right;
+        ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.20f, &dock_left, &dock_center_right);
+
+        ImGuiID dock_center, dock_right;
+        ImGui::DockBuilderSplitNode(dock_center_right, ImGuiDir_Right, 0.25f, &dock_right, &dock_center);
+
+        // Split center into top (controls) and bottom (timeliner)
+        ImGuiID dock_center_top, dock_center_bottom;
+        ImGui::DockBuilderSplitNode(dock_center, ImGuiDir_Up, 0.08f, &dock_center_top, &dock_center_bottom);
+
+        // Split left column into top/bottom
+        ImGuiID dock_left_top, dock_left_bottom;
+        ImGui::DockBuilderSplitNode(dock_left, ImGuiDir_Up, 0.25f, &dock_left_top, &dock_left_bottom);
+
+        // Split right column into top/bottom
+        ImGuiID dock_right_top, dock_right_bottom;
+        ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Up, 0.5f, &dock_right_top, &dock_right_bottom);
+
+        // Dock windows
+        ImGui::DockBuilderDockWindow("controls", dock_center_top);
+        ImGui::DockBuilderDockWindow("timeliner", dock_center_bottom);
+        ImGui::DockBuilderDockWindow("Player", dock_left_top);
+        ImGui::DockBuilderDockWindow("curves", dock_left_bottom);
+        ImGui::DockBuilderDockWindow("timeline", dock_right_top);
+        ImGui::DockBuilderDockWindow("expanded sequence", dock_right_bottom);
+
+        ImGui::DockBuilderFinish(dockspace_id);
+    }
+
     ImGui::End();
 
+#pragma endregion
+
     //*****************************************************
 
+#pragma region controls
     {
-        ImGui::Begin("controls");
+        ImGui::Begin("controls", nullptr, ImGuiWindowFlags_NoMove);
 
         if (!Timeline::GetPlayerPlaying(cdata))
         {
@@ -248,11 +290,13 @@ void Tanim::Draw()
 
         ImGui::End();
     }
+#pragma endregion
 
     //*****************************************************
 
+#pragma region timeliner
     {
-        ImGui::Begin("timeliner");
+        ImGui::Begin("timeliner", nullptr, ImGuiWindowFlags_NoMove);
 
         constexpr int flags =
             timeliner::TIMELINER_CHANGE_FRAME | timeliner::TIMELINER_DELETE_SEQUENCE | timeliner::TIMELINER_EDIT_STARTEND;
@@ -283,10 +327,13 @@ void Tanim::Draw()
 
         ImGui::End();
     }
+#pragma endregion
 
     //*****************************************************
 
-    ImGui::Begin("timeline");
+#pragma region timeline
+
+    ImGui::Begin("timeline", nullptr, ImGuiWindowFlags_NoMove);
 
     helpers::InspectEnum(tdata.m_playback_type);
 
@@ -343,9 +390,13 @@ void Tanim::Draw()
 
     ImGui::End();
 
+#pragma endregion
+
     //*****************************************************
 
-    ImGui::Begin("expanded sequence");
+#pragma region ExpandedSequence
+
+    ImGui::Begin("expanded sequence", nullptr, ImGuiWindowFlags_NoMove);
 
     bool has_expanded_seq = false;
     int expanded_seq_idx = -1;
@@ -487,9 +538,13 @@ void Tanim::Draw()
 
     ImGui::End();
 
+#pragma endregion
+
     //*****************************************************
 
-    ImGui::Begin("curves");
+#pragma region curves
+
+    ImGui::Begin("curves", nullptr, ImGuiWindowFlags_NoMove);
 
     if (has_expanded_seq)
     {
@@ -523,15 +578,21 @@ void Tanim::Draw()
 
     ImGui::End();
 
+#pragma endregion
+
     //*****************************************************
 
-    ImGui::Begin("Player");
+#pragma region player
+
+    ImGui::Begin("Player", nullptr, ImGuiWindowFlags_NoMove);
 
     ImGui::Text("Real Time:    %.3fs", Timeline::GetPlayerRealTime(cdata));
     ImGui::Text("Sample Time:  %.3fs", Timeline::GetPlayerSampleTime(tdata, cdata));
     ImGui::Text("Frame:        %d", Timeline::GetPlayerFrame(tdata, cdata));
 
     ImGui::End();
+
+#pragma endregion
 
     //*****************************************************
 }
