@@ -352,16 +352,28 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                        1.5f);
 
     bool over_curve_or_point = false;
-
     int local_over_curve = -1;
+
     // Make sure highlighted curve is rendered last
     int* curves_index = static_cast<int*>(_malloca(sizeof(int) * curve_count));
-    for (int c = 0; c < curve_count; c++) curves_index[c] = c;
     int high_lighted_curve_index = -1;
     if (over_curve != -1 && curve_count)
     {
-        ImSwap(curves_index[over_curve], curves_index[curve_count - 1]);
         high_lighted_curve_index = over_curve;
+        // Fill array, putting highlighted curve at the end
+        int idx = 0;
+        for (int c = 0; c < curve_count; c++)
+        {
+            if (c != over_curve)
+            {
+                curves_index[idx++] = c;
+            }
+        }
+        curves_index[curve_count - 1] = over_curve;
+    }
+    else
+    {
+        for (int c = 0; c < curve_count; c++) curves_index[c] = c;
     }
 
     for (int cur = 0; cur < curve_count; cur++)
