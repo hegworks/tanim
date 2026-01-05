@@ -193,10 +193,10 @@ struct Sequence
         }
 
         // Y-axis snapping
-        if (ImGui::GetIO().KeyCtrl && m_snap_y_value > 0.0f)
-        {
-            new_pos.y = std::round(new_pos.y / m_snap_y_value) * m_snap_y_value;
-        }
+        // if (ImGui::GetIO().KeyCtrl && m_snap_y_value > 0.0f)
+        // {
+        //     new_pos.y = std::round(new_pos.y / m_snap_y_value) * m_snap_y_value;
+        // }
 
         // TypeMeta constraints
         if (m_type_meta == TypeMeta::INT)

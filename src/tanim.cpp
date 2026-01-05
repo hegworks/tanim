@@ -224,16 +224,16 @@ void Tanim::Draw()
         ImGui::DragInt("MaxFrame", &tdata.m_max_frame, 0.1f, Timeline::GetMinFrame(tdata));
         tdata.m_max_frame = ImMax(1, tdata.m_max_frame);
 
-        ImGui::SameLine();
-        ImGui::Text(" | ");
-        ImGui::SameLine();
-
-        ImGui::SameLine();
-        if (ImGui::DragFloat("SnapY", &m_snap_y_value, 0.01f))
-        {
-            m_snap_y_value = ImMax(0.0f, m_snap_y_value);
-            Timeline::EditSnapY(tdata, m_snap_y_value);
-        }
+        // ImGui::SameLine();
+        // ImGui::Text(" | ");
+        // ImGui::SameLine();
+        //
+        // ImGui::SameLine();
+        // if (ImGui::DragFloat("SnapY", &m_snap_y_value, 0.01f))
+        // {
+        //     m_snap_y_value = ImMax(0.0f, m_snap_y_value);
+        //     Timeline::EditSnapY(tdata, m_snap_y_value);
+        // }
 
         ImGui::PopItemWidth();
 
