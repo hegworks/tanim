@@ -750,24 +750,9 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         }
     };
 
-    // Remove keyframe (double-click)
-    // if (over_selected_point && selection.size() == 1 && io.MouseDoubleClicked[0])
-    // {
-    //     Sequence::BeginEdit(selection.begin()->m_curve_index);
-    //     seq.RemoveKeyframeAtIdx(selection.begin()->m_curve_index, selection.begin()->m_keyframe_index);
-    //     selection.clear();
-    //     over_selected_point = false;
-    //     Sequence::EndEdit();
-    // }
-
-    // Remove keyframes (keyboard delete key)
-    if (!selection.empty() && ImGui::IsKeyPressed(ImGuiKey_Delete))
-    {
-        delete_keyframes_in_selection();
-    }
-
     // Add keyframe (double-click on curve)
-    bool single_keyframe_addable = seq.m_representation_meta != RepresentationMeta::QUAT;
+    const bool single_keyframe_addable = seq.m_representation_meta != RepresentationMeta::QUAT;
+    const bool single_keyframe_removable = single_keyframe_addable;
     if (single_keyframe_addable && over_curve != -1 && io.MouseDoubleClicked[0])
     {
         const ImVec2 np = range_to_point((io.MousePos - offset) / view_size);
@@ -780,6 +765,22 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
         }
         Sequence::EndEdit();
         ret = 1;
+    }
+
+    // Remove keyframe (double-click)
+    // if (over_selected_point && selection.size() == 1 && io.MouseDoubleClicked[0])
+    // {
+    //     Sequence::BeginEdit(selection.begin()->m_curve_index);
+    //     seq.RemoveKeyframeAtIdx(selection.begin()->m_curve_index, selection.begin()->m_keyframe_index);
+    //     selection.clear();
+    //     over_selected_point = false;
+    //     Sequence::EndEdit();
+    // }
+
+    // Remove keyframes (keyboard delete key)
+    if (!single_keyframe_removable && !selection.empty() && ImGui::IsKeyPressed(ImGuiKey_Delete))
+    {
+        delete_keyframes_in_selection();
     }
 
     // Move entire curve
@@ -920,7 +921,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                 }
 
                 if (is_first || is_last) all_deletable = false;
-                if (!single_keyframe_addable) all_deletable = false;
+                if (!single_keyframe_removable) all_deletable = false;
 
                 // Check smooth types
                 if (!(keyframe.m_handle_type == HandleType::SMOOTH && keyframe.m_in.m_smooth_type == Handle::SmoothType::AUTO))
