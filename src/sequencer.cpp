@@ -298,7 +298,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     ImVec2 max = seq.GetDrawMax();
 
     // Handle zoom and VScroll
-    if (container.Contains(io.MousePos))
+    if (container.Contains(io.MousePos) && ImGui::IsWindowHovered(ImGuiHoveredFlags_None))
     {
         if (fabsf(io.MouseWheel) > FLT_EPSILON)
         {
