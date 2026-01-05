@@ -74,6 +74,15 @@ void Tanim::Sample(entt::registry& registry,
     }
 }
 
+void Tanim::SetEditorTimelinePlayerFrame(int frame_num)
+{
+    if (m_editor_timeline_data)
+    {
+        m_forced_editor_timeline_frame = frame_num;
+        m_force_editor_timeline_frame = true;
+    }
+}
+
 void Tanim::StartTimeline(const TimelineData& tdata, ComponentData& cdata)
 {
     Timeline::ResetPlayerTime(cdata);
@@ -252,7 +261,16 @@ void Tanim::Draw()
         const int player_frame_before = player_frame;
 
         timeliner::Timeliner(tdata, &player_frame, &tdata.m_expanded, &tdata.m_selected_sequence, &tdata.m_first_frame, flags);
-        const int player_frame_after = player_frame;
+        int player_frame_after;
+        if (m_force_editor_timeline_frame)
+        {
+            player_frame_after = m_forced_editor_timeline_frame;
+            m_force_editor_timeline_frame = false;
+        }
+        else
+        {
+            player_frame_after = player_frame;
+        }
 
         if ((!m_is_engine_in_play_mode && !Timeline::GetPlayerPlaying(cdata)) || (player_frame_before != player_frame_after))
         {

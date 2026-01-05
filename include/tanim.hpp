@@ -46,6 +46,8 @@ public:
     static void EnterPlayMode() { m_is_engine_in_play_mode = true; }
     static void ExitPlayMode() { m_is_engine_in_play_mode = false; }
 
+    static void SetEditorTimelinePlayerFrame(int frame_num);
+
 private:
     static inline TimelineData* m_editor_timeline_data{nullptr};
     static inline ComponentData* m_editor_component_data{nullptr};
@@ -54,6 +56,9 @@ private:
 
     static inline bool m_is_engine_in_play_mode{};
     static inline bool m_preview{true};
+
+    static inline bool m_force_editor_timeline_frame{false};
+    static inline int m_forced_editor_timeline_frame{-1};
 
     static void Sample(entt::registry& registry,
                        const std::vector<EntityData>& entity_datas,

@@ -32,6 +32,7 @@
 #include "tanim/include/bezier.hpp"
 #include "tanim/include/includes.hpp"
 #include "tanim/include/sequence.hpp"
+#include "tanim/include/tanim.hpp"
 
 #include <cstdint>
 #include <set>
@@ -895,6 +896,19 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             bool all_out_linear = true;
             bool all_out_constant = true;
             bool all_out_weighted = true;
+
+            if (selection.size() == 1)
+            {
+                if (ImGui::MenuItem("Edit Keyframe"))
+                {
+                    const EditPoint& point = *selection.begin();
+                    const Curve& curve = seq.m_curves.at(point.m_curve_index);
+                    const Keyframe& keyframe = curve.m_keyframes.at(point.m_keyframe_index);
+                    Tanim::SetEditorTimelinePlayerFrame(keyframe.Frame());
+                }
+
+                ImGui::Separator();
+            }
 
             for (const auto& sel : selection)
             {
