@@ -285,7 +285,6 @@ public:
         cdata.m_player_time += dt;
         if (HasPassedLastFrame(tdata, cdata))
         {
-            LogInfo("Passed!");
             switch (tdata.m_playback_type)
             {
                 case PlaybackType::HOLD:
