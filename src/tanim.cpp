@@ -23,8 +23,9 @@ void Tanim::UpdateEditor(float dt)
             ComponentData& cdata = *m_editor_component_data;
             if (Timeline::GetPlayerPlaying(cdata))
             {
-                Timeline::TickTime(tdata, cdata, dt);
+                const bool has_passed_last_frame = Timeline::TickTime(tdata, cdata, dt);
                 Sample(*m_editor_registry, m_editor_entity_datas, tdata, cdata);
+                Timeline::CheckLooping(tdata, cdata, has_passed_last_frame);
             }
         }
     }
@@ -100,8 +101,9 @@ void Tanim::UpdateTimeline(entt::registry& registry,
 {
     if (Timeline::GetPlayerPlaying(cdata))
     {
-        Timeline::TickTime(tdata, cdata, delta_time);
+        const bool has_passed_last_frame = Timeline::TickTime(tdata, cdata, delta_time);
         Sample(registry, entity_datas, tdata, cdata);
+        Timeline::CheckLooping(tdata, cdata, has_passed_last_frame);
     }
 }
 

@@ -198,7 +198,7 @@ public:
         return helpers::SecondsToSampleTime(cdata.m_player_time, tdata.m_player_samples);
     }
 
-    static float GetLastFrameSampleTime(const TimelineData& data)
+    static float GetLastFrameRealTime(const TimelineData& data)
     {
         return helpers::FrameToSeconds(data.m_last_frame, data.m_player_samples);
     }
@@ -279,11 +279,13 @@ public:
 
     static void ResetPlayerTime(ComponentData& cdata) { cdata.m_player_time = 0; }
 
-    static void TickTime(const TimelineData& tdata, ComponentData& cdata, float dt)
+    /// @return has passed last frame
+    [[nodiscard]] static bool TickTime(const TimelineData& tdata, ComponentData& cdata, float dt)
     {
         cdata.m_player_time += dt;
         if (HasPassedLastFrame(tdata, cdata))
         {
+            LogInfo("Passed!");
             switch (tdata.m_playback_type)
             {
                 case PlaybackType::HOLD:
@@ -295,11 +297,22 @@ public:
                     Stop(cdata);
                     break;
                 case PlaybackType::LOOP:
-                    ResetPlayerTime(cdata);
+                    SetPlayerTimeFromFrame(tdata, cdata, GetTimelineLastFrame(tdata));
+                    // will reset player time in CheckLooping that is called after Sample() after TickTime()
                     break;
                 default:
                     assert(0 && "unhandled PlaybackType");
             }
+            return true;
+        }
+        return false;
+    }
+
+    static void CheckLooping(const TimelineData& tdata, ComponentData& cdata, bool had_passed_last_frame)
+    {
+        if (had_passed_last_frame && tdata.m_playback_type == PlaybackType::LOOP)
+        {
+            ResetPlayerTime(cdata);
         }
     }
 
