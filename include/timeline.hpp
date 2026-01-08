@@ -256,7 +256,7 @@ public:
 
     [[nodiscard]] static std::optional<entt::entity> FindEntity(const ComponentData& cdata, const std::string& uid)
     {
-        const auto opt_entity = FindEntityOfUID(cdata.m_root_entity, uid);
+        const auto opt_entity = FindEntityOfUID(cdata, uid);
         if (!opt_entity.has_value())
         {
             LogError("Couldn't find any entity with uid " + uid + " on the root entity " +

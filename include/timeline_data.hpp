@@ -42,6 +42,9 @@ struct ComponentData
     entt::entity m_root_entity{entt::null};
     float m_player_time{0};
     bool m_player_playing{false};
+
+    std::vector<EntityData> m_cached_entities_data;
+    std::vector<entt::entity> m_cached_entities;
 };
 
 }  // namespace tanim
