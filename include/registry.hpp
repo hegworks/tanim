@@ -56,7 +56,7 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
-            if (field_name_str == seq_id.m_field_name)
+            if (field_name_str == seq_id.FieldName())
             {
                 Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
                 seq.m_seq_id = seq_id;
@@ -922,7 +922,7 @@ public:
                                                  const ComponentData& component_data,
                                                  SequenceId& seq_id)
         {
-            const auto opt_entity = Timeline::FindEntity(component_data, seq_id.m_entity_data.m_uid);
+            const auto opt_entity = Timeline::FindEntity(component_data, seq_id.GetEntityData().m_uid);
             if (opt_entity.has_value())
             {
                 reflection::AddSequence(entt_registry.get<T>(opt_entity.value()), timeline_data, seq_id);

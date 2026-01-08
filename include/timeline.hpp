@@ -23,7 +23,7 @@ public:
 
     static const char* GetSequenceLabel(const TimelineData& data, int seq_idx)
     {
-        const std::string name = data.m_sequences.at(seq_idx).m_seq_id.m_entity_data.m_display +
+        const std::string name = data.m_sequences.at(seq_idx).m_seq_id.GetEntityData().m_display +
                                  "::" + data.m_sequences.at(seq_idx).GetNameWithLessColumns();
         static char tmps[512];
         snprintf(tmps, 512, "%s", name.c_str());
@@ -267,7 +267,7 @@ public:
 
     [[nodiscard]] static std::optional<entt::entity> FindEntity(const ComponentData& cdata, const Sequence& seq)
     {
-        return FindEntity(cdata, seq.m_seq_id.m_entity_data.m_uid);
+        return FindEntity(cdata, seq.m_seq_id.GetEntityData().m_uid);
     }
 
     [[nodiscard]] static std::optional<entt::entity> FindEntity(const TimelineData& tdata,

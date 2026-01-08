@@ -36,7 +36,7 @@ public:
     static void Pause(ComponentData& component_data);
     static void Stop(ComponentData& component_data);
 
-    static std::optional<std::reference_wrapper<const RegisteredComponent>> FindMatchingComponent(
+    static const RegisteredComponent* FindMatchingComponent(
         const Sequence& seq,
         const std::vector<EntityData>& entity_datas);
 

@@ -62,13 +62,13 @@ void Tanim::Sample(entt::registry& registry,
     {
         if (!seq.IsRecording() && seq.IsBetweenFirstAndLastFrame(player_frame))
         {
-            const auto opt_comp = FindMatchingComponent(seq, entity_datas);
-            if (opt_comp.has_value())
+            const auto* opt_comp = FindMatchingComponent(seq, entity_datas);
+            if (opt_comp)
             {
                 const auto opt_entity = Timeline::FindEntity(cdata, seq);
                 if (opt_entity.has_value())
                 {
-                    opt_comp.value().get().m_sample(registry, opt_entity.value(), sample_time, seq);
+                    opt_comp->m_sample(registry, opt_entity.value(), sample_time, seq);
                 }
             }
         }
@@ -117,7 +117,7 @@ void Tanim::Pause(ComponentData& cdata) { Timeline::Pause(cdata); }
 
 void Tanim::Stop(ComponentData& cdata) { Timeline::Stop(cdata); }
 
-std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatchingComponent(
+const RegisteredComponent* Tanim::FindMatchingComponent(
     const Sequence& seq,
     const std::vector<EntityData>& entity_datas)
 {
@@ -128,16 +128,16 @@ std::optional<std::reference_wrapper<const RegisteredComponent>> Tanim::FindMatc
         {
             for (const auto& entity_data : entity_datas)
             {
-                if (seq.m_seq_id.m_entity_data.m_uid == entity_data.m_uid)
+                if (seq.m_seq_id.GetEntityData().m_uid == entity_data.m_uid)
                 {
-                    return std::ref(component);
+                    return &component;
                 }
             }
         }
     }
 
     LogError("Couldn't find any entity with matching details: " + seq.m_seq_id.FullName());
-    return std::nullopt;
+    return nullptr;
 }
 
 void Tanim::Draw()
@@ -433,10 +433,10 @@ void Tanim::Draw()
             seq.AddNewKeyframe(player_frame);
             seq.StartRecording(player_frame);
 
-            const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
-            if (opt_comp.has_value())
+            const auto* opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
+            if (opt_comp)
             {
-                opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, seq.m_recording_frame, seq);
+                opt_comp->m_record(*m_editor_registry, expanded_seq_entity, seq.m_recording_frame, seq);
             }
 
             seq.StopRecording();
@@ -472,10 +472,10 @@ void Tanim::Draw()
             }
             else
             {
-                const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
-                if (opt_comp.has_value())
+                const auto* opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
+                if (opt_comp)
                 {
-                    opt_comp.value().get().m_record(*m_editor_registry, expanded_seq_entity, seq.m_recording_frame, seq);
+                    opt_comp->m_record(*m_editor_registry, expanded_seq_entity, seq.m_recording_frame, seq);
                 }
             }
         }
@@ -511,16 +511,16 @@ void Tanim::Draw()
         ImGui::Text(
             "entity:          %s",
             expanded_seq_entity == entt::null ? "NOT FOUND" : std::to_string(entt::to_integral(expanded_seq_entity)).c_str());
-        ImGui::Text("uid:             %s", seq.m_seq_id.m_entity_data.m_uid.c_str());
+        ImGui::Text("uid:             %s", seq.m_seq_id.GetEntityData().m_uid.c_str());
 
         char uid_buf[256];
-        strncpy_s(uid_buf, seq.m_seq_id.m_entity_data.m_uid.c_str(), sizeof(uid_buf));
+        strncpy_s(uid_buf, seq.m_seq_id.GetEntityData().m_uid.c_str(), sizeof(uid_buf));
         if (ImGui::InputText("uid", uid_buf, sizeof(uid_buf)))
         {
-            seq.m_seq_id.m_entity_data.m_uid = std::string(uid_buf);
+            seq.m_seq_id.SetUid(std::string(uid_buf));
         }
 
-        ImGui::Text("display:         %s", seq.m_seq_id.m_entity_data.m_display.c_str());
+        ImGui::Text("display:         %s", seq.m_seq_id.GetEntityData().m_display.c_str());
         ImGui::Text("full name:       %s", seq.m_seq_id.FullName().c_str());
 
         for (int i = 0; i < seq.GetCurveCount(); ++i)
@@ -554,8 +554,8 @@ void Tanim::Draw()
         const bool is_recording = seq.IsRecording();
         if (!seq.IsRecording())
         {
-            const auto opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
-            if (opt_comp.has_value())
+            const auto* opt_comp = FindMatchingComponent(seq, m_editor_entity_datas);
+            if (opt_comp)
             {
                 if (is_recording)
                 {
@@ -563,8 +563,8 @@ void Tanim::Draw()
                     ImGui::BeginDisabled();
                 }
 
-                ImGui::Text("%s", opt_comp.value().get().m_struct_name.c_str());
-                opt_comp.value().get().m_inspect(*m_editor_registry,
+                ImGui::Text("%s", opt_comp->m_struct_name.c_str());
+                opt_comp->m_inspect(*m_editor_registry,
                                                  expanded_seq_entity,
                                                  Timeline::GetPlayerFrame(tdata, cdata),
                                                  seq);
@@ -633,10 +633,10 @@ std::string Tanim::Serialize(TimelineData& tdata)
         const Sequence& seq = tdata.m_sequences.at(seq_idx);
 
         nlohmann::ordered_json seq_id_js{};
-        seq_id_js["m_entity_data"]["m_uid"] = seq.m_seq_id.m_entity_data.m_uid;
-        seq_id_js["m_entity_data"]["m_display"] = seq.m_seq_id.m_entity_data.m_display;
-        seq_id_js["m_struct_name"] = seq.m_seq_id.m_struct_name;
-        seq_id_js["m_field_name"] = seq.m_seq_id.m_field_name;
+        seq_id_js["m_entity_data"]["m_uid"] = seq.m_seq_id.GetEntityData().m_uid;
+        seq_id_js["m_entity_data"]["m_display"] = seq.m_seq_id.GetEntityData().m_display;
+        seq_id_js["m_struct_name"] = seq.m_seq_id.StructName();
+        seq_id_js["m_field_name"] = seq.m_seq_id.FieldName();
         seq_js["m_seq_id"] = seq_id_js;
 
         seq_js["m_type_meta"] = std::string(magic_enum::enum_name(seq.m_type_meta));
@@ -726,10 +726,11 @@ void Tanim::Deserialize(TimelineData& data, const std::string& serialized_string
         Sequence& seq = data.m_sequences.emplace_back();
 
         const auto& seq_id_js = seq_js.at("m_seq_id");
-        seq.m_seq_id.m_entity_data.m_uid = seq_id_js.at("m_entity_data").at("m_uid").get<std::string>();
-        seq.m_seq_id.m_entity_data.m_display = seq_id_js.at("m_entity_data").at("m_display").get<std::string>();
-        seq.m_seq_id.m_struct_name = seq_id_js.at("m_struct_name").get<std::string>();
-        seq.m_seq_id.m_field_name = seq_id_js.at("m_field_name").get<std::string>();
+        auto uid = seq_id_js.at("m_entity_data").at("m_uid").get<std::string>();
+        auto display = seq_id_js.at("m_entity_data").at("m_display").get<std::string>();
+        auto struct_name = seq_id_js.at("m_struct_name").get<std::string>();
+        auto field_name = seq_id_js.at("m_field_name").get<std::string>();
+        seq.m_seq_id = SequenceId(EntityData{uid, display}, struct_name, field_name);
 
         const std::string type_meta_str = seq_js.at("m_type_meta").get<std::string>();
         seq.m_type_meta = magic_enum::enum_cast<Sequence::TypeMeta>(type_meta_str).value_or(Sequence::TypeMeta::NONE);
