@@ -425,7 +425,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
             }
             else
             {
-                // Draw Hermite curve with substeps
+                // Draw Bezier curve with substeps
                 constexpr int sub_steps = 32;
                 for (int step = 0; step < sub_steps; step++)
                 {
