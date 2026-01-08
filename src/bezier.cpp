@@ -1,4 +1,6 @@
 ﻿#include "tanim/include/bezier.hpp"
+
+#include "tanim/include/curve_functions.hpp"
 #include "tanim/include/helpers.hpp"
 
 #include <algorithm>
@@ -26,12 +28,46 @@ ImVec2 CubicBezier(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const I
             (u3 * p0.y) + (3.0f * u2 * t * p1.y) + (3.0f * u * t2 * p2.y) + t3 * p3.y};
 }
 
+float CubicBezierY(float p0y, float p1y, float p2y, float p3y, float t)
+{
+    // P(t) = (1-t)^3*P0 + 3(1-t)^2*tP1 + 3(1-t)t^2*P2 + t^3*P3
+    const float u = 1.0f - t;
+    const float u2 = u * u;
+    const float u3 = u2 * u;
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+
+    return (u3 * p0y) + (3.0f * u2 * t * p1y) + (3.0f * u * t2 * p2y) + t3 * p3y;
+}
+
+float CubicBezierX(float p0x, float p1x, float p2x, float p3x, float t)
+{
+    // P(t) = (1-t)^3*P0 + 3(1-t)^2*tP1 + 3(1-t)t^2*P2 + t^3*P3
+    const float u = 1.0f - t;
+    const float u2 = u * u;
+    const float u3 = u2 * u;
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+
+    return (u3 * p0x) + (3.0f * u2 * t * p1x) + (3.0f * u * t2 * p2x) + t3 * p3x;
+}
+
+float CubicBezierDxDt(float p0x, float p1x, float p2x, float p3x, float t)
+{
+    // B'(t) = 3(1-t)^2*(p1-p0) + 6(1-t)t(p2-p1) + 3t^2*(p3-p2)
+    const float u = 1.0f - t;
+    const float u2 = u * u;
+    const float t2 = t * t;
+
+    return 3.0f * u2 * (p1x - p0x) + 6.0f * u * t * (p2x - p1x) + 3.0f * t2 * (p3x - p2x);
+}
+
 // === Curve Sampling ===
 
 int FindSegmentIndex(const Curve& curve, float time)
 {
     const auto& keyframes = curve.m_keyframes;
-    int count = (int)keyframes.size();
+    const int count = GetKeyframeCount(curve);
 
     if (count == 0) return -1;
     if (time < keyframes.at(0).Time()) return -1;
@@ -48,25 +84,22 @@ int FindSegmentIndex(const Curve& curve, float time)
     return count - 2;  // Last segment
 }
 
-float FindTForX(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, float target_x)
+float FindTForX(float p0x, float p1x, float p2x, float p3x, float target_x)
 {
     // Initial guess using linear interpolation
-    float t = (target_x - p0.x) / (p3.x - p0.x);
+    float t = (target_x - p0x) / (p3x - p0x);
     t = std::clamp(t, 0.0f, 1.0f);
 
     // Newton-Raphson iterations
     for (int i = 0; i < 8; i++)
     {
-        ImVec2 pos = CubicBezier(p0, p1, p2, p3, t);
-        float error = pos.x - target_x;
-
+        const float current_x = CubicBezierX(p0x, p1x, p2x, p3x, t);
+        const float error = current_x - target_x;
         if (std::abs(error) < 1e-6f) break;
 
-        // Derivative of Bezier X with respect to t
-        float u = 1.0f - t;
-        float dx_dt = 3.0f * u * u * (p1.x - p0.x) + 6.0f * u * t * (p2.x - p1.x) + 3.0f * t * t * (p3.x - p2.x);
-
-        if (std::abs(dx_dt) < 1e-6f) break;
+        // B'(t)
+        const float dx_dt = CubicBezierDxDt(p0x, p1x, p2x, p3x, t);
+        if (std::abs(dx_dt) < 1e-6f) break;  // x barely changes as t changes. means the curve is almost vertical in (t,x) space
 
         t -= error / dx_dt;
         t = std::clamp(t, 0.0f, 1.0f);
@@ -114,9 +147,9 @@ float SampleCurveValue(const Curve& curve, float time)
     const ImVec2 p2 = k1.m_pos + k1.m_in.m_offset;
     const ImVec2 p3 = k1.m_pos;
 
-    const float t = FindTForX(p0, p1, p2, p3, time);
+    const float t = FindTForX(p0.x, p1.x, p2.x, p3.x, time);
 
-    return CubicBezier(p0, p1, p2, p3, t).y;
+    return CubicBezierY(p0.y, p1.y, p2.y, p3.y, t);
 }
 
 ImVec2 SampleCurveForDrawing(const Curve& curve, float t_param, const ImVec2& min, const ImVec2& max)

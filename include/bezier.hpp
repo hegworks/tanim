@@ -8,8 +8,17 @@ namespace tanim
 
 // === Hermite Spline Evaluation ===
 
-// Cubic Bezier evaluation: P(t) = (1-t)^3*P0 + 3(1-t)^2*tP1 + 3(1-t)t^2*P2 + t^3*P3
+// Cubic Bezier evaluation: B(t) = (1-t)^3*P0 + 3(1-t)^2*tP1 + 3(1-t)t^2*P2 + t^3*P3
 ImVec2 CubicBezier(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, float t);
+
+// Cubic Bezier evaluation: B(t), only for the X (time)
+float CubicBezierX(float p0x, float p1x, float p2x, float p3x, float t);
+
+// Cubic Bezier evaluation: B(t), only for the Y (value)
+float CubicBezierY(float p0y, float p1y, float p2y, float p3y, float t);
+
+// Derivative of Bezier X with respect to t
+float CubicBezierDxDt(float p0x, float p1x, float p2x, float p3x, float t);
 
 // === Curve Sampling (reads pre-computed m_dir and m_weight directly) ===
 
@@ -29,7 +38,7 @@ int FindSegmentIndex(const Curve& curve, float time);
 // Find parameter t for a given X value using Newton-Raphson iteration.
 // p0, p1, p2, p3: Bezier control points
 // target_x: the X value to find
-float FindTForX(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, float target_x);
+float FindTForX(float p0x, float p1x, float p2x, float p3x, float target_x);
 
 // === Handle Resolution (call after any keyframe/handle modification) ===
 
