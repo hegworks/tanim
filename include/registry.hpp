@@ -60,8 +60,8 @@ static void AddSequence(T& ecs_component, TimelineData& timeline_data, SequenceI
             {
                 Sequence& seq = Timeline::AddSequenceStatic(timeline_data);
                 seq.m_seq_id = seq_id;
-                const float last_frame = (float)Timeline::GetTimelineLastFrame(timeline_data);
-                seq.m_last_frame = last_frame;
+                seq.m_last_frame = Timeline::GetTimelineLastFrame(timeline_data);
+                const float last_frame = static_cast<float>(seq.m_last_frame);
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -238,8 +238,7 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, int>)
                 {
-                    field = SampleCurveValue(seq.m_curves.at(0), sample_time);
-                    field = static_cast<int>(std::floorf(field));
+                    field = static_cast<int>(std::floorf(SampleCurveValue(seq.m_curves.at(0), sample_time)));
                 }
                 else if constexpr (std::is_same_v<FieldType, bool>)
                 {
@@ -343,7 +342,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 const bool curve_1_disabled = !curve_1_optional_point_idx.has_value();
                 const bool curve_2_disabled = !curve_2_optional_point_idx.has_value();
                 const bool curve_3_disabled = !curve_3_optional_point_idx.has_value();
-                const bool curve_4_disabled = !curve_4_optional_point_idx.has_value();
+                // const bool curve_4_disabled = !curve_4_optional_point_idx.has_value();
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -823,10 +822,10 @@ static void Record(T& ecs_component, int recording_frame, Sequence& seq)
             {
                 const float recording_frame_f = static_cast<float>(recording_frame);
 
-                const auto& curve_0_optional_point_idx = seq.GetKeyframeIdx(0, recording_frame_f);
-                const auto& curve_1_optional_point_idx = seq.GetKeyframeIdx(1, recording_frame_f);
-                const auto& curve_2_optional_point_idx = seq.GetKeyframeIdx(2, recording_frame_f);
-                const auto& curve_3_optional_point_idx = seq.GetKeyframeIdx(3, recording_frame_f);
+                const auto& curve_0_optional_point_idx = seq.GetKeyframeIdx(0, recording_frame);
+                const auto& curve_1_optional_point_idx = seq.GetKeyframeIdx(1, recording_frame);
+                const auto& curve_2_optional_point_idx = seq.GetKeyframeIdx(2, recording_frame);
+                const auto& curve_3_optional_point_idx = seq.GetKeyframeIdx(3, recording_frame);
 
                 if constexpr (std::is_same_v<FieldType, float>)
                 {
@@ -907,7 +906,7 @@ public:
 
         visit_struct::context<VSContext>::for_each(
             T{},
-            [&](const char* field_name, auto&& field)
+            [&](const char* field_name, auto&& /*field*/)
             {
                 registered_component.m_field_names.emplace_back(field_name);
 
@@ -1003,3 +1002,15 @@ inline Registry& GetRegistry()
 }
 
 }  // namespace tanim
+
+#define TANIM_REFLECT(STRUCT_NAME, ...)                                                                      \
+    VISITABLE_STRUCT_IN_CONTEXT(tanim::VSContext, STRUCT_NAME, __VA_ARGS__);                                 \
+    namespace                                                                                                \
+    {                                                                                                        \
+    inline auto CONCAT(register_, __COUNTER__) = (tanim::GetRegistry().RegisterComponent<STRUCT_NAME>(), 0); \
+    }
+
+#define TANIM_REFLECT_NO_REGISTER(STRUCT_NAME, ...) VISITABLE_STRUCT_IN_CONTEXT(tanim::VSContext, STRUCT_NAME, __VA_ARGS__);
+
+#define CONCAT(a, b) CONCAT_IMPL(a, b)
+#define CONCAT_IMPL(a, b) a##b
