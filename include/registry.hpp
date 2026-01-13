@@ -258,29 +258,10 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
-                    switch (seq.m_representation_meta)
-                    {
-                        case RepresentationMeta::COLOR:
-                        {
-                            field.r = SampleCurveValue(seq.m_curves.at(0), sample_time);
-                            field.g = SampleCurveValue(seq.m_curves.at(1), sample_time);
-                            field.b = SampleCurveValue(seq.m_curves.at(2), sample_time);
-                            field.a = SampleCurveValue(seq.m_curves.at(3), sample_time);
-
-                            break;
-                        }
-                        case RepresentationMeta::QUAT:
-                        {
-                            const glm::quat q = sequencer::SampleQuatForAnimation(seq, sample_time);
-                            field = {q.w, q.x, q.y, q.z};
-
-                            break;
-                        }
-                        case RepresentationMeta::VECTOR:
-                        case RepresentationMeta::NONE:
-                        default:
-                            assert(0);  // unhandled RepresentaionMeta
-                    }
+                    field.r = SampleCurveValue(seq.m_curves.at(0), sample_time);
+                    field.g = SampleCurveValue(seq.m_curves.at(1), sample_time);
+                    field.b = SampleCurveValue(seq.m_curves.at(2), sample_time);
+                    field.a = SampleCurveValue(seq.m_curves.at(3), sample_time);
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
@@ -611,102 +592,35 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
-                    if (helpers::InspectEnum(seq.m_representation_meta, {RepresentationMeta::NONE, RepresentationMeta::VECTOR}))
+                    ImGui::BeginDisabled();
+                    helpers::InspectEnum(seq.m_representation_meta);
+                    ImGui::EndDisabled();
+
+                    Curve& curve = seq.m_curves.at(0);
+                    ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
+                    if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Curves' Handles' Type"))
                     {
-                        switch (seq.m_representation_meta)
-                        {
-                            case RepresentationMeta::COLOR:
-                                seq.m_curves.at(0).m_name = "R";
-                                seq.m_curves.at(1).m_name = "G";
-                                seq.m_curves.at(2).m_name = "B";
-                                seq.m_curves.at(3).m_name = "A";
-                                SyncAllHandleTypesInCurve(seq, CurveHandleType::LINEAR, 4);
-                                SyncAllHandleTypeLocksInCurve(seq, false, 4);
-
-                                break;
-                            case RepresentationMeta::QUAT:
-                                seq.m_curves.at(0).m_name = "W";
-                                seq.m_curves.at(1).m_name = "X";
-                                seq.m_curves.at(2).m_name = "Y";
-                                seq.m_curves.at(3).m_name = "Z";
-                                seq.m_curves.at(4).m_name = "Spins";
-
-                                SyncAllHandleTypesInCurve(seq, CurveHandleType::LINEAR, 4);
-                                SetCurveHandleType(seq.m_curves.at(4), CurveHandleType::CONSTANT);
-                                SyncAllHandleTypeLocksInCurve(seq, true, 5);
-                                break;
-                            case RepresentationMeta::VECTOR:
-                            case RepresentationMeta::NONE:
-                            default:
-                                assert(0);  // unhandled ReresentationMeta
-                        }
+                        SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 4);
                     }
 
-                    switch (seq.m_representation_meta)
+                    const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled || curve_3_disabled;
+
+                    if (disabled)
                     {
-                        case RepresentationMeta::QUAT:
-                        {
-                            {
-                                Curve& curve = seq.m_curves.at(0);
-                                ImGui::BeginDisabled();
-                                ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
-                                ImGui::EndDisabled();
-                                if (helpers::InspectEnum(curve.m_curve_handle_type,
-                                                         {CurveHandleType::UNCONSTRAINED, CurveHandleType::AUTO},
-                                                         "All Curves' Handles' Type"))
-                                {
-                                    SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 4);
-                                }
-                            }
+                        ImGui::BeginDisabled();
+                    }
 
-                            ImGui::BeginDisabled();
+                    if (ImGui::ColorEdit4(field_name, &field.r) && !disabled)
+                    {
+                        seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
+                        seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
+                        seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
+                        seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
+                    }
 
-                            ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
-                            ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
-                            ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
-                            ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
-
-                            ImGui::EndDisabled();
-
-                            break;
-                        }
-                        case RepresentationMeta::COLOR:
-                        {
-                            {
-                                Curve& curve = seq.m_curves.at(0);
-                                ImGui::Checkbox("Lock All Curves' Handles", &curve.m_handle_type_locked);
-                                if (helpers::InspectEnum(curve.m_curve_handle_type, {}, "All Curves' Handles' Type"))
-                                {
-                                    SyncAllHandleTypesInCurve(seq, curve.m_curve_handle_type, 4);
-                                }
-                            }
-
-                            const bool disabled = curve_0_disabled || curve_1_disabled || curve_2_disabled || curve_3_disabled;
-
-                            if (disabled)
-                            {
-                                ImGui::BeginDisabled();
-                            }
-
-                            if (ImGui::ColorEdit4(field_name, &field.r) && !disabled)
-                            {
-                                seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {player_frame_f, field.r});
-                                seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {player_frame_f, field.g});
-                                seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {player_frame_f, field.b});
-                                seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {player_frame_f, field.a});
-                            }
-
-                            if (disabled)
-                            {
-                                ImGui::EndDisabled();
-                            }
-
-                            break;
-                        }
-                        case RepresentationMeta::VECTOR:
-                        case RepresentationMeta::NONE:
-                        default:
-                            assert(0);  // unhandled ReresentationMeta
+                    if (disabled)
+                    {
+                        ImGui::EndDisabled();
                     }
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
@@ -852,25 +766,10 @@ static void Record(T& ecs_component, int recording_frame, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::vec4>)
                 {
-                    switch (seq.m_representation_meta)
-                    {
-                        case RepresentationMeta::COLOR:
-                            seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.r});
-                            seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.g});
-                            seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.b});
-                            seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.a});
-                            break;
-                        case RepresentationMeta::QUAT:
-                            seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.w});
-                            seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.x});
-                            seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.y});
-                            seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.z});
-                            break;
-                        case RepresentationMeta::VECTOR:
-                        case RepresentationMeta::NONE:
-                        default:
-                            assert(0);  // unhandled ReresentationMeta
-                    }
+                    seq.EditKeyframe(0, curve_0_optional_point_idx.value(), {recording_frame_f, field.r});
+                    seq.EditKeyframe(1, curve_1_optional_point_idx.value(), {recording_frame_f, field.g});
+                    seq.EditKeyframe(2, curve_2_optional_point_idx.value(), {recording_frame_f, field.b});
+                    seq.EditKeyframe(3, curve_3_optional_point_idx.value(), {recording_frame_f, field.a});
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
