@@ -117,9 +117,7 @@ void Tanim::Pause(ComponentData& cdata) { Timeline::Pause(cdata); }
 
 void Tanim::Stop(ComponentData& cdata) { Timeline::Stop(cdata); }
 
-const RegisteredComponent* Tanim::FindMatchingComponent(
-    const Sequence& seq,
-    const std::vector<EntityData>& entity_datas)
+const RegisteredComponent* Tanim::FindMatchingComponent(const Sequence& seq, const std::vector<EntityData>& entity_datas)
 {
     const auto& components = GetRegistry().GetComponents();
     for (auto& component : components)
@@ -157,7 +155,9 @@ void Tanim::Draw()
     ImGuiID dockspace_id = ImGui::GetID("TanimDockSpace");
     ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
 
-    if (!ImGui::DockBuilderGetNode(dockspace_id))
+    static bool initialized{false};
+
+    if (!initialized)
     {
         ImGui::DockBuilderRemoveNode(dockspace_id);
         ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
@@ -191,6 +191,8 @@ void Tanim::Draw()
         ImGui::DockBuilderDockWindow("expanded sequence", dock_right_bottom);
 
         ImGui::DockBuilderFinish(dockspace_id);
+
+        initialized = true;
     }
 
     ImGui::End();
@@ -564,10 +566,7 @@ void Tanim::Draw()
                 }
 
                 ImGui::Text("%s", opt_comp->m_struct_name.c_str());
-                opt_comp->m_inspect(*m_editor_registry,
-                                                 expanded_seq_entity,
-                                                 Timeline::GetPlayerFrame(tdata, cdata),
-                                                 seq);
+                opt_comp->m_inspect(*m_editor_registry, expanded_seq_entity, Timeline::GetPlayerFrame(tdata, cdata), seq);
                 ImGui::Separator();
 
                 if (is_recording)
