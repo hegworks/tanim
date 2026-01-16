@@ -6,10 +6,5 @@
 #include <entt/entt.hpp>                  // tested with version 3.15.0
 #include <magic_enum/magic_enum.hpp>      // tested with version 0.9.7
 #include <nlohmann/json.hpp>              // tested with version 3.12.0
-
-#define USE_GLM
-
-#ifdef USE_GLM
 #include "glm/glm.hpp"
 #include <glm/gtc/quaternion.hpp>
-#endif
