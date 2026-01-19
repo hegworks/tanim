@@ -1,69 +1,38 @@
 #pragma once
-#include "registry.hpp"
+#include "tanim/include/registry.hpp"
 #include "tanim/include/timeline.hpp"
 #include "tanim/include/entity_data.hpp"
 
 namespace tanim
 {
 
-class Tanim
-{
-public:
-    Tanim() = default;
+void Init();
 
-    static void Init();
-    static void Draw();
-    static void UpdateEditor(float dt);
-    static void OpenForEditing(entt::registry& registry,
-                               const std::vector<EntityData>& entity_datas,
-                               TimelineData& timeline_data,
-                               ComponentData& component_data);
-    static void CloseEditor();
-    static inline float m_snap_y_value = 0.1f;
+void Draw();
+void UpdateEditor(float dt);
+void OpenForEditing(entt::registry& registry,
+                    const std::vector<EntityData>& entity_datas,
+                    TimelineData& timeline_data,
+                    ComponentData& component_data);
+void CloseEditor();
 
-    static void StartTimeline(const TimelineData& timeline_data, ComponentData& component_data);
+void StartTimeline(const TimelineData& timeline_data, ComponentData& component_data);
+void UpdateTimeline(entt::registry& registry,
+                    const std::vector<EntityData>& entity_datas,
+                    TimelineData& timeline_data,
+                    ComponentData& component_data,
+                    float delta_time);
+void StopTimeline(ComponentData& component_data);
 
-    static void UpdateTimeline(entt::registry& registry,
-                               const std::vector<EntityData>& entity_datas,
-                               TimelineData& timeline_data,
-                               ComponentData& component_data,
-                               float delta_time);
+bool IsPlaying(const ComponentData& component_data);
+void Play(ComponentData& component_data);
+void Pause(ComponentData& component_data);
+void Stop(ComponentData& component_data);
 
-    static void StopTimeline(ComponentData& component_data);
+[[nodiscard]] std::string Serialize(TimelineData& tdata);
+void Deserialize(TimelineData& data, const std::string& serialized_string);
 
-    static bool IsPlaying(const ComponentData& component_data);
-    static void Play(ComponentData& component_data);
-    static void Pause(ComponentData& component_data);
-    static void Stop(ComponentData& component_data);
-
-    static const RegisteredComponent* FindMatchingComponent(
-        const Sequence& seq,
-        const std::vector<EntityData>& entity_datas);
-
-    [[nodiscard]] static std::string Serialize(TimelineData& tdata);
-    static void Deserialize(TimelineData& data, const std::string& serialized_string);
-
-    static void EnterPlayMode() { m_is_engine_in_play_mode = true; }
-    static void ExitPlayMode() { m_is_engine_in_play_mode = false; }
-
-    static void SetEditorTimelinePlayerFrame(int frame_num);
-
-private:
-    static inline TimelineData* m_editor_timeline_data{nullptr};
-    static inline ComponentData* m_editor_component_data{nullptr};
-    static inline std::vector<EntityData> m_editor_entity_datas{};
-    static inline entt::registry* m_editor_registry{nullptr};
-
-    static inline bool m_is_engine_in_play_mode{};
-    static inline bool m_preview{true};
-
-    static inline bool m_force_editor_timeline_frame{false};
-    static inline int m_forced_editor_timeline_frame{-1};
-
-    static void Sample(entt::registry& registry,
-                       const std::vector<EntityData>& entity_datas,
-                       TimelineData& tdata,
-                       ComponentData& cdata);
-};
+void EnterPlayMode();
+void ExitPlayMode();
 
 }  // namespace tanim

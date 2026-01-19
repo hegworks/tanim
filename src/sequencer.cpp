@@ -33,6 +33,7 @@
 #include "tanim/include/includes.hpp"
 #include "tanim/include/sequence.hpp"
 #include "tanim/include/tanim.hpp"
+#include "tanim/include/tanim_internal.hpp"
 
 #include <cstdint>
 #include <set>
@@ -904,7 +905,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
                     const EditPoint& point = *selection.begin();
                     const Curve& curve = seq.m_curves.at(point.m_curve_index);
                     const Keyframe& keyframe = curve.m_keyframes.at(point.m_keyframe_index);
-                    Tanim::SetEditorTimelinePlayerFrame(keyframe.Frame());
+                    internal::SetEditorTimelinePlayerFrame(keyframe.Frame());
                 }
 
                 ImGui::Separator();
