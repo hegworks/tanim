@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace tanim
+namespace tanim::internal
 {
 
 // === Curve Management ===
@@ -432,4 +432,4 @@ bool IsOutHandleEditable(const Curve& curve, int keyframe_index)
     return true;
 }
 
-}  // namespace tanim
+}  // namespace tanim::internal

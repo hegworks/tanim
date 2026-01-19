@@ -3,14 +3,14 @@
 
 #pragma once
 #include "tanim/include/timeliner.hpp"
-#include "tanim/include/timeline_data.hpp"
-#include "tanim/include/user_override.hpp"
 #include "tanim/include/sequencer.hpp"
+#include "tanim/include/user_data.hpp"
+#include "tanim/include/user_override.hpp"
+#include "tanim/include/sequence.hpp"
 
-namespace tanim
+namespace tanim::internal
 {
-
-class Timeline : public timeliner::TimelineInterface
+class Timeline : public TimelineInterface
 {
 public:
     //...................<<< Overrides >>>...................
@@ -21,13 +21,10 @@ public:
 
     static int GetSequenceCount(const TimelineData& data) { return static_cast<int>(data.m_sequences.size()); }
 
-    static const char* GetSequenceLabel(const TimelineData& data, int seq_idx)
+    static std::string GetSequenceLabel(const TimelineData& data, int seq_idx)
     {
-        const std::string name = data.m_sequences.at(seq_idx).m_seq_id.GetEntityData().m_display +
-                                 "::" + data.m_sequences.at(seq_idx).GetNameWithLessColumns();
-        static char tmps[512];
-        snprintf(tmps, 512, "%s", name.c_str());
-        return tmps;
+        const auto& seq = data.m_sequences.at(seq_idx);
+        return seq.m_seq_id.GetEntityData().m_display + "::" + seq.GetNameWithLessColumns();
     }
 
     static void AddSequence(TimelineData& data) { data.m_sequences.emplace_back(); }
@@ -88,7 +85,7 @@ public:
 
         ImGui::SetCursorScreenPos(rc.Min);
         const ImVec2 rcSize = ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y);
-        sequencer::Edit(data.m_sequences.at(seq_idx), rcSize, 137 + seq_idx, &clipping_rect);
+        Edit(data.m_sequences.at(seq_idx), rcSize, 137 + seq_idx, &clipping_rect);
     }
 
     static void CustomDrawCompact(TimelineData& data,
@@ -343,4 +340,4 @@ public:
     static Sequence& AddSequenceStatic(TimelineData& data) { return data.m_sequences.emplace_back(); }
 };
 
-}  // namespace tanim
+}  // namespace tanim::internal

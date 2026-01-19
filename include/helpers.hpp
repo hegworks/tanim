@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-namespace tanim
+namespace tanim::internal
 {
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 inline ImVec2 operator+(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x + b.x, a.y + b.y); }
@@ -17,7 +17,7 @@ inline ImVec2 operator/(const ImVec2& a, const ImVec2& b) { return ImVec2(a.x / 
 
 inline ImVec2 operator*(const ImVec2& a, const float b) { return ImVec2(a.x * b, a.y * b); }
 #endif
-}  // namespace tanim
+}  // namespace tanim::internal
 
 namespace tanim::helpers
 {

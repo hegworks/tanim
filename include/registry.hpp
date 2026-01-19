@@ -1,21 +1,16 @@
 #pragma once
 
-#include "sequencer.hpp"
 #include "tanim/include/timeline.hpp"
 #include "tanim/include/includes.hpp"
+#include "tanim/include/reflection_macro.hpp"
 #include "tanim/include/enums.hpp"
 
 #include <functional>
 #include <string>
 #include <vector>
 
-namespace tanim
+namespace tanim::internal
 {
-
-/// VisitStructContext
-struct VSContext
-{
-};
 
 struct RegisteredComponent
 {
@@ -265,7 +260,7 @@ static void Sample(T& ecs_component, float sample_time, Sequence& seq)
                 }
                 else if constexpr (std::is_same_v<FieldType, glm::quat>)
                 {
-                    field = sequencer::SampleQuatForAnimation(seq, sample_time);
+                    field = SampleQuatForAnimation(seq, sample_time);
                 }
                 else
                 {
@@ -708,7 +703,7 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                             spins = static_cast<float>(spins_int);
                             seq.EditKeyframe(4, curve_4_optional_point_idx.value(), {player_frame_f, spins});
 
-                            const glm::quat sampled = sequencer::SampleQuatForAnimation(seq, player_frame_f);
+                            const glm::quat sampled = SampleQuatForAnimation(seq, player_frame_f);
                             apply(sampled);
                         }
                     }
@@ -900,16 +895,4 @@ inline Registry& GetRegistry()
     return instance;
 }
 
-}  // namespace tanim
-
-#define TANIM_REFLECT(STRUCT_NAME, ...)                                                                      \
-    VISITABLE_STRUCT_IN_CONTEXT(tanim::VSContext, STRUCT_NAME, __VA_ARGS__);                                 \
-    namespace                                                                                                \
-    {                                                                                                        \
-    inline auto CONCAT(register_, __COUNTER__) = (tanim::GetRegistry().RegisterComponent<STRUCT_NAME>(), 0); \
-    }
-
-#define TANIM_REFLECT_NO_REGISTER(STRUCT_NAME, ...) VISITABLE_STRUCT_IN_CONTEXT(tanim::VSContext, STRUCT_NAME, __VA_ARGS__);
-
-#define CONCAT(a, b) CONCAT_IMPL(a, b)
-#define CONCAT_IMPL(a, b) a##b
+}  // namespace tanim::internal

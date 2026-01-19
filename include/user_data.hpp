@@ -1,8 +1,18 @@
 #pragma once
-#include "tanim/include/sequence.hpp"
+
+#include "enums.hpp"
+
+#include <string>
+#include <vector>
 
 namespace tanim
 {
+
+struct EntityData
+{
+    std::string m_uid{};      // unique identifier
+    std::string m_display{};  // optional
+};
 
 struct TimelineData
 {
@@ -11,10 +21,10 @@ struct TimelineData
     int m_min_frame{0};
     int m_max_frame{500};
     std::string m_name{"New Timeline"};
-    std::vector<Sequence> m_sequences{};
+    std::vector<internal::Sequence> m_sequences{};
     bool m_play_immediately{true};
     int m_player_samples{60};  // SamplesPerSecond
-    PlaybackType m_playback_type{PlaybackType::LOOP};
+    internal::PlaybackType m_playback_type{internal::PlaybackType::LOOP};
     bool m_focused{false};
     bool m_expanded{true};
     int m_selected_sequence{-1};
@@ -26,7 +36,7 @@ struct TimelineData
                  int min_frame,
                  int max_frame,
                  const std::string& name,
-                 const std::vector<tanim::Sequence>& sequences)
+                 const std::vector<internal::Sequence>& sequences)
         : m_first_frame(first_frame),
           m_last_frame(last_frame),
           m_min_frame(min_frame),

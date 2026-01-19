@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-namespace tanim
+namespace tanim::internal
 {
 
 enum class RepresentationMeta : uint8_t
@@ -19,4 +19,4 @@ enum class PlaybackType : uint8_t
     LOOP,
 };
 
-}  // namespace tanim
+}  // namespace tanim::internal

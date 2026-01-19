@@ -2,7 +2,7 @@
 
 #include "tanim/include/keyframe.hpp"
 
-namespace tanim
+namespace tanim::internal
 {
 
 // === Curve Management ===
@@ -90,4 +90,4 @@ bool IsInHandleEditable(const Curve& curve, int keyframe_index);
 // Check if out-handle is editable (not last keyframe)
 bool IsOutHandleEditable(const Curve& curve, int keyframe_index);
 
-}  // namespace tanim
+}  // namespace tanim::internal

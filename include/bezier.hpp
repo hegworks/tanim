@@ -3,7 +3,7 @@
 #include "tanim/include/keyframe.hpp"
 #include "tanim/include/includes.hpp"
 
-namespace tanim
+namespace tanim::internal
 {
 
 // === Hermite Spline Evaluation ===
@@ -74,4 +74,4 @@ void ValidateHandleDir(Handle& handle, bool is_in_handle);
 // Get length of vector.
 float Vec2Length(const ImVec2& v);
 
-}  // namespace tanim
+}  // namespace tanim::internal

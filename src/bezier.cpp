@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace tanim
+namespace tanim::internal
 {
 
 // === Vector Utilities ===
@@ -515,4 +515,4 @@ void ValidateHandleDir(Handle& handle, bool is_in_handle)
     }
 }
 
-}  // namespace tanim
+}  // namespace tanim::internal

@@ -83,7 +83,7 @@ namespace tanim
 
 using namespace tanim::internal;
 
-void Init() { g_impl = std::make_unique<internal::Impl>(); }
+void Init() { g_impl = std::make_unique<Impl>(); }
 
 void EnterPlayMode() { g_impl->m_is_engine_in_play_mode = true; }
 
@@ -109,13 +109,13 @@ void UpdateEditor(float dt)
 
 void OpenForEditing(entt::registry& registry,
                     const std::vector<EntityData>& entity_datas,
-                    TimelineData& timeline_data,
-                    ComponentData& component_data)
+                    TimelineData& tdata,
+                    ComponentData& cdata)
 {
-    g_impl->m_editor_timeline_data = &timeline_data;
+    g_impl->m_editor_timeline_data = &tdata;
     g_impl->m_editor_registry = &registry;
     g_impl->m_editor_entity_datas = entity_datas;
-    g_impl->m_editor_component_data = &component_data;
+    g_impl->m_editor_component_data = &cdata;
 }
 
 void CloseEditor()
@@ -323,13 +323,12 @@ void Draw()
     {
         ImGui::Begin("timeliner", nullptr, ImGuiWindowFlags_NoMove);
 
-        constexpr int flags =
-            timeliner::TIMELINER_CHANGE_FRAME | timeliner::TIMELINER_DELETE_SEQUENCE | timeliner::TIMELINER_EDIT_STARTEND;
+        constexpr int flags = TIMELINER_CHANGE_FRAME | TIMELINER_DELETE_SEQUENCE | TIMELINER_EDIT_STARTEND;
 
         int player_frame = Timeline::GetPlayerFrame(tdata, cdata);
         const int player_frame_before = player_frame;
 
-        timeliner::Timeliner(tdata, &player_frame, &tdata.m_expanded, &tdata.m_selected_sequence, &tdata.m_first_frame, flags);
+        Timeliner(tdata, &player_frame, &tdata.m_expanded, &tdata.m_selected_sequence, &tdata.m_first_frame, flags);
         int player_frame_after;
         if (g_impl->m_force_editor_timeline_frame)
         {

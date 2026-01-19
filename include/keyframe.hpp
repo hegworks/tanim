@@ -7,7 +7,7 @@
 
 #pragma once
 
-namespace tanim
+namespace tanim::internal
 {
 
 enum class HandleType : uint8_t
@@ -92,4 +92,4 @@ struct Curve
     std::string m_name{"new_curve"};
 };
 
-}  // namespace tanim
+}  // namespace tanim::internal

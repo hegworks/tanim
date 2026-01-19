@@ -36,7 +36,7 @@ struct TimelineData;
 struct ImDrawList;
 struct ImRect;
 
-namespace tanim::timeliner
+namespace tanim::internal
 {
 
 enum TimelineEditorFlags
@@ -64,4 +64,4 @@ bool Timeliner(TimelineData& timeline_data,
                int* first_frame,
                int timeliner_flags);
 
-}  // namespace tanim::timeliner
+}  // namespace tanim::internal

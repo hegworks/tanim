@@ -1,7 +1,6 @@
 #pragma once
 #include "tanim/include/registry.hpp"
-#include "tanim/include/timeline.hpp"
-#include "tanim/include/entity_data.hpp"
+#include "tanim/include/user_data.hpp"
 
 namespace tanim
 {
@@ -12,27 +11,33 @@ void Draw();
 void UpdateEditor(float dt);
 void OpenForEditing(entt::registry& registry,
                     const std::vector<EntityData>& entity_datas,
-                    TimelineData& timeline_data,
-                    ComponentData& component_data);
+                    TimelineData& tdata,
+                    ComponentData& cdata);
 void CloseEditor();
 
-void StartTimeline(const TimelineData& timeline_data, ComponentData& component_data);
+void StartTimeline(const TimelineData& tdata, ComponentData& cdata);
 void UpdateTimeline(entt::registry& registry,
                     const std::vector<EntityData>& entity_datas,
-                    TimelineData& timeline_data,
-                    ComponentData& component_data,
+                    TimelineData& tdata,
+                    ComponentData& cdata,
                     float delta_time);
-void StopTimeline(ComponentData& component_data);
+void StopTimeline(ComponentData& cdata);
 
-bool IsPlaying(const ComponentData& component_data);
-void Play(ComponentData& component_data);
-void Pause(ComponentData& component_data);
-void Stop(ComponentData& component_data);
+bool IsPlaying(const ComponentData& cdata);
+void Play(ComponentData& cdata);
+void Pause(ComponentData& cdata);
+void Stop(ComponentData& cdata);
 
 [[nodiscard]] std::string Serialize(TimelineData& tdata);
 void Deserialize(TimelineData& data, const std::string& serialized_string);
 
 void EnterPlayMode();
 void ExitPlayMode();
+
+template <typename T>
+void RegisterComponent()
+{
+    internal::GetRegistry().RegisterComponent<T>();
+}
 
 }  // namespace tanim

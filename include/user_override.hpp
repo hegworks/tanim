@@ -1,6 +1,4 @@
-#pragma once
-
-#include "tanim/include/includes.hpp"
+﻿#pragma once
 
 namespace tanim
 {

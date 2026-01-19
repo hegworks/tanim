@@ -34,6 +34,7 @@
 #include "tanim/include/sequence.hpp"
 #include "tanim/include/tanim.hpp"
 #include "tanim/include/tanim_internal.hpp"
+#include "tanim/include/helpers.hpp"
 
 #include <cstdint>
 #include <set>
@@ -47,7 +48,7 @@
 #define _freea(x)
 #endif
 
-namespace tanim::sequencer
+namespace tanim::internal
 {
 
 static float Distance(float x, float y, float x1, float y1, float x2, float y2)
@@ -1261,4 +1262,4 @@ glm::quat SampleQuatForAnimation(Sequence& seq, float time)
     return glm::slerp(q_a, q_b, segment_t, spins);
 }
 
-}  // namespace tanim::sequencer
+}  // namespace tanim::internal

@@ -29,10 +29,12 @@
 #include "tanim/include/timeliner.hpp"
 #include "tanim/include/includes.hpp"
 #include "tanim/include/timeline.hpp"
+#include "tanim/include/helpers.hpp"
+#include "tanim/include/tanim.hpp"
 
 #include <cstdlib>
 
-namespace tanim::timeliner
+namespace tanim::internal
 {
 
 static bool TimelinerAddDelButton(ImDrawList* draw_list, ImVec2 pos, bool add = true)
@@ -292,7 +294,7 @@ bool Timeliner(TimelineData& data,
         for (int i = 0; i < sequence_count; i++)
         {
             ImVec2 tpos(content_min.x + 3, content_min.y + i * item_height + 2 + custom_height);
-            draw_list->AddText(tpos, 0xFFFFFFFF, Timeline::GetSequenceLabel(data, i));
+            draw_list->AddText(tpos, 0xFFFFFFFF, Timeline::GetSequenceLabel(data, i).c_str());
 
             if (timeliner_flags & TIMELINER_DELETE_SEQUENCE)
             {
@@ -788,4 +790,4 @@ bool Timeliner(TimelineData& data,
     return ret;
 }
 
-}  // namespace tanim::timeliner
+}  // namespace tanim::internal

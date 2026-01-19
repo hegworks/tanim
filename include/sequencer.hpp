@@ -32,13 +32,9 @@
 
 struct ImRect;
 
-namespace tanim
+namespace tanim::internal
 {
 struct Sequence;
-}
-
-namespace tanim::sequencer
-{
 
 enum class DrawingSelectionState : uint8_t
 {
@@ -69,4 +65,4 @@ int Edit(Sequence& seq,
 
 glm::quat SampleQuatForAnimation(Sequence& seq, float time);
 
-}  // namespace tanim::sequencer
+}  // namespace tanim::internal
