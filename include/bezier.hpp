@@ -6,7 +6,7 @@
 namespace tanim::internal
 {
 
-// === Hermite Spline Evaluation ===
+// === Curve Evaluation ===
 
 // Cubic Bezier evaluation: B(t) = (1-t)^3*P0 + 3(1-t)^2*tP1 + 3(1-t)t^2*P2 + t^3*P3
 ImVec2 CubicBezier(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, float t);
@@ -20,7 +20,7 @@ float CubicBezierY(float p0y, float p1y, float p2y, float p3y, float t);
 // Derivative of Bezier X with respect to t
 float CubicBezierDxDt(float p0x, float p1x, float p2x, float p3x, float t);
 
-// === Curve Sampling (reads pre-computed m_dir and m_weight directly) ===
+// === Curve Sampling ===
 
 // Sample curve for animation playback (returns Y value at given time/frame)
 // Handles CONSTANT segments appropriately
@@ -40,10 +40,9 @@ int FindSegmentIndex(const Curve& curve, float time);
 // target_x: the X value to find
 float FindTForX(float p0x, float p1x, float p2x, float p3x, float target_x);
 
-// === Handle Resolution (call after any keyframe/handle modification) ===
+// === Handle Resolution (called after any keyframe/handle modification) ===
 
 // Resolve all handle m_dir and m_weight values in the curve.
-// Call this after any modification to keyframes or handle settings.
 void ResolveCurveHandles(Curve& curve);
 
 // Resolve handles for a single keyframe.
