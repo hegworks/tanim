@@ -2,7 +2,6 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
-#include "tanim/include/user_data.hpp"
 #include "tanim/include/enums.hpp"
 #include "tanim/include/keyframe.hpp"
 #include "tanim/include/curve_functions.hpp"
