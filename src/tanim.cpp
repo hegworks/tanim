@@ -68,9 +68,9 @@ void Sample(entt::registry& registry, const std::vector<EntityData>& entity_data
             if (opt_comp)
             {
                 const auto opt_entity = Timeline::FindEntity(cdata, seq);
-                if (opt_entity.has_value())
+                if (opt_entity != entt::null)
                 {
-                    opt_comp->m_sample(registry, opt_entity.value(), sample_time, seq);
+                    opt_comp->m_sample(registry, opt_entity, sample_time, seq);
                 }
             }
         }
@@ -374,8 +374,7 @@ void Draw()
         {
             for (const auto& component : components)
             {
-                if (component.m_entity_has(*g_impl->m_editor_registry,
-                                           Timeline::FindEntity(cdata, entity_data.m_uid).value_or(entt::null)))
+                if (component.m_entity_has(*g_impl->m_editor_registry, Timeline::FindEntity(cdata, entity_data.m_uid)))
                 {
                     for (const auto& field_name : component.m_field_names)
                     {
@@ -431,7 +430,7 @@ void Draw()
         has_expanded_seq = true;
         expanded_seq_idx = idx.value();
         auto opt_entity = Timeline::FindEntity(tdata, cdata, expanded_seq_idx);
-        expanded_seq_entity = opt_entity.value_or(entt::null);
+        expanded_seq_entity = opt_entity;
     }
 
     if (has_expanded_seq)

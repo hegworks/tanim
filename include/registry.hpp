@@ -816,9 +816,9 @@ public:
                                                  SequenceId& seq_id)
         {
             const auto opt_entity = Timeline::FindEntity(component_data, seq_id.GetEntityData().m_uid);
-            if (opt_entity.has_value())
+            if (opt_entity != entt::null)
             {
-                reflection::AddSequence(entt_registry.get<T>(opt_entity.value()), timeline_data, seq_id);
+                reflection::AddSequence(entt_registry.get<T>(opt_entity), timeline_data, seq_id);
             }
         };
 

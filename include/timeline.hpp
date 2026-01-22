@@ -10,6 +10,8 @@
 
 namespace tanim::internal
 {
+
+// TODO(tanim) delete TimelineInterface
 class Timeline : public TimelineInterface
 {
 public:
@@ -251,25 +253,22 @@ public:
         ResetPlayerTime(cdata);
     }
 
-    [[nodiscard]] static std::optional<entt::entity> FindEntity(const ComponentData& cdata, const std::string& uid)
+    [[nodiscard]] static entt::entity FindEntity(const ComponentData& cdata, const std::string& uid)
     {
         const auto opt_entity = FindEntityOfUID(cdata, uid);
-        if (!opt_entity.has_value())
+        if (opt_entity == entt::null)
         {
-            LogError("Couldn't find any entity with uid " + uid + " on the root entity " +
-                     std::to_string(entt::to_integral(cdata.m_root_entity)));
+            LogError("FindEntityOfUID with the uid of " + uid + "returned entt::null");
         }
         return opt_entity;
     }
 
-    [[nodiscard]] static std::optional<entt::entity> FindEntity(const ComponentData& cdata, const Sequence& seq)
+    [[nodiscard]] static entt::entity FindEntity(const ComponentData& cdata, const Sequence& seq)
     {
         return FindEntity(cdata, seq.m_seq_id.GetEntityData().m_uid);
     }
 
-    [[nodiscard]] static std::optional<entt::entity> FindEntity(const TimelineData& tdata,
-                                                                const ComponentData& cdata,
-                                                                int seq_idx)
+    [[nodiscard]] static entt::entity FindEntity(const TimelineData& tdata, const ComponentData& cdata, int seq_idx)
     {
         return FindEntity(cdata, tdata.m_sequences.at(seq_idx));
     }

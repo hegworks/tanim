@@ -1,12 +1,18 @@
 #pragma once
 
 #include "enums.hpp"
+// #include "tanim/include/timeline.hpp"
 
 #include <string>
 #include <vector>
 
 namespace tanim
 {
+
+namespace internal
+{
+class Timeline;
+}
 
 struct EntityData
 {
@@ -28,31 +34,16 @@ struct TimelineData
     bool m_focused{false};
     bool m_expanded{true};
     int m_selected_sequence{-1};
-
-    TimelineData() : m_sequences({}) {}
-
-    TimelineData(int first_frame,
-                 int last_frame,
-                 int min_frame,
-                 int max_frame,
-                 const std::string& name,
-                 const std::vector<internal::Sequence>& sequences)
-        : m_first_frame(first_frame),
-          m_last_frame(last_frame),
-          m_min_frame(min_frame),
-          m_max_frame(max_frame),
-          m_name(name),
-          m_sequences(sequences)
-    {
-    }
 };
 
 struct ComponentData
 {
-    entt::entity m_root_entity{entt::null};
+    std::any m_user_data{};
+
+private:
+    friend class internal::Timeline;
     float m_player_time{0};
     bool m_player_playing{false};
-    std::any m_user_data{};
 };
 
 }  // namespace tanim
