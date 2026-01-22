@@ -2,11 +2,11 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
-#include "tanim/include/enums.hpp"
-#include "tanim/include/keyframe.hpp"
-#include "tanim/include/curve_functions.hpp"
-#include "tanim/include/bezier.hpp"
-#include "tanim/include/sequence_id.hpp"
+#include "tanim/enums.hpp"
+#include "tanim/keyframe.hpp"
+#include "tanim/curve_functions.hpp"
+#include "tanim/bezier.hpp"
+#include "tanim/sequence_id.hpp"
 
 #include <algorithm>
 #include <cmath>

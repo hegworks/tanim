@@ -1,9 +1,9 @@
 #pragma once
 
-#include "tanim/include/timeline.hpp"
-#include "tanim/include/includes.hpp"
-#include "tanim/include/reflection_macro.hpp"
-#include "tanim/include/enums.hpp"
+#include "tanim/timeline.hpp"
+#include "tanim/includes.hpp"
+#include "tanim/reflection_macro.hpp"
+#include "tanim/enums.hpp"
 
 #include <functional>
 #include <string>

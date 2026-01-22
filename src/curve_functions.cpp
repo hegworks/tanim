@@ -1,5 +1,5 @@
-﻿#include "tanim/include/curve_functions.hpp"
-#include "tanim/include/bezier.hpp"
+﻿#include "tanim/curve_functions.hpp"
+#include "tanim/bezier.hpp"
 
 #include <algorithm>
 #include <cmath>

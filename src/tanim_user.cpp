@@ -1,12 +1,12 @@
 // REF: originally based on the imguizmo's example main.cpp:
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
-#include "tanim/include/tanim.hpp"
+#include "tanim/tanim_user.hpp"
 
-#include "tanim/include/registry.hpp"
-#include "tanim/include/timeliner.hpp"
-#include "tanim/include/sequence.hpp"
-#include "tanim/include/user_override.hpp"
+#include "tanim/registry.hpp"
+#include "tanim/timeliner.hpp"
+#include "tanim/sequence.hpp"
+#include "tanim/user_override.hpp"
 
 namespace tanim::internal
 {

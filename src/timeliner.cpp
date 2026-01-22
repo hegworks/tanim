@@ -26,11 +26,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "tanim/include/timeliner.hpp"
-#include "tanim/include/includes.hpp"
-#include "tanim/include/timeline.hpp"
-#include "tanim/include/helpers.hpp"
-#include "tanim/include/tanim.hpp"
+#include "tanim/timeliner.hpp"
+#include "tanim/includes.hpp"
+#include "tanim/timeline.hpp"
+#include "tanim/helpers.hpp"
+#include "tanim/tanim_user.hpp"
 
 #include <cstdlib>
 

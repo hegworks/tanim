@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include "tanim/include/helpers.hpp"
-#include "tanim/include/includes.hpp"
-#include "tanim/include/user_data.hpp"
+#include "tanim/helpers.hpp"
+#include "tanim/includes.hpp"
+#include "tanim/user_data.hpp"
 
 namespace tanim::internal
 {

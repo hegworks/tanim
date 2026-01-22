@@ -1,7 +1,7 @@
-﻿#include "tanim/include/bezier.hpp"
+﻿#include "tanim/bezier.hpp"
 
-#include "tanim/include/curve_functions.hpp"
-#include "tanim/include/helpers.hpp"
+#include "tanim/curve_functions.hpp"
+#include "tanim/helpers.hpp"
 
 #include <algorithm>
 #include <cmath>

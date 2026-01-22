@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "tanim/include/keyframe.hpp"
-#include "tanim/include/includes.hpp"
+#include "tanim/keyframe.hpp"
+#include "tanim/includes.hpp"
 
 namespace tanim::internal
 {

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "tanim/include/includes.hpp"
+#include "tanim/includes.hpp"
 
 #include <string>
 #include <vector>

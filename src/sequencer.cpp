@@ -26,15 +26,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "tanim/include/sequencer.hpp"
+#include "tanim/sequencer.hpp"
 
-#include "tanim/include/curve_functions.hpp"
-#include "tanim/include/bezier.hpp"
-#include "tanim/include/includes.hpp"
-#include "tanim/include/sequence.hpp"
-#include "tanim/include/tanim.hpp"
-#include "tanim/include/tanim_internal.hpp"
-#include "tanim/include/helpers.hpp"
+#include "tanim/curve_functions.hpp"
+#include "tanim/bezier.hpp"
+#include "tanim/includes.hpp"
+#include "tanim/sequence.hpp"
+#include "tanim/tanim_internal.hpp"
+#include "tanim/helpers.hpp"
 
 #include <cstdint>
 #include <set>

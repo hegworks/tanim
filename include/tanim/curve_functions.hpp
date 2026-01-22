@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "tanim/include/keyframe.hpp"
+#include "tanim/keyframe.hpp"
 
 namespace tanim::internal
 {

@@ -1,6 +1,6 @@
 #pragma once
-#include "tanim/include/registry.hpp"
-#include "tanim/include/user_data.hpp"
+#include "tanim/registry.hpp"
+#include "tanim/user_data.hpp"
 
 namespace tanim
 {
