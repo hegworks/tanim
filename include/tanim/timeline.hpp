@@ -2,10 +2,14 @@
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
 #pragma once
+
 #include "tanim/sequencer.hpp"
 #include "tanim/user_data.hpp"
 #include "tanim/user_override.hpp"
 #include "tanim/sequence.hpp"
+
+#include <imgui/imgui_internal.h>
+#include <entt/entt.hpp>
 
 namespace tanim::internal
 {

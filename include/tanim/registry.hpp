@@ -1,9 +1,13 @@
 #pragma once
 
 #include "tanim/timeline.hpp"
-#include "tanim/includes.hpp"
 #include "tanim/reflection_macro.hpp"
 #include "tanim/enums.hpp"
+
+#include <entt/entt.hpp>
+#include <visit_struct/visit_struct.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <functional>
 #include <string>

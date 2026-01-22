@@ -30,10 +30,12 @@
 
 #include "tanim/curve_functions.hpp"
 #include "tanim/bezier.hpp"
-#include "tanim/includes.hpp"
 #include "tanim/sequence.hpp"
 #include "tanim/tanim_internal.hpp"
 #include "tanim/helpers.hpp"
+
+#include <imgui/imgui_internal.h>
+#include <glm/gtc/quaternion.hpp>
 
 #include <cstdint>
 #include <set>

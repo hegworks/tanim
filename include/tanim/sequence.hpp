@@ -211,7 +211,7 @@ struct Sequence
         // RepresentationMeta constraints
         if (m_representation_meta == RepresentationMeta::COLOR)
         {
-            new_pos.y = ImClamp(new_pos.y, 0.0f, 1.0f);
+            new_pos.y = std::clamp(new_pos.y, 0.0f, 1.0f);
         }
 
         // Clamp first keyframe to first frame

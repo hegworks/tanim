@@ -28,7 +28,10 @@
 
 #pragma once
 
-#include "tanim/includes.hpp"
+#include <glm/fwd.hpp>
+#include <imgui/imgui.h>
+
+#include <cstdint>
 
 struct ImRect;
 

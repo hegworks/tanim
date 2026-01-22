@@ -2,6 +2,8 @@
 
 #include "tanim/keyframe.hpp"
 
+#include <imgui/imgui.h>
+
 namespace tanim::internal
 {
 

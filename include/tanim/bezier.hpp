@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include "tanim/keyframe.hpp"
-#include "tanim/includes.hpp"
+
+#include <imgui/imgui.h>
 
 namespace tanim::internal
 {

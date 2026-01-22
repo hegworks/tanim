@@ -8,6 +8,8 @@
 #include "tanim/sequence.hpp"
 #include "tanim/user_override.hpp"
 
+#include <nlohmann/json.hpp>
+
 namespace tanim::internal
 {
 struct Impl

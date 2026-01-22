@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <entt/fwd.hpp>
+
 namespace tanim
 {
 

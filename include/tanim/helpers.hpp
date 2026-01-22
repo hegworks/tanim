@@ -1,8 +1,10 @@
 #pragma once
 
-#include "tanim/includes.hpp"
+#include <imgui/imgui.h>
+#include <magic_enum/magic_enum.hpp>
 
 #include <cassert>
+#include <cmath>
 
 namespace tanim::internal
 {

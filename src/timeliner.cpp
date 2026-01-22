@@ -27,12 +27,9 @@
 // SOFTWARE.
 
 #include "tanim/timeliner.hpp"
-#include "tanim/includes.hpp"
 #include "tanim/timeline.hpp"
 #include "tanim/helpers.hpp"
 #include "tanim/tanim_user.hpp"
-
-#include <cstdlib>
 
 namespace tanim::internal
 {
