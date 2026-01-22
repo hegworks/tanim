@@ -11,8 +11,7 @@
 namespace tanim::internal
 {
 
-// TODO(tanim) delete TimelineInterface
-class Timeline : public TimelineInterface
+class Timeline
 {
 public:
     //...................<<< Overrides >>>...................

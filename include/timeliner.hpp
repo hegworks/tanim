@@ -51,12 +51,7 @@ enum TimelineEditorFlags
                     TIMELINER_COPYPASTE,
 };
 
-struct TimelineInterface
-{
-    virtual ~TimelineInterface() = default;
-};
-
-// return true if selection is made
+// return true if a selection is made
 bool Timeliner(TimelineData& timeline_data,
                int* current_frame,
                bool* expanded,
