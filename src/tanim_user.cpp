@@ -719,7 +719,7 @@ std::string Serialize(TimelineData& tdata)
     return json.dump(2);
 }
 
-void Deserialize(TimelineData& data, const std::string& serialized_string)
+void Deserialize(TimelineData& tdata, const std::string& serialized_string)
 {
     assert(!serialized_string.empty());
     const nlohmann::ordered_json json = nlohmann::ordered_json::parse(serialized_string);
@@ -733,21 +733,21 @@ void Deserialize(TimelineData& data, const std::string& serialized_string)
     }
 
     const auto& timeline_js = json.at("timeline_data");
-    data.m_name = timeline_js.at("m_name").get<std::string>();
-    data.m_first_frame = timeline_js.at("m_first_frame").get<int>();
-    data.m_last_frame = timeline_js.at("m_last_frame").get<int>();
-    data.m_min_frame = timeline_js.at("m_min_frame").get<int>();
-    data.m_max_frame = timeline_js.at("m_max_frame").get<int>();
-    data.m_play_immediately = timeline_js.at("m_play_immediately").get<bool>();
-    data.m_player_samples = timeline_js.at("m_player_samples").get<int>();
+    tdata.m_name = timeline_js.at("m_name").get<std::string>();
+    tdata.m_first_frame = timeline_js.at("m_first_frame").get<int>();
+    tdata.m_last_frame = timeline_js.at("m_last_frame").get<int>();
+    tdata.m_min_frame = timeline_js.at("m_min_frame").get<int>();
+    tdata.m_max_frame = timeline_js.at("m_max_frame").get<int>();
+    tdata.m_play_immediately = timeline_js.at("m_play_immediately").get<bool>();
+    tdata.m_player_samples = timeline_js.at("m_player_samples").get<int>();
 
     const std::string playback_type_str = timeline_js.at("m_playback_type").get<std::string>();
-    data.m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
+    tdata.m_playback_type = magic_enum::enum_cast<PlaybackType>(playback_type_str).value_or(PlaybackType::HOLD);
 
-    data.m_sequences.clear();
+    tdata.m_sequences.clear();
     for (const auto& seq_js : timeline_js.at("m_sequences"))
     {
-        Sequence& seq = data.m_sequences.emplace_back();
+        Sequence& seq = tdata.m_sequences.emplace_back();
 
         const auto& seq_id_js = seq_js.at("m_seq_id");
         auto uid = seq_id_js.at("m_entity_data").at("m_uid").get<std::string>();
@@ -809,6 +809,6 @@ void Deserialize(TimelineData& data, const std::string& serialized_string)
         }
     }
 
-    Timeline::RefreshTimelineLastFrame(data);
+    Timeline::RefreshTimelineLastFrame(tdata);
 }
 }  // namespace tanim
