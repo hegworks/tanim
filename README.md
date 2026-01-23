@@ -1,35 +1,42 @@
-# tanim
-
-Timeline Animation Library based on ImGui & ImGuizmo's ImSequencer.
-
 > [!WARNING]  
 > This project is a WIP and is being developed during my study as a 2nd year Engine & Tools student @ Breda University of Applied Sciences.
 
-# How to setup
+# Brief
 
-## Dependencies
+Tanim is a **T**imeline **Anim**ation Library based on ImGui & Entt.
 
-|   Library   |           Version           |                                 Link                                  |
-| :---------: | :-------------------------: | :-------------------------------------------------------------------: |
-| Dear ImGui  | Tested with version: 1.92.3 | [LINK](https://github.com/ocornut/imgui/releases/tag/v1.92.3-docking) |
-| VisitStruct |   Minimum version: 1.2.0    |  [LINK](https://github.com/cbeck88/visit_struct/releases/tag/1.2.0)   |
-|    ENTT     | Tested with version: 3.15.0 |     [LINK](https://github.com/skypjack/entt/releases/tag/v3.15.0)     |
+TODO explain more.
 
-## Adding the library
+# Prerequisites
 
-1. download a snapshot.
-2. move the "tanim" folder to where your external libraries are. don't move the files inside the "tanim" folder around.
-3. include all the files inside "tanim/src" in your project.
-4. open "tanim/include/incluldes.hpp" and change the address of includes based on your project setup.
+Minimum C++ 17.
 
-## Using the library
+Tanim is made for projects that are using ImGui for editor GUI, and ENTT for their ECS. So your project must already be using:
 
-- in one of your .cpp files, include tanim like this: `#include <tanim/include/tanim.hpp>`
-- call `tanim::Tanim::Init();` once, before other tanim calls; e.g. in your initialization phase.
-- call `tanim::Tanim::Draw();` where you call your own imgui draw functions (every frame).
-- call `tanim::Tanim::Update(m_raw_delta_time);` in your systems update phase (every frame).
-- TODO...
+|  Library   |      Version       |                  GitHub                  |
+| :--------: | :----------------: | :--------------------------------------: |
+|    ENTT    | tested with 3.15.0 | [LINK](https://github.com/skypjack/entt) |
+| Dear ImGui | tested with 1.92.3 | [LINK](https://github.com/ocornut/imgui) |
 
-### Component
+Tanim also depends on the libraries below, but just internally; You must add the ones you don't have to your project. Either put them where your other external libraries are, or just add everything inside [the external folder](https://github.com/hegworks/tanim/tree/main/external), individually to your include paths:
 
-- TODO explain inspection
+|    Library    |       Version       |                     GitHub                      |
+| :-----------: | :-----------------: | :---------------------------------------------: |
+|      glm      | tested with 0.9.9.9 |      [LINK](https://github.com/g-truc/glm)      |
+| visit_struct  |  **minimum** 1.2.0  | [LINK](https://github.com/cbeck88/visit_struct) |
+|  magic_enum   |  tested with 0.9.7  |  [LINK](https://github.com/Neargye/magic_enum)  |
+| nlohmann/json | tested with 3.12.0  |    [LINK](https://github.com/nlohmann/json)     |
+
+In the end, as an **example** for each library, these includes must be accessible in the code like this:
+
+```
+#include <entt/entt.hpp>
+#include <imgui/imgui.h>
+#include <glm/glm.hpp>
+#include <visit_struct/visit_struct.hpp>
+#include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
+```
+
+> [!NOTE]  
+> CMake support is on the way.
