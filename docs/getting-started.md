@@ -252,13 +252,6 @@ void tanim::LogInfo(const std::string& message)
 }
 ```
 
-## Next Steps
-
-- Read [Core Concepts](core-concepts.md) to understand Tanim's architecture
-- Check [API Reference](api-reference/overview.md) for detailed function documentation
-- See [Example Implementation](example-implementation.md) for a complete integration example
-- Learn about [Supported Types](supported-types.md) and their special behaviors
-
 ## Common Issues
 
 **Tanim editor window doesn't appear**: Make sure you called `tanim::Init()` and `tanim::Draw()` between `ImGui::NewFrame()` and `ImGui::Render()`.
@@ -268,3 +261,10 @@ void tanim::LogInfo(const std::string& message)
 **Components not showing in editor**: Check that you used `TANIM_REFLECT` in the global namespace and included only supported types.
 
 **Entity not found errors**: Verify your `FindEntityOfUID` implementation correctly maps UIDs to entities.
+
+## Next Steps
+
+- Read [Core Concepts](core-concepts.md) to understand Tanim's architecture
+- Check [API Reference](api-reference/overview.md) for detailed function documentation
+- See [Example Implementation](example-implementation.md) for a complete integration example
+- Learn about [Supported Types](supported-types.md) and their special behaviors
