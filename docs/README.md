@@ -3,7 +3,7 @@
 
 # Tanim
 
-**(T)**imeline **(Anim)**ation Library for C++ projects based on ImGui & ENTT.
+(T)imeline (Anim)ation Library for C++ projects based on ImGui & ENTT.
 
 ## About
 
