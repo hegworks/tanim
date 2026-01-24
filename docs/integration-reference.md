@@ -24,8 +24,6 @@
 > [!NOTE]  
 > CMake support is on the way. Until then, please follow the steps to manually integrate Tanim into your project.
 
-Clone, download zip, or download the latest release.
-
 ### Prerequisites
 
 Minimum C++17.
@@ -37,7 +35,48 @@ Tanim is designed for projects using ImGui for editor GUI and ENTT for their ECS
 | ENTT       | tested with 3.15.0 | [LINK](https://github.com/skypjack/entt) |
 | Dear ImGui | tested with 1.92.3 | [LINK](https://github.com/ocornut/imgui) |
 
-Tanim also depends on the libraries below, but only internally. You must add any you don't already have to your project. Either place them where your other external libraries are, or add everything inside [the external folder](https://github.com/hegworks/tanim/tree/main/external) individually to your include paths:
+### Step 1: Get Tanim
+
+Choose one of the following methods:
+
+- **Clone**: `git clone https://github.com/hegworks/tanim.git`
+- **Download ZIP**: Download from the [GitHub repository](https://github.com/hegworks/tanim)
+- **Release**: Download the latest release from [Releases](https://github.com/hegworks/tanim/releases)
+
+### Step 2: Add Tanim to Your Project
+
+Copy the `tanim` folder into your project's external/third-party libraries directory. For example:
+
+```
+YourProject/
+├── src/
+├── external/
+│   ├── tanim/          <-- Place tanim here
+│   │   ├── include/
+│   │   │   └── tanim/
+│   │   │       └── tanim.hpp
+│   │   └── external/   <-- Tanim's internal dependencies
+│   ├── entt/
+│   ├── imgui/
+│   └── ...
+└── ...
+```
+
+### Step 3: Configure Include Paths
+
+Add Tanim's include directory to your project's include paths so you can access:
+
+```cpp
+#include <tanim/tanim.hpp>
+```
+
+The path to add is the `include` folder inside the `tanim` directory (e.g., `external/tanim/include`).
+
+**Visual Studio**: Project Properties > C/C++ > General > Additional Include Directories
+
+### Step 4: Add Dependencies
+
+Tanim depends on the libraries below internally. You must add any you don't already have to your project. Either place them where your other external libraries are, or add everything inside [the external folder](https://github.com/hegworks/tanim/tree/main/external) individually to your include paths:
 
 | Library       | Version             | GitHub                                          |
 | ------------- | ------------------- | ----------------------------------------------- |
@@ -46,9 +85,10 @@ Tanim also depends on the libraries below, but only internally. You must add any
 | magic_enum    | tested with 0.9.7   | [LINK](https://github.com/Neargye/magic_enum)   |
 | nlohmann/json | tested with 3.12.0  | [LINK](https://github.com/nlohmann/json)        |
 
-As an **example** for each library, these includes must be accessible in your code like this:
+Verify the installation by ensuring these includes work in your code:
 
 ```cpp
+#include <tanim/tanim.hpp>
 #include <entt/entt.hpp>
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
