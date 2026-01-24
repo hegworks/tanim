@@ -1,21 +1,42 @@
-> [!WARNING]  
-> This project is a WIP and is being developed during my studies as a 2nd year Engine & Tools student @ [Breda University of Applied Sciences](https://www.buas.nl/en/programmes/creative-media-and-game-technologies/programming).
-
 # Tanim
 
 (T)imeline (Anim)ation Library for C++ projects based on ImGui & ENTT.
 
-## About
+![](media/coins.gif)
+
+# About
 
 Tanim is a timeline animation library that provides keyframe animation for C++ projects using ImGui and ENTT. It includes a timeline editor with cubic Bezier curve interpolation for the editor interface and runtime playback for animated scenes.
 
 The library provides curve editing, keyframe manipulation, runtime sampling, and serialization. Animation data can be shared across multiple entities for animating hierarchies and creating reusable animation clips.
 
-## Showcase
+# Showcase
 
-TODOVISUAL Add showcase video/gif demonstrating timeline editor, curve editing, and runtime playback
+<p align="center">
+  <img src="media/curve_editing.gif">
+  <br>
+  <em>Rich Cubic Bezier Curve Editing</em>
+</p>
 
-## Features
+<p align="center">
+  <img src="media/coins_sync.gif">
+  <br>
+  <em>Reusable Animations, Flexible Playback</em>
+</p>
+
+<p align="center">
+  <img src="media/cars.gif">
+  <br>
+  <em>Multi-Sequence Timeline Editing</em>
+</p>
+
+<p align="center">
+  <img src="media/robot_vault.gif">
+  <br>
+  <em>Complex Multi-Property Animations</em>
+</p>
+
+# Features
 
 - **Timeline Editor**: ImGui-based interface for creating and editing animation timelines
 - **Cubic Bezier Curves**: Industry-standard curve interpolation with configurable tangent modes (Auto, Smooth, Broken, Weighted)
@@ -47,7 +68,7 @@ TODOVISUAL Add showcase video/gif demonstrating timeline editor, curve editing, 
 
 **[Example Implementation](example-implementation.md)** - Complete integration example showing component setup, editor integration, and runtime playback.
 
-## Quick Example
+# Quick Example
 
 ```cpp
 // 1. Initialize Tanim once at startup
@@ -70,7 +91,7 @@ void OnUpdate() {
 
 See [Integration Reference](integration-reference.md) for the complete setup process.
 
-## Future
+# Future
 
 - Quality of life improvements for the editor
 - Custom type support system
@@ -78,6 +99,10 @@ See [Integration Reference](integration-reference.md) for the complete setup pro
 - Standalone Bezier curve editor widget
 - Potential Flecs ECS support
 
-## License
+# License
 
 MIT
+
+---
+
+This project is being developed during my studies as a 2nd year Engine & Tools student @ [Breda University of Applied Sciences](https://www.buas.nl/en/programmes/creative-media-and-game-technologies/programming).
