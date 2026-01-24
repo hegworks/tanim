@@ -29,7 +29,7 @@
 #include "tanim/timeliner.hpp"
 #include "tanim/timeline.hpp"
 #include "tanim/helpers.hpp"
-#include "tanim/tanim_imp.hpp"
+#include "tanim/tanim_user.hpp"
 
 namespace tanim::internal
 {

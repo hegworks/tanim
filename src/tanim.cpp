@@ -1,7 +1,7 @@
 // REF: originally based on the imguizmo's example main.cpp:
 // https://github.com/CedricGuillemet/ImGuizmo/blob/71f14292205c3317122b39627ed98efce137086a/example/main.cpp
 
-#include "tanim/tanim_imp.hpp"
+#include "tanim/tanim_user.hpp"
 
 #include "tanim/registry.hpp"
 #include "tanim/timeliner.hpp"
@@ -165,6 +165,10 @@ void Draw()
 {
     if (g_impl->m_editor_timeline_data == nullptr || g_impl->m_editor_component_data == nullptr)
     {
+        ImGui::Begin("Tanim", nullptr, ImGuiWindowFlags_NoCollapse);
+        ImGui::Text("No Timeline is open for editing.");
+        ImGui::End();
+
         return;
     }
 
@@ -191,19 +195,19 @@ void Draw()
         ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.20f, &dock_left, &dock_center_right);
 
         ImGuiID dock_center, dock_right;
-        ImGui::DockBuilderSplitNode(dock_center_right, ImGuiDir_Right, 0.25f, &dock_right, &dock_center);
+        ImGui::DockBuilderSplitNode(dock_center_right, ImGuiDir_Right, 0.20f, &dock_right, &dock_center);
 
         // Split center into top (controls) and bottom (timeliner)
         ImGuiID dock_center_top, dock_center_bottom;
-        ImGui::DockBuilderSplitNode(dock_center, ImGuiDir_Up, 0.08f, &dock_center_top, &dock_center_bottom);
+        ImGui::DockBuilderSplitNode(dock_center, ImGuiDir_Up, 0.13f, &dock_center_top, &dock_center_bottom);
 
         // Split left column into top/bottom
         ImGuiID dock_left_top, dock_left_bottom;
-        ImGui::DockBuilderSplitNode(dock_left, ImGuiDir_Up, 0.25f, &dock_left_top, &dock_left_bottom);
+        ImGui::DockBuilderSplitNode(dock_left, ImGuiDir_Up, 0.30f, &dock_left_top, &dock_left_bottom);
 
         // Split right column into top/bottom
         ImGuiID dock_right_top, dock_right_bottom;
-        ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Up, 0.5f, &dock_right_top, &dock_right_bottom);
+        ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Up, 0.40f, &dock_right_top, &dock_right_bottom);
 
         // Dock windows
         ImGui::DockBuilderDockWindow("controls", dock_center_top);
@@ -591,7 +595,8 @@ void Draw()
                 opt_comp->m_inspect(*g_impl->m_editor_registry,
                                     expanded_seq_entity,
                                     Timeline::GetPlayerFrame(tdata, cdata),
-                                    seq);
+                                    seq,
+                                    IsPlaying(cdata));
                 ImGui::Separator();
 
                 if (is_recording)

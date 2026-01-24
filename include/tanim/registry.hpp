@@ -30,7 +30,8 @@ struct RegisteredComponent
 
     std::function<void(entt::registry& entt_registry, entt::entity entity, float sample_time, Sequence& seq)> m_sample;
 
-    std::function<void(entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq)> m_inspect;
+    std::function<void(entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq, bool is_playing)>
+        m_inspect;
 
     std::function<void(const entt::registry& entt_registry, entt::entity entity, int recording_frame, Sequence& seq)> m_record;
 
@@ -299,11 +300,11 @@ inline void SyncAllHandleTypeLocksInCurve(Sequence& seq, bool lock_state, int cu
 }
 
 template <typename T>
-static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
+static void Inspect(T& ecs_component, int player_frame, Sequence& seq, bool is_playing)
 {
     visit_struct::context<VSContext>::for_each(
         ecs_component,
-        [&seq, &player_frame](const char* field_name, auto& field)
+        [&seq, player_frame, is_playing](const char* field_name, auto& field)
         {
             using FieldType = std::decay_t<decltype(field)>;
             const std::string field_name_str = field_name;
@@ -318,10 +319,10 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                 const auto& curve_3_optional_point_idx = seq.GetKeyframeIdx(3, player_frame);
                 const auto& curve_4_optional_point_idx = seq.GetKeyframeIdx(4, player_frame);
 
-                const bool curve_0_disabled = !curve_0_optional_point_idx.has_value();
-                const bool curve_1_disabled = !curve_1_optional_point_idx.has_value();
-                const bool curve_2_disabled = !curve_2_optional_point_idx.has_value();
-                const bool curve_3_disabled = !curve_3_optional_point_idx.has_value();
+                const bool curve_0_disabled = is_playing || !curve_0_optional_point_idx.has_value();
+                const bool curve_1_disabled = is_playing || !curve_1_optional_point_idx.has_value();
+                const bool curve_2_disabled = is_playing || !curve_2_optional_point_idx.has_value();
+                const bool curve_3_disabled = is_playing || !curve_3_optional_point_idx.has_value();
                 // const bool curve_4_disabled = !curve_4_optional_point_idx.has_value();
 
                 if constexpr (std::is_same_v<FieldType, float>)
@@ -844,13 +845,14 @@ public:
             }
         };
 
-        registered_component.m_inspect = [](entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq)
+        registered_component.m_inspect =
+            [](entt::registry& entt_registry, entt::entity entity, int player_frame, Sequence& seq, bool is_playing)
         {
             if (entity != entt::null)
             {
                 if (entt_registry.all_of<T>(entity))
                 {
-                    reflection::Inspect(entt_registry.get<T>(entity), player_frame, seq);
+                    reflection::Inspect(entt_registry.get<T>(entity), player_frame, seq, is_playing);
                 }
                 else
                 {

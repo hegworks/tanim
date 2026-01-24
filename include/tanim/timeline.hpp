@@ -9,6 +9,7 @@
 #include "tanim/sequence.hpp"
 
 #include <imgui/imgui_internal.h>
+#include <algorithm>
 #include <entt/entt.hpp>
 
 namespace tanim::internal
@@ -146,11 +147,9 @@ public:
         int biggest_seq_last_frame = 0;
         for (const auto& seq : data.m_sequences)
         {
-            if (seq.m_last_frame > biggest_seq_last_frame)
-            {
-                biggest_seq_last_frame = seq.m_last_frame;
-            }
+            biggest_seq_last_frame = std::max(seq.m_last_frame, biggest_seq_last_frame);
         }
+        biggest_seq_last_frame = biggest_seq_last_frame == 0 ? 10 : biggest_seq_last_frame;
         SetTimelineLastFrame(data, biggest_seq_last_frame);
     }
 

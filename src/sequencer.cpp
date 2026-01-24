@@ -782,7 +782,7 @@ int Edit(Sequence& seq, const ImVec2& size, unsigned int id, const ImRect* clipp
     // }
 
     // Remove keyframes (keyboard delete key)
-    if (!single_keyframe_removable && !selection.empty() && ImGui::IsKeyPressed(ImGuiKey_Delete))
+    if (single_keyframe_removable && !selection.empty() && ImGui::IsKeyPressed(ImGuiKey_Delete))
     {
         delete_keyframes_in_selection();
     }
