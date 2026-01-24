@@ -69,29 +69,39 @@ As an **example** for each library, these includes must be accessible in your co
 
 ## Documentation
 
+**[📖 Full Documentation Wiki](docs/wiki.md)** - Complete documentation index with links to all guides and references.
+
 ### [Getting Started](docs/getting-started.md)
+
 Quick start guide with a minimal working example to get your first animation running.
 
 ### [Core Concepts](docs/core-concepts.md)
+
 Understand the architecture and data flow: Components, Timelines, Sequences, Curves, and Keyframes.
 
 ### [API Reference](docs/api-reference/overview.md)
+
 Complete API documentation covering:
+
 - [Lifecycle Functions](docs/api-reference/lifecycle.md) - Init, Draw, Update, Play/Pause/Stop
 - [Data Structures](docs/api-reference/data-structures.md) - EntityData, TimelineData, ComponentData
 - [User Overrides](docs/api-reference/user-overrides.md) - Required function implementations
 - [Reflection System](docs/api-reference/reflection.md) - Making components animatable
 
 ### [Example Implementation](docs/example-implementation.md)
+
 Complete integration example showing component setup, editor integration, and runtime playback.
 
 ### [Supported Types](docs/supported-types.md)
+
 List of built-in animatable types and their behaviors.
 
 ### [UI & Shortcuts](docs/ui-shortcuts.md)
+
 Editor controls, keyboard shortcuts, and mouse interactions.
 
 ### [Performance](docs/performance.md)
+
 Profiling results, scalability data, and optimization opportunities.
 
 ## Quick Example

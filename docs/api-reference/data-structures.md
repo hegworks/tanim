@@ -43,17 +43,20 @@ Identifies an entity that can be animated in a timeline. You provide a vector of
 **Session Persistence**: The UID must remain the same between application sessions. For example, `entt::entity` IDs are not suitable because they can change when a scene is loaded. The same scene with the same entities might have different `entt::entity` IDs after reloading, which would break animation references.
 
 **Reusability vs Uniqueness**: The UID scheme affects animation reusability:
+
 - **Universally unique IDs (UUIDs)**: If you use UUIDs that are unique across the entire scene, you lose the ability to reuse the same `TimelineData` on multiple entities with identical hierarchies. Even if two entities have the same structure, their unique UUIDs will prevent the animation from playing on both.
 - **Name-based IDs**: Using entity names or hierarchical names (like Unity and Godot do) allows animation reuse across similar hierarchies. For example, multiple characters with the same bone structure can share one walk cycle animation if they use consistent naming.
 
 **Recommended Approach**: Entity names or hierarchical names are common and practical. Ensure you have proper error handling for cases where names aren't found or are duplicated. See the [Example Implementation](../example-implementation.md) for a complete implementation.
 
 **Common approaches**:
+
 - Entity name (simple but requires unique names)
 - Stringified UUID (unique but less readable, prevents animation reuse)
 - Custom identifier system from your engine
 
 **Example**:
+
 ```cpp
 // Using entity names (allows animation reuse)
 m_uid = "PlayerHead"
@@ -76,6 +79,7 @@ m_uid = "entity_42"
 **Usage**: Can be the same as `m_uid` or a more descriptive name. Useful when `m_uid` uses non-human-readable identifiers like UUIDs or numeric IDs.
 
 **Example**:
+
 ```cpp
 // Same as UID (when UID is readable)
 EntityData{ .m_uid = "Player", .m_display = "Player" }
@@ -95,13 +99,13 @@ EntityData{ .m_uid = "head_bone", .m_display = "Player > Head > Bone" }
 std::vector<tanim::EntityData> BuildEntityList(entt::entity root)
 {
     std::vector<tanim::EntityData> entity_datas;
-    
+
     // Add root entity
     entity_datas.push_back({
         .m_uid = GetEntityUID(root),
         .m_display = GetEntityName(root)
     });
-    
+
     // Add all children recursively
     for (entt::entity child : GetAllChildren(root))
     {
@@ -110,7 +114,7 @@ std::vector<tanim::EntityData> BuildEntityList(entt::entity root)
             .m_display = GetEntityName(child)
         });
     }
-    
+
     return entity_datas;
 }
 
@@ -144,6 +148,7 @@ Stores all animation data for a timeline, including sequences, curves, keyframes
 ### Memory Management
 
 **Sharing**: Multiple entities can reference the same `TimelineData`. How you implement this sharing is up to you - Tanim does not prescribe a specific approach. You might use:
+
 - A resource management system with reference counting
 - Smart pointers like `std::shared_ptr`
 - Your existing asset/resource sharing system
@@ -180,6 +185,7 @@ struct AnimationComponent
 See [Example Implementation](../example-implementation.md) for a complete resource management example.
 
 **Benefits of sharing**:
+
 - Memory efficiency: Store one copy instead of duplicating per entity
 - Reusability: Create one animation and use it on multiple entities with similar hierarchies
 - Consistency: Edit once, affects all entities using it
@@ -209,6 +215,7 @@ tanim::Deserialize(timeline_data, loaded);
 **Warning**: You should not directly access or modify fields in `TimelineData`. All data is managed internally by Tanim through the editor UI and API functions.
 
 The only time you interact with `TimelineData` is:
+
 - Passing it to Tanim API functions
 - Serializing/deserializing it
 - Storing it in your resource/asset system
@@ -254,7 +261,7 @@ void LoadAnimation(entt::entity entity, const std::string& filepath)
 struct ComponentData
 {
     std::any m_user_data;
-    
+
 private:
     // Runtime playback state handled internally by Tanim
 };
@@ -282,6 +289,7 @@ Holds runtime playback state for a specific entity's timeline. Each entity playi
 **Common Uses**:
 
 1. **Store the root entity**:
+
 ```cpp
 cdata.m_user_data = root_entity;
 
@@ -290,6 +298,7 @@ entt::entity root = std::any_cast<entt::entity>(cdata.m_user_data);
 ```
 
 2. **Cache entity list**:
+
 ```cpp
 struct AnimUserData
 {
@@ -312,6 +321,7 @@ for (entt::entity child : user_data->cached_children)
 ```
 
 3. **Store entity data list**:
+
 ```cpp
 struct AnimUserData
 {
@@ -339,6 +349,7 @@ tanim::UpdateTimeline(registry, user_data->entity_datas, tdata, cdata, dt);
 Each entity has its own `ComponentData`, which means:
 
 **Independent control**: Each entity can be playing, paused, or stopped independently:
+
 ```cpp
 // Entity 1 is playing
 tanim::Play(entity1_cdata);
@@ -351,12 +362,14 @@ tanim::Stop(entity3_cdata);
 ```
 
 **Independent timing**: Entities can be at different times in the same animation:
+
 ```cpp
 // Both share the same TimelineData but are at different times
 // This happens naturally as they have separate ComponentData
 ```
 
 **Synchronized control**: To synchronize entities, call the same function on all of them:
+
 ```cpp
 // Synchronize playback for all entities using this timeline
 for (auto entity : entities_sharing_timeline)
@@ -381,27 +394,27 @@ struct AnimationComponent
 void OpenTimelineForEditing(entt::entity entity)
 {
     auto& anim = registry.get<AnimationComponent>(entity);
-    
+
     // Set user data for FindEntityOfUID
     struct UserData
     {
         entt::entity root;
         std::vector<entt::entity> children;
     };
-    
+
     anim.component_data.m_user_data = UserData{
         .root = entity,
         .children = GetAllChildren(entity)
     };
-    
+
     auto entity_list = BuildEntityList(entity);
-    tanim::OpenForEditing(registry, entity_list, 
-                         anim.timeline_data, 
+    tanim::OpenForEditing(registry, entity_list,
+                         anim.timeline_data,
                          anim.component_data);
 }
 
 // FindEntityOfUID implementation
-entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, 
+entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
                                    const std::string& uid_to_find)
 {
     if (!cdata.m_user_data.has_value())
@@ -409,25 +422,25 @@ entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
         LogError("m_user_data is empty");
         return entt::null;
     }
-    
+
     auto* user_data = std::any_cast<UserData>(&cdata.m_user_data);
     if (!user_data)
     {
         LogError("m_user_data is wrong type");
         return entt::null;
     }
-    
+
     // Check root
     if (GetEntityUID(user_data->root) == uid_to_find)
         return user_data->root;
-    
+
     // Check children
     for (entt::entity child : user_data->children)
     {
         if (GetEntityUID(child) == uid_to_find)
             return child;
     }
-    
+
     return entt::null;
 }
 ```

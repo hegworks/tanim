@@ -2,6 +2,9 @@
 
 Guide to using the Tanim timeline editor interface, keyboard shortcuts, and mouse interactions.
 
+> [!CAUTION]
+> This file is a WIP & and the information it provides is not correct. This will be resolved soon.
+
 ## Overview
 
 The Tanim editor provides a timeline-based interface for creating and editing animations. This guide covers the UI layout, controls, and shortcuts for efficient workflow.
@@ -36,7 +39,8 @@ TODOVISUAL Add screenshot of playback controls
 
 **Stop**: Stop playback and reset to the beginning or last stopped position.
 
-**Frame Navigation**: 
+**Frame Navigation**:
+
 - Click on the timeline ruler to jump to a specific frame
 - Drag the playhead to scrub through the animation
 
@@ -47,6 +51,7 @@ TODOVISUAL Add screenshot of playback controls
 **Samples Per Second**: Controls playback speed (typically 60).
 
 **Playback Type**:
+
 - **HOLD**: Stops at the last frame and holds the final values
 - **RESET**: Stops and resets to the beginning
 - **LOOP**: Continuously loops from start to end
@@ -70,6 +75,7 @@ TODOVISUAL Add screenshot of sequence creation menu
 ### Sequence Options
 
 **Right-click** on a sequence to access:
+
 - **Remove Sequence**: Delete the sequence and all its curves
 - **Change Representation**: For vec3/vec4, switch between VECTOR and COLOR representation
 
@@ -83,11 +89,13 @@ TODOVISUAL Add screenshot of sequence creation menu
 
 ### Viewing Curves
 
-**Zoom**: 
+**Zoom**:
+
 - Scroll wheel to zoom in/out
 - Hold Ctrl and drag to zoom to a specific region
 
-**Pan**: 
+**Pan**:
+
 - Middle mouse button drag to pan the view
 - Arrow keys to pan in small increments
 
@@ -102,6 +110,7 @@ TODOVISUAL Add screenshot of curve editor with multiple curves
 **Curve Colors**: Each curve has a distinct color for easy identification.
 
 **Keyframe Markers**:
+
 - **Circle**: Regular keyframe
 - **Diamond**: Keyframe at current playhead position
 
@@ -116,10 +125,12 @@ TODOVISUAL Add screenshot of curve editor with multiple curves
 **Double-click**: Double-click on a curve to create a keyframe at that position.
 
 **+keyframe Button**: Creates keyframes at the current playhead position on the selected sequence's curves.
+
 - For regular types: Creates keyframes on all component curves
 - For quaternions: Creates synchronized keyframes on all 5 curves (w, x, y, z, spins)
 
-**Record Button**: 
+**Record Button**:
+
 1. Position the playhead where you want the keyframe
 2. Click the record button
 3. Modify the component values in your engine's inspector or through other means
@@ -154,6 +165,7 @@ TODOVISUAL Add screenshot showing keyframe creation methods
 **Delete Key**: Press **Del** to delete selected keyframes.
 
 **-keyframe Button**: Removes keyframes at the current playhead position.
+
 - For regular types: Removes keyframes on all component curves
 - For quaternions: Removes synchronized keyframes from all 5 curves
 
@@ -193,35 +205,42 @@ TODOVISUAL Add screenshot showing handle manipulation
 
 Each keyframe can have different tangent modes that control its curve shape:
 
-**AUTO**: 
+**AUTO**:
+
 - Tanim automatically calculates smooth tangents
 - Uses Fritsch-Carlson monotonic Catmull-Rom algorithm
 - Good for smooth, natural motion
 
-**SMOOTH**: 
+**SMOOTH**:
+
 - Both handles move together symmetrically
 - Ensures smooth C1 continuity at the keyframe
 - Handles can have adjustable weight
 
-**BROKEN**: 
+**BROKEN**:
+
 - Handles can be moved independently
 - Allows sharp changes in curve direction
 - Useful for impacts or sudden stops
 
-**WEIGHTED**: 
+**WEIGHTED**:
+
 - Handle length affects the influence region
 - Longer handles create gentler curves
 - Shorter handles create tighter curves
 
-**FLAT**: 
+**FLAT**:
+
 - Horizontal tangents at the keyframe
 - Creates ease-in/ease-out effect
 
-**LINEAR**: 
+**LINEAR**:
+
 - Straight line interpolation between keyframes
 - No curve smoothing
 
-**CONSTANT**: 
+**CONSTANT**:
+
 - No interpolation, immediate value change
 - Required for bool types
 
@@ -255,40 +274,40 @@ When a keyframe or sequence is selected, the inspector shows:
 
 ### General
 
-| Shortcut | Action |
-|----------|--------|
-| **F** | Frame all keyframes in view |
-| **Shift+F** | Frame selected keyframes |
-| **Ctrl+A** | Select all keyframes on visible curves |
-| **Del** | Delete selected keyframes |
-| **Ctrl+Z** | Undo (if implemented in your engine) |
-| **Ctrl+Y** | Redo (if implemented in your engine) |
+| Shortcut    | Action                                 |
+| ----------- | -------------------------------------- |
+| **F**       | Frame all keyframes in view            |
+| **Shift+F** | Frame selected keyframes               |
+| **Ctrl+A**  | Select all keyframes on visible curves |
+| **Del**     | Delete selected keyframes              |
+| **Ctrl+Z**  | Undo (if implemented in your engine)   |
+| **Ctrl+Y**  | Redo (if implemented in your engine)   |
 
 ### Navigation
 
-| Shortcut | Action |
-|----------|--------|
-| **Scroll Wheel** | Zoom in/out |
-| **Middle Mouse** | Pan view |
-| **Arrow Keys** | Pan view in small increments |
-| **Arrow Keys** (with selection) | Nudge keyframes |
+| Shortcut                        | Action                       |
+| ------------------------------- | ---------------------------- |
+| **Scroll Wheel**                | Zoom in/out                  |
+| **Middle Mouse**                | Pan view                     |
+| **Arrow Keys**                  | Pan view in small increments |
+| **Arrow Keys** (with selection) | Nudge keyframes              |
 
 ### Selection
 
-| Shortcut | Action |
-|----------|--------|
-| **Click** | Select single keyframe |
-| **Ctrl+Click** | Toggle keyframe selection |
-| **Shift+Click** | Range select keyframes |
-| **Box Drag** | Select multiple keyframes |
+| Shortcut        | Action                    |
+| --------------- | ------------------------- |
+| **Click**       | Select single keyframe    |
+| **Ctrl+Click**  | Toggle keyframe selection |
+| **Shift+Click** | Range select keyframes    |
+| **Box Drag**    | Select multiple keyframes |
 
 ### Movement
 
-| Shortcut | Action |
-|----------|--------|
-| **Drag** | Move selected keyframes freely |
+| Shortcut       | Action                         |
+| -------------- | ------------------------------ |
+| **Drag**       | Move selected keyframes freely |
 | **Shift+Drag** | Constrain to horizontal (time) |
-| **Alt+Drag** | Constrain to vertical (value) |
+| **Alt+Drag**   | Constrain to vertical (value)  |
 
 ---
 

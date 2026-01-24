@@ -7,7 +7,9 @@ This section provides complete documentation for all Tanim API functions, data s
 Tanim's API is organized into several categories:
 
 ### [Lifecycle Functions](lifecycle.md)
+
 Core functions that manage Tanim's state and animation playback:
+
 - Initialization and cleanup
 - Editor integration
 - Timeline editing
@@ -15,19 +17,25 @@ Core functions that manage Tanim's state and animation playback:
 - Serialization
 
 ### [Data Structures](data-structures.md)
+
 The three main data types that bridge your engine and Tanim:
+
 - `EntityData` - Identifies animatable entities
 - `TimelineData` - Stores animation data
 - `ComponentData` - Holds runtime playback state
 
 ### [User Overrides](user-overrides.md)
+
 Three required functions you must implement in your project:
+
 - `FindEntityOfUID` - Entity lookup
 - `LogError` - Error reporting
 - `LogInfo` - Info reporting
 
 ### [Reflection System](reflection.md)
+
 Macros and functions for making components animatable:
+
 - `TANIM_REFLECT` - Register components with auto-registration
 - `TANIM_REFLECT_NO_REGISTER` - Register without auto-registration
 - `RegisterComponent` - Manual component registration
@@ -57,11 +65,11 @@ void tanim::LogInfo(const std::string& message) { /*...*/ }
 void OnEditorFrame(float delta_time)
 {
     ImGui::NewFrame();
-    
+
     // Update and draw Tanim editor
     tanim::UpdateEditor(delta_time);
     tanim::Draw();
-    
+
     ImGui::Render();
 }
 ```
@@ -98,7 +106,7 @@ tanim::Deserialize(timeline_data, loaded);
 void OnEnterPlayMode()
 {
     tanim::EnterPlayMode();
-    
+
     // For each entity with animations
     for (auto entity : animated_entities)
     {
@@ -114,8 +122,8 @@ void OnUpdate(float delta_time)
     {
         auto& anim = registry.get<AnimationComponent>(entity);
         std::vector<tanim::EntityData> entity_datas = BuildEntityList(entity);
-        
-        tanim::UpdateTimeline(registry, entity_datas, 
+
+        tanim::UpdateTimeline(registry, entity_datas,
                             anim.timeline_data, anim.component_data, delta_time);
     }
 }
@@ -129,7 +137,7 @@ void OnExitPlayMode()
         auto& anim = registry.get<AnimationComponent>(entity);
         tanim::StopTimeline(anim.component_data);
     }
-    
+
     tanim::ExitPlayMode();
 }
 ```
@@ -154,6 +162,7 @@ tanim::Stop(component_data);   // Stop and reset to beginning
 Tanim functions must be called in specific orders for correct behavior:
 
 ### Startup
+
 ```
 1. ImGui::CreateContext()
 2. tanim::Init()
@@ -161,6 +170,7 @@ Tanim functions must be called in specific orders for correct behavior:
 ```
 
 ### Editor Frame
+
 ```
 1. ImGui::NewFrame()
 2. tanim::UpdateEditor(dt)
@@ -169,17 +179,20 @@ Tanim functions must be called in specific orders for correct behavior:
 ```
 
 ### Entering Play Mode
+
 ```
 1. tanim::EnterPlayMode()
 2. tanim::StartTimeline() for each animated entity
 ```
 
 ### Play Mode Frame
+
 ```
 1. tanim::UpdateTimeline() for each animated entity
 ```
 
 ### Exiting Play Mode
+
 ```
 1. tanim::StopTimeline() for each animated entity
 2. tanim::ExitPlayMode()
@@ -188,6 +201,7 @@ Tanim functions must be called in specific orders for correct behavior:
 ## Threading Considerations
 
 Tanim is **not thread-safe**. All Tanim API functions must be called from the same thread, typically your main thread. This includes:
+
 - All lifecycle functions
 - User override implementations
 - Component registration
@@ -197,26 +211,33 @@ Tanim is **not thread-safe**. All Tanim API functions must be called from the sa
 Tanim reports errors through your `LogError` implementation. Common error scenarios:
 
 **Entity not found**: When `FindEntityOfUID` returns `entt::null`, Tanim logs:
+
 ```
 FindEntityOfUID with the uid of [uid] returned entt::null
 ```
+
 Animation for that sequence will be skipped.
 
 **Component missing on entity**: When an entity doesn't have the component being animated, Tanim logs:
+
 ```
 entity [entity_id] does not have a component named [ComponentName]
 ```
+
 Occurs during sampling, inspection, or recording keyframes.
 
 **Sequence target not found**: When the entity or component specified in a sequence cannot be found, Tanim logs:
+
 ```
 Couldn't find any entity with matching details: [sequence_full_name]
 ```
 
 **Unsupported serialization version**: When deserializing timeline data from an older format, Tanim logs:
+
 ```
 Versions prior to 2 are not supported. Can not deserialize.
 ```
+
 Deserialization will fail and timeline data won't be loaded.
 
 ## Performance Considerations
@@ -232,6 +253,7 @@ Deserialization will fail and timeline data won't be loaded.
 ## Next Steps
 
 Explore the detailed API documentation:
+
 - [Lifecycle Functions](lifecycle.md) - Complete function reference
 - [Data Structures](data-structures.md) - Data type details
 - [User Overrides](user-overrides.md) - Implementation requirements

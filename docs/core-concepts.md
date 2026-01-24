@@ -17,27 +17,34 @@ Component (on entity)
 ```
 
 ### Component
+
 A component attached to an entity that holds references to a `TimelineData` and its runtime `ComponentData`. In your engine, this might be called `AnimationComponent`, `Tanimatable`, or any name you choose.
 
 ### Timeline
+
 Contains all the sequences that animate different component fields on entities. A timeline can be shared across multiple entities, allowing the same animation to be reused. For example, multiple enemies can reference the same "patrol" animation timeline.
 
 ### Sequence
+
 Represents a single animated property on a component. For example, if you want to animate a `Transform` component's `position` and `rotation`, you would have two sequences: one for `position` and one for `rotation`.
 
 Each sequence targets a specific component on a specific entity (identified by UID) and a specific field within that component.
 
 ### Curve
+
 A sequence contains one or more curves depending on the field type. For example:
+
 - `float` field has 1 curve
 - `glm::vec3` field has 3 curves (x, y, z)
 
 Each curve contains keyframes that define the animation over time. Some types like `glm::quat` have special handling that is explained in the [Supported Types](supported-types.md) documentation.
 
 ### Keyframe
+
 A point in time that defines a value on a curve. Keyframes are connected by curve segments that interpolate between them.
 
 ### Handle
+
 Each keyframe has two handles (in and out) that control the shape of the Bezier curve segment. Handles define the tangent at the keyframe, affecting how smoothly the animation transitions.
 
 ## Data Structures
@@ -59,10 +66,12 @@ struct EntityData
 **Usage**: When opening a timeline for editing or updating it at runtime, you provide a list of `EntityData` for all entities that should be animatable. This typically includes the entity with the animation component and all its children.
 
 **UID vs Display**:
+
 - `m_uid`: A string that your `FindEntityOfUID` function can use to retrieve the actual `entt::entity`. This could be an entity name, a stringified UUID, or any identifier you choose. Must be unique within the animated hierarchy.
 - `m_display`: A user-friendly name shown in the editor. Can be the same as `m_uid` or something more descriptive.
 
 **Example**:
+
 ```cpp
 std::vector<tanim::EntityData> entity_datas;
 entity_datas.push_back({
@@ -98,7 +107,7 @@ struct TimelineData
 struct ComponentData
 {
     std::any m_user_data;
-    
+
 private:
     // Runtime playback state handled internally by Tanim
 };
@@ -109,11 +118,13 @@ private:
 **Lifetime**: Exists for as long as the entity exists. Does not need to be serialized.
 
 **m_user_data**: This is a field you can use to store any custom data that helps your `FindEntityOfUID` implementation. Common uses:
+
 - Store the root entity
 - Cache a list of all animatable entities
 - Store a reference to your scene or entity manager
 
 **Example**:
+
 ```cpp
 struct MyUserData
 {
@@ -153,6 +164,7 @@ Then in your `FindEntityOfUID` implementation, you can access this data to quick
 ### How Sampling Works
 
 When `UpdateTimeline` runs, Tanim:
+
 1. Calculates which frame to sample based on the current playback time
 2. For each sequence in the timeline:
    - Finds the entity using your `FindEntityOfUID` implementation
@@ -192,6 +204,7 @@ Handles are automatically clamped to neighboring keyframes to maintain this cons
 Quaternions require special handling because their components (w, x, y, z) are interdependent. You cannot interpolate each component independently.
 
 When animating `glm::quat` fields:
+
 - Tanim shows 5 curves in the editor: w, x, y, z, and spins
 - Use the **+keyframe** button or **record** button to create keyframes on all curves simultaneously at the same time
 - Use the **-keyframe** button to remove keyframes from all curves at once
@@ -209,6 +222,7 @@ TANIM_REFLECT(ComponentName, field1, field2, field3);
 ```
 
 This macro:
+
 1. Registers the component with visit_struct for field iteration
 2. Automatically registers the component with Tanim's type system
 3. Makes the fields available in the Tanim editor for creating sequences
@@ -224,10 +238,12 @@ One `TimelineData` can be referenced by multiple entities. This is useful for:
 **Memory efficiency**: Store one copy of animation data instead of duplicating it per entity.
 
 **Synchronized vs Independent Playback**: Each entity has its own `ComponentData` which contains runtime playback state. This means:
+
 - **Synchronized**: Call `tanim::Play()`, `tanim::Pause()`, and `tanim::Stop()` on all entities sharing a timeline to control them together
 - **Independent**: Call these functions on individual entities to control them separately. One entity can be playing while another is paused, or they can be at different times in the same animation
 
 You can control playback state through code using:
+
 ```cpp
 tanim::Play(component_data);   // Start/resume playback
 tanim::Pause(component_data);  // Pause at current time
@@ -240,6 +256,7 @@ See [Lifecycle Functions](api-reference/lifecycle.md) for complete API documenta
 ## Next Steps
 
 Now that you understand the architecture, explore:
+
 - [API Reference](api-reference/overview.md) for detailed function documentation
 - [Example Implementation](example-implementation.md) for complete integration code
 - [UI & Shortcuts](ui-shortcuts.md) to learn the editor interface

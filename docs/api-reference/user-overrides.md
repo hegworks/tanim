@@ -37,6 +37,7 @@ Converts a UID string (from `EntityData::m_uid`) back to the actual `entt::entit
 ### When Called
 
 This function is called:
+
 - During animation playback (every frame per sequence)
 - When creating sequences in the editor
 - When recording keyframes
@@ -49,7 +50,7 @@ This function is called:
 #### Pattern 1: Simple Name-Based Lookup
 
 ```cpp
-entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, 
+entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
                                    const std::string& uid_to_find)
 {
     // Extract root entity from user data
@@ -58,20 +59,20 @@ entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
         LogError("m_user_data is empty when finding uid: " + uid_to_find);
         return entt::null;
     }
-    
+
     entt::entity root = std::any_cast<entt::entity>(cdata.m_user_data);
-    
+
     // Check if root matches
     if (GetEntityName(root) == uid_to_find)
         return root;
-    
+
     // Search children recursively
     for (entt::entity child : GetAllChildrenRecursive(root))
     {
         if (GetEntityName(child) == uid_to_find)
             return child;
     }
-    
+
     LogError("Entity not found for uid: " + uid_to_find);
     return entt::null;
 }
@@ -86,7 +87,7 @@ struct TanimUserData
     std::vector<entt::entity> cached_entities;
 };
 
-entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, 
+entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
                                    const std::string& uid_to_find)
 {
     if (!cdata.m_user_data.has_value())
@@ -94,25 +95,25 @@ entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
         LogError("m_user_data is empty when finding uid: " + uid_to_find);
         return entt::null;
     }
-    
+
     auto* user_data = std::any_cast<TanimUserData>(&cdata.m_user_data);
     if (!user_data)
     {
         LogError("m_user_data has wrong type when finding uid: " + uid_to_find);
         return entt::null;
     }
-    
+
     // Check root
     if (GetEntityName(user_data->root_entity) == uid_to_find)
         return user_data->root_entity;
-    
+
     // Check cached children (fast linear search)
     for (entt::entity entity : user_data->cached_entities)
     {
         if (GetEntityName(entity) == uid_to_find)
             return entity;
     }
-    
+
     LogError("Entity not found for uid: " + uid_to_find);
     return entt::null;
 }
@@ -127,7 +128,7 @@ struct TanimUserData
     std::unordered_map<std::string, entt::entity> uid_to_entity;
 };
 
-entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, 
+entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
                                    const std::string& uid_to_find)
 {
     if (!cdata.m_user_data.has_value())
@@ -135,19 +136,19 @@ entt::entity tanim::FindEntityOfUID(const ComponentData& cdata,
         LogError("m_user_data is empty when finding uid: " + uid_to_find);
         return entt::null;
     }
-    
+
     auto* user_data = std::any_cast<TanimUserData>(&cdata.m_user_data);
     if (!user_data)
     {
         LogError("m_user_data has wrong type when finding uid: " + uid_to_find);
         return entt::null;
     }
-    
+
     // O(1) hash map lookup
     auto it = user_data->uid_to_entity.find(uid_to_find);
     if (it != user_data->uid_to_entity.end())
         return it->second;
-    
+
     LogError("Entity not found for uid: " + uid_to_find);
     return entt::null;
 }
@@ -161,17 +162,17 @@ You should populate `ComponentData::m_user_data` before calling `OpenForEditing`
 void PrepareAnimationComponent(entt::entity entity)
 {
     auto& anim = registry.get<AnimationComponent>(entity);
-    
+
     // Build user data
     TanimUserData user_data;
     user_data.root_entity = entity;
-    
+
     // Cache all children
     for (entt::entity child : GetAllChildrenRecursive(entity))
     {
         user_data.cached_entities.push_back(child);
     }
-    
+
     // Store in component data
     anim.component_data.m_user_data = user_data;
 }
@@ -184,6 +185,7 @@ void PrepareAnimationComponent(entt::entity entity)
 **Log helpful error messages**: Include the UID in error messages to help users debug. Use your `LogError` implementation to report issues.
 
 **Common Errors**:
+
 - `m_user_data` is empty or has wrong type
 - Entity with the given UID doesn't exist
 - Entity was deleted but animation still references it
@@ -289,6 +291,7 @@ void tanim::LogError(const std::string& message)
 ### Common Error Messages
 
 You'll see errors like:
+
 - `"FindEntityOfUID with the uid of [uid] returned entt::null"` - Entity not found during lookup
 - `"entity [id] does not have a component named [ComponentName]"` - Component missing on entity
 - `"Couldn't find any entity with matching details: [sequence_name]"` - Sequence target not found
@@ -352,6 +355,7 @@ void tanim::LogInfo(const std::string& message)
 ### Usage
 
 Info messages are less common than errors. They might include:
+
 - Initialization status
 - Feature usage notes
 - Performance warnings

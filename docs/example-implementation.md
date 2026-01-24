@@ -268,13 +268,13 @@ std::vector<entt::entity> GetAllChildren(entt::entity root)
 std::vector<tanim::EntityData> BuildEntityDataList(entt::entity root)
 {
     std::vector<tanim::EntityData> entity_datas;
-    
+
     // Add root
     entity_datas.push_back({
         .m_uid = GetEntityName(root),
         .m_display = GetEntityName(root)
     });
-    
+
     // Add all children
     for (entt::entity child : GetAllChildren(root))
     {
@@ -283,7 +283,7 @@ std::vector<tanim::EntityData> BuildEntityDataList(entt::entity root)
             .m_display = GetEntityName(child)
         });
     }
-    
+
     return entity_datas;
 }
 
@@ -295,10 +295,10 @@ TanimUserData& UpdateCachedDataIfEmpty(tanim::ComponentData& cdata, entt::entity
         user_data.root_entity = root_entity;
         user_data.cached_entities_data = BuildEntityDataList(root_entity);
         user_data.cached_entities = GetAllChildren(root_entity);
-        
+
         cdata.m_user_data = user_data;
     }
-    
+
     return std::any_cast<TanimUserData&>(cdata.m_user_data);
 }
 
@@ -432,14 +432,14 @@ void InspectorPanel::OpenTimelineEditor(entt::entity entity)
 {
     auto& anim = registry.get<AnimationComponent>(entity);
     auto& timeline = ResourceManager::Get(anim.timeline_resource);
-    
+
     // Update cached user data
     TanimUserData& user_data = UpdateCachedDataIfEmpty(anim.component_data, entity);
-    
+
     // Open editor
-    tanim::OpenForEditing(registry, 
+    tanim::OpenForEditing(registry,
                          user_data.m_cached_entities_data,
-                         timeline.timeline_data, 
+                         timeline.timeline_data,
                          anim.component_data);
 }
 ```
@@ -553,10 +553,10 @@ public:
                 continue;
 
             auto& timeline = ResourceManager::Get(anim.timeline_resource);
-            
+
             // Update cached data if empty (handles hierarchy changes during play)
             TanimUserData& user_data = UpdateCachedDataIfEmpty(anim.component_data, entity);
-            
+
             // Update timeline
             tanim::UpdateTimeline(registry,
                                 user_data.m_cached_entities_data,

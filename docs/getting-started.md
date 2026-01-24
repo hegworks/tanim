@@ -22,7 +22,7 @@ void OnApplicationStart()
     // Initialize ImGui first
     ImGui::CreateContext();
     // ... your ImGui setup
-    
+
     // Then initialize Tanim
     tanim::Init();
 }
@@ -104,13 +104,13 @@ Call Tanim's editor functions in your ImGui render loop:
 void OnEditorFrame(float delta_time)
 {
     ImGui::NewFrame();
-    
+
     // Your editor panels here
-    
+
     // Update and draw Tanim editor
     tanim::UpdateEditor(delta_time);
     tanim::Draw();
-    
+
     ImGui::Render();
 }
 ```
@@ -122,24 +122,24 @@ void OnEditorFrame(float delta_time)
 When you want to edit a timeline, prepare entity data and open the editor:
 
 ```cpp
-void OpenTimelineEditor(entt::registry& registry, 
+void OpenTimelineEditor(entt::registry& registry,
                        entt::entity entity_with_animation,
                        AnimationComponent& anim_comp)
 {
     // Build list of entities that can be animated in this timeline
     std::vector<tanim::EntityData> entity_datas;
-    
+
     // Add the root entity
     entity_datas.push_back({
         .m_uid = "RootEntity",      // Unique identifier for this entity
         .m_display = "Root Entity"   // Display name in the editor
     });
-    
+
     // Add any child entities you want to animate
     // entity_datas.push_back({ ... });
-    
+
     // Open the editor
-    tanim::OpenForEditing(registry, 
+    tanim::OpenForEditing(registry,
                          entity_datas,
                          anim_comp.timeline_data,
                          anim_comp.component_data);
@@ -159,7 +159,7 @@ void OnPlayMode()
 {
     // Call once when entering play mode
     tanim::EnterPlayMode();
-    
+
     // For each entity with animations, start its timeline
     tanim::StartTimeline(anim_comp.timeline_data, anim_comp.component_data);
 }
@@ -178,7 +178,7 @@ void OnExitPlayMode()
 {
     // For each entity with animations, stop its timeline
     tanim::StopTimeline(anim_comp.component_data);
-    
+
     // Call once when exiting play mode
     tanim::ExitPlayMode();
 }
@@ -212,25 +212,25 @@ int main()
     // Initialize
     ImGui::CreateContext();
     tanim::Init();
-    
+
     entt::registry registry;
     entt::entity entity = registry.create();
     registry.emplace<Transform>(entity);
     registry.emplace<AnimationComponent>(entity);
-    
+
     // Game loop
     while (running)
     {
         float delta_time = GetDeltaTime();
-        
+
         ImGui::NewFrame();
         tanim::UpdateEditor(delta_time);
         tanim::Draw();
         ImGui::Render();
-        
+
         // Render, swap buffers, etc.
     }
-    
+
     return 0;
 }
 
