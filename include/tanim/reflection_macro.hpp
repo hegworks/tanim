@@ -31,3 +31,11 @@ struct VSContext
 
 #define CONCAT(a, b) CONCAT_IMPL(a, b)
 #define CONCAT_IMPL(a, b) a##b
+
+// REF: https://github.com/cbeck88/visit_struct/issues/27#issuecomment-3054127371
+/// allows visit_struct to access private variables
+#ifndef BEFRIEND_VISITABLE
+#define BEFRIEND_VISITABLE()      \
+    template <typename, typename> \
+    friend struct ::visit_struct::traits::visitable
+#endif
