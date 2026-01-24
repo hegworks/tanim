@@ -1,34 +1,5 @@
 # Tanim Documentation
 
-> [!WARNING]  
-> This project is a WIP and is being developed during my studies as a 2nd year Engine & Tools student @ [Breda University of Applied Sciences](https://www.buas.nl/en/programmes/creative-media-and-game-technologies/programming).
-
-**T**imeline **Anim**ation Library for C++ projects based on ImGui & ENTT.
-
-Tanim is a timeline animation library that provides keyframe animation for C++ projects using ImGui and ENTT. It includes a timeline editor with cubic Bezier curve interpolation for the editor interface and runtime playback for animated scenes.
-
-The library provides curve editing, keyframe manipulation, runtime sampling, and serialization. Animation data can be shared across multiple entities for animating hierarchies and creating reusable animation clips.
-
-## Showcase
-
-TODOVISUAL Add showcase video/gif demonstrating timeline editor, curve editing, and runtime playback
-
-## Features
-
-- **Timeline Editor**: ImGui-based interface for creating and editing animation timelines
-- **Cubic Bezier Curves**: Industry-standard curve interpolation with configurable tangent modes (Auto, Smooth, Broken, Weighted)
-- **Multi-Entity Animation**: Animate entity hierarchies with a single timeline asset
-- **Component Reflection**: Simple macro-based system to make components with supported types animatable
-- **Keyframe Editing**: Create, move, and delete keyframes with multi-selection support
-- **Handle Manipulation**: Direct control over curve tangents with visual feedback
-- **Curve Constraints**: Automatic monotonicity enforcement to prevent invalid animations
-- **Runtime Playback**: Efficient sampling system with configurable playback modes (Loop, Once)
-- **Serialization**: Save and load system for timeline data
-- **Type Support**: Built-in support for common types (float, int, bool, glm::vec2, glm::vec3, glm::vec4, glm::quat)
-- **Performance**: O(n) time complexity, capable of animating 15,000+ entities at 60 FPS
-
----
-
 ## Table of Contents
 
 1. [Installation](#installation)
@@ -279,12 +250,12 @@ void tanim::LogInfo(const std::string& message)
 
 ### Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| Editor window doesn't appear | Ensure `tanim::Init()` and `tanim::Draw()` are called between `ImGui::NewFrame()` and `ImGui::Render()` |
-| Animations don't play | Verify `tanim::EnterPlayMode()` and `tanim::StartTimeline()` are called before `tanim::UpdateTimeline()` |
-| Components not showing in editor | Check that `TANIM_REFLECT` is in the global namespace with only supported types |
-| Entity not found errors | Verify your `FindEntityOfUID` implementation correctly maps UIDs to entities |
+| Issue                            | Solution                                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Editor window doesn't appear     | Ensure `tanim::Init()` and `tanim::Draw()` are called between `ImGui::NewFrame()` and `ImGui::Render()`  |
+| Animations don't play            | Verify `tanim::EnterPlayMode()` and `tanim::StartTimeline()` are called before `tanim::UpdateTimeline()` |
+| Components not showing in editor | Check that `TANIM_REFLECT` is in the global namespace with only supported types                          |
+| Entity not found errors          | Verify your `FindEntityOfUID` implementation correctly maps UIDs to entities                             |
 
 ---
 
@@ -317,6 +288,7 @@ Represents a single animated property on a component. Each sequence targets a sp
 ### Curve
 
 A sequence contains one or more curves depending on the field type:
+
 - `float` field → 1 curve
 - `glm::vec3` field → 3 curves (x, y, z)
 - `glm::quat` field → 5 curves (w, x, y, z, spins)
@@ -334,12 +306,14 @@ Each keyframe has two handles (in and out) that control the shape of the Bezier 
 ### Animation Data Flow
 
 **Editor Mode:**
+
 1. User opens a timeline via `OpenForEditing()`
 2. User creates sequences, keyframes, and edits curves
 3. Changes are stored in `TimelineData`
 4. User serializes to disk via `Serialize()`
 
 **Play Mode:**
+
 1. Application calls `EnterPlayMode()`
 2. For each animated entity, call `StartTimeline()`
 3. Each frame, `UpdateTimeline()` samples curves and writes to components
@@ -365,15 +339,16 @@ struct EntityData
 
 **m_uid considerations:**
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Entity names | Readable, allows animation reuse across similar hierarchies | Requires unique names |
-| UUIDs | Guaranteed unique | Not readable, prevents animation reuse |
-| Custom IDs | Flexible | Depends on your implementation |
+| Approach     | Pros                                                        | Cons                                   |
+| ------------ | ----------------------------------------------------------- | -------------------------------------- |
+| Entity names | Readable, allows animation reuse across similar hierarchies | Requires unique names                  |
+| UUIDs        | Guaranteed unique                                           | Not readable, prevents animation reuse |
+| Custom IDs   | Flexible                                                    | Depends on your implementation         |
 
 **Important**: The UID must persist across application sessions. `entt::entity` IDs are not suitable because they can change when scenes are reloaded.
 
 **Example:**
+
 ```cpp
 std::vector<tanim::EntityData> BuildEntityList(entt::entity root)
 {
@@ -410,6 +385,7 @@ struct TimelineData
 **Sharing**: Multiple entities can reference the same `TimelineData`. Implementation approaches include resource management systems, `std::shared_ptr`, or your existing asset system.
 
 **Serialization:**
+
 ```cpp
 // Save
 std::string serialized = tanim::Serialize(timeline_data);
@@ -484,6 +460,7 @@ TANIM_REFLECT(MyEngine::Transform, position, rotation, scale);
 ```
 
 **Important Notes:**
+
 - Always include the full namespace path in `STRUCT_NAME`
 - Only include fields with [supported types](#supported-types)
 - You don't need to reflect all fields—only the ones you want to animate
@@ -527,11 +504,11 @@ TANIM_REFLECT(CTransform, m_pos, m_rot);
 
 ### Troubleshooting
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| "No matching function for call to 'visit_struct::apply_visitor'" | Missing or incorrect reflection macro | Ensure `TANIM_REFLECT` is in global namespace with correct struct name and fields |
-| Component not appearing in editor | Not registered or unsupported types | Verify macro usage and field types |
-| Multiple definition errors | Macro called more than once for same component | Use include guards; keep macro in header file |
+| Error                                                            | Cause                                          | Solution                                                                          |
+| ---------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| "No matching function for call to 'visit_struct::apply_visitor'" | Missing or incorrect reflection macro          | Ensure `TANIM_REFLECT` is in global namespace with correct struct name and fields |
+| Component not appearing in editor                                | Not registered or unsupported types            | Verify macro usage and field types                                                |
+| Multiple definition errors                                       | Macro called more than once for same component | Use include guards; keep macro in header file                                     |
 
 ---
 
@@ -611,6 +588,7 @@ void tanim::LogInfo(const std::string& message)
 ```
 
 **Common Error Messages:**
+
 - `"FindEntityOfUID with the uid of [uid] returned entt::null"` - Entity not found
 - `"entity [id] does not have a component named [ComponentName]"` - Component missing
 - `"Versions prior to 2 are not supported. Can not deserialize."` - Old serialization format
@@ -737,26 +715,31 @@ Manually registers a component. Only needed for components using `TANIM_REFLECT_
 ### Function Call Order
 
 **Startup:**
+
 ```
 ImGui::CreateContext() → tanim::Init()
 ```
 
 **Editor Frame:**
+
 ```
 ImGui::NewFrame() → tanim::UpdateEditor(dt) → tanim::Draw() → ImGui::Render()
 ```
 
 **Entering Play Mode:**
+
 ```
 tanim::EnterPlayMode() → tanim::StartTimeline() for each entity
 ```
 
 **Play Mode Frame:**
+
 ```
 tanim::UpdateTimeline() for each entity
 ```
 
 **Exiting Play Mode:**
+
 ```
 tanim::StopTimeline() for each entity → tanim::ExitPlayMode()
 ```
@@ -767,402 +750,20 @@ Tanim is **not thread-safe**. All API functions must be called from the same thr
 
 ---
 
-## Supported Types
-
-| Type | Curves | Interpolation | Notes |
-|------|--------|---------------|-------|
-| `float` | 1 | Cubic Bezier | Standard smooth interpolation |
-| `int` | 1 | Cubic Bezier (floored) | Values floored to integers during sampling |
-| `bool` | 1 | Constant | Values 0 or 1 only; no interpolation |
-| `glm::vec2` | 2 (x, y) | Cubic Bezier per component | Components interpolate independently |
-| `glm::vec3` | 3 (x, y, z) | Cubic Bezier per component | Supports VECTOR/COLOR representation |
-| `glm::vec4` | 4 (x, y, z, w) | Cubic Bezier per component | Supports VECTOR/COLOR representation |
-| `glm::quat` | 5 (w, x, y, z, spins) | Slerp at runtime | Special synchronized keyframe handling |
-
-### Representation Types
-
-`glm::vec3` and `glm::vec4` support two representations (changeable in editor):
-- **VECTOR** (default): Separate numeric inputs per component
-- **COLOR**: Color picker interface
-
-### Quaternion Animation
-
-Quaternions require special handling because their components are interdependent.
-
-**Synchronized Operations:**
-- Use **+keyframe** or **record** to create keyframes on all 5 curves simultaneously
-- Use **-keyframe** to remove keyframes from all curves at once
-- Individual curve keyframe creation/deletion is restricted
-
-**Tangent Control:**
-Set "All Curves' Handles' Type" to control all curves together: FLAT, LINEAR, or CONSTANT.
-
-**The Spins Curve:**
-Controls how many full 360° rotations occur during interpolation. At keyframe `b`, set spins to the number of full rotations desired. The rotation at `b` must be slightly different from `a` for slerp to determine direction.
-
-### Unsupported Types
-
-Strings, custom structs (planned), pointers/references, static fields, enums, and matrices are not supported.
-
----
-
-## Editor UI & Shortcuts
-
-> [!CAUTION]
-> This section is a WIP and the information may not be fully accurate.
-
-### Editor Layout
-
-TODOVISUAL Add screenshot showing the full Tanim editor window with labeled sections
-
-- **Timeline Header**: Timeline name, frame range, playback controls
-- **Sequence List**: Left panel listing animated sequences
-- **Curve Editor**: Main area for editing keyframes and handles
-- **Inspector**: Detailed values for selected elements
-- **Playhead**: Red vertical line showing current time
-
-### Timeline Settings
-
-- **Frame Range**: First and last frames of active range
-- **Samples Per Second**: Playback speed (typically 60)
-- **Playback Type**: HOLD (stop at end), RESET (stop and reset), LOOP (continuous)
-- **Play Immediately**: Auto-start when entering play mode
-
-### Sequence Management
-
-1. Click **+** in sequence list
-2. Select entity → component → field
-3. Sequence is created with curves for the field type
-
-### Curve Editor Controls
-
-| Action | Control |
-|--------|---------|
-| Zoom | Scroll wheel |
-| Pan | Middle mouse drag |
-| Frame all | **F** |
-| Frame selection | **Shift+F** |
-
-### Keyframe Operations
-
-| Action | Control |
-|--------|---------|
-| Create keyframe | Double-click on curve, or **+keyframe** button |
-| Select | Click (Ctrl+Click to toggle, Shift+Click for range) |
-| Box select | Click and drag in empty space |
-| Select all | **Ctrl+A** |
-| Move | Drag selected keyframes |
-| Constrain to X | **Shift+Drag** |
-| Constrain to Y | **Alt+Drag** |
-| Delete | **Del** key or **-keyframe** button |
-
-### Tangent Modes
-
-| Mode | Description |
-|------|-------------|
-| AUTO | Automatic smooth tangents (Fritsch-Carlson monotonic) |
-| SMOOTH | Symmetric handles, C1 continuity |
-| BROKEN | Independent handles, sharp direction changes |
-| WEIGHTED | Adjustable handle length affects influence region |
-| FLAT | Horizontal tangents (ease-in/ease-out) |
-| LINEAR | Straight line interpolation |
-| CONSTANT | Immediate value change, no interpolation |
-
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| **F** | Frame all keyframes |
-| **Shift+F** | Frame selected keyframes |
-| **Ctrl+A** | Select all keyframes on visible curves |
-| **Del** | Delete selected keyframes |
-| **Ctrl+Z** / **Ctrl+Y** | Undo/Redo (if implemented in your engine) |
-
----
-
 ## Performance
-
-### Time Complexity
 
 Tanim has **O(n) linear time complexity** where n is the number of animated entities.
 
 - **Per entity**: ~1ms per 1000 entities
 - **60 FPS limit**: ~15,000 animated entities
 
-### Scalability Data
-
-| Animated Entities | Time (ms) |
-|:-----------------:|:---------:|
-| 10 | 0.024 |
-| 100 | 0.094 |
-| 1,000 | 0.987 |
-| 10,000 | 10.152 |
-| 100,000 | 107.8 |
-
-TODOVISUAL Add logarithmic line graph showing scalability
-
 ### Best Practices
 
-| Practice | Benefit |
-|----------|---------|
-| Cache entity lists in `m_user_data` | Avoid rebuilding lists every frame |
-| Share `TimelineData` across entities | Reduce memory, maintain consistency |
-| Optimize `FindEntityOfUID` | Called frequently during playback |
-| Limit animated entities | Only animate visible/relevant entities |
-| Use simpler types when possible | `float` is faster than `glm::quat` |
-| Serialize only when saving | Expensive operation |
-
----
-
-## Example Implementation
-
-This section shows a complete integration example with component setup, editor integration, and runtime playback.
-
-### Project Structure
-
-```
-MyEngine/
-├── Components/
-│   ├── AnimationComponent.h
-│   └── Transform.h
-├── TanimIntegration.cpp       // User overrides
-├── Editor/
-│   └── InspectorPanel.cpp     // Editor UI
-└── Systems/
-    └── AnimationSystem.cpp    // Runtime playback
-```
-
-### Components
-
-```cpp
-// AnimationComponent.h
-#pragma once
-#include <tanim/tanim.hpp>
-
-struct AnimationComponent
-{
-    ResourceHandle<TimelineResource> timeline_resource;  // Shared
-    tanim::ComponentData component_data;                  // Unique per entity
-};
-
-// Transform.h
-#pragma once
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <tanim/tanim.hpp>
-
-namespace MyEngine
-{
-struct Transform
-{
-    glm::vec3 position{0.0f};
-    glm::quat rotation{glm::identity<glm::quat>()};
-    glm::vec3 scale{1.0f};
-};
-}
-
-TANIM_REFLECT(MyEngine::Transform, position, rotation, scale);
-```
-
-### User Data Structure
-
-```cpp
-// TanimIntegration.cpp
-namespace MyEngine
-{
-struct TanimUserData
-{
-    entt::entity m_root_entity{entt::null};
-    std::vector<tanim::EntityData> m_cached_entities_data;
-    std::vector<entt::entity> m_cached_entities;
-};
-
-std::string EntityToUID(entt::entity entity)
-{
-    return Engine::Registry().get<NameComponent>(entity).name;
-}
-
-TanimUserData& UpdateCachedDataIfEmpty(tanim::ComponentData& cdata, entt::entity root)
-{
-    if (!cdata.m_user_data.has_value())
-    {
-        TanimUserData user_data;
-        user_data.m_root_entity = root;
-        user_data.m_cached_entities = GetAllChildren(root);
-
-        for (entt::entity e : user_data.m_cached_entities)
-        {
-            user_data.m_cached_entities_data.push_back({
-                .m_uid = EntityToUID(e),
-                .m_display = EntityToUID(e)
-            });
-        }
-        cdata.m_user_data = user_data;
-    }
-    return std::any_cast<TanimUserData&>(cdata.m_user_data);
-}
-}  // namespace MyEngine
-```
-
-### User Overrides Implementation
-
-```cpp
-entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, const std::string& uid_to_find)
-{
-    using namespace MyEngine;
-
-    if (!cdata.m_user_data.has_value())
-    {
-        LogError("m_user_data empty: " + uid_to_find);
-        return entt::null;
-    }
-
-    auto* user_data = std::any_cast<TanimUserData>(&cdata.m_user_data);
-    if (!user_data || user_data->m_root_entity == entt::null)
-    {
-        LogError("Invalid user_data: " + uid_to_find);
-        return entt::null;
-    }
-
-    if (EntityToUID(user_data->m_root_entity) == uid_to_find)
-        return user_data->m_root_entity;
-
-    for (entt::entity child : user_data->m_cached_entities)
-    {
-        if (EntityToUID(child) == uid_to_find)
-            return child;
-    }
-
-    LogError("Entity not found: " + uid_to_find);
-    return entt::null;
-}
-
-void tanim::LogError(const std::string& message)
-{
-    MyEngine::Logger::Error("[TANIM] " + message);
-}
-
-void tanim::LogInfo(const std::string& message)
-{
-    MyEngine::Logger::Info("[TANIM] " + message);
-}
-```
-
-### Editor Integration
-
-```cpp
-// InspectorPanel.cpp
-void InspectorPanel::OpenTimelineEditor(entt::entity entity)
-{
-    auto& anim = registry.get<AnimationComponent>(entity);
-    auto& timeline = ResourceManager::Get(anim.timeline_resource);
-
-    TanimUserData& user_data = UpdateCachedDataIfEmpty(anim.component_data, entity);
-
-    tanim::OpenForEditing(registry,
-                         user_data.m_cached_entities_data,
-                         timeline.timeline_data,
-                         anim.component_data);
-}
-
-void InspectorPanel::SaveTimeline(entt::entity entity)
-{
-    auto& anim = registry.get<AnimationComponent>(entity);
-    auto& timeline = ResourceManager::Get(anim.timeline_resource);
-
-    std::string serialized = tanim::Serialize(timeline.timeline_data);
-    FileSystem::WriteFile(timeline.filepath, serialized);
-}
-
-void InspectorPanel::LoadTimeline(entt::entity entity, const std::string& filepath)
-{
-    auto& anim = registry.get<AnimationComponent>(entity);
-    anim.timeline_resource = ResourceManager::Load<TimelineResource>(filepath);
-
-    auto& timeline = ResourceManager::Get(anim.timeline_resource);
-    std::string serialized = FileSystem::ReadFile(filepath);
-    tanim::Deserialize(timeline.timeline_data, serialized);
-}
-```
-
-### Runtime Playback System
-
-```cpp
-// AnimationSystem.cpp
-class AnimationSystem
-{
-public:
-    void OnEnterPlayMode(entt::registry& registry)
-    {
-        tanim::EnterPlayMode();
-
-        auto view = registry.view<AnimationComponent>();
-        for (auto entity : view)
-        {
-            auto& anim = view.get<AnimationComponent>(entity);
-            if (!ResourceManager::Exists(anim.timeline_resource))
-                continue;
-
-            auto& timeline = ResourceManager::Get(anim.timeline_resource);
-            anim.component_data.m_user_data.reset();
-            tanim::StartTimeline(timeline.timeline_data, anim.component_data);
-        }
-    }
-
-    void Update(entt::registry& registry, float delta_time)
-    {
-        auto view = registry.view<AnimationComponent>();
-        for (auto entity : view)
-        {
-            auto& anim = view.get<AnimationComponent>(entity);
-            if (!ResourceManager::Exists(anim.timeline_resource))
-                continue;
-
-            auto& timeline = ResourceManager::Get(anim.timeline_resource);
-            TanimUserData& user_data = UpdateCachedDataIfEmpty(anim.component_data, entity);
-
-            tanim::UpdateTimeline(registry,
-                                user_data.m_cached_entities_data,
-                                timeline.timeline_data,
-                                anim.component_data,
-                                delta_time);
-        }
-    }
-
-    void OnExitPlayMode(entt::registry& registry)
-    {
-        auto view = registry.view<AnimationComponent>();
-        for (auto entity : view)
-        {
-            tanim::StopTimeline(view.get<AnimationComponent>(entity).component_data);
-        }
-        tanim::ExitPlayMode();
-    }
-};
-```
-
-### Key Takeaways
-
-| Aspect | Recommendation |
-|--------|----------------|
-| Resource management | Share `TimelineData` via resources; keep `ComponentData` unique per entity |
-| User data pattern | Cache entity lists in `m_user_data` for efficient `FindEntityOfUID` |
-| Entity identification | Use persistent identifiers (names) rather than `entt::entity` IDs |
-| Scene management | Always call `tanim::CloseEditor()` before unloading scenes |
-| Playback lifecycle | Separate initialization (`EnterPlayMode`, `StartTimeline`) from updates |
-
----
-
-## Future
-
-- Quality of life improvements for the editor
-- Custom type support system
-- Event system for animation callbacks
-- Standalone Bezier curve editor widget
-- Potential Flecs ECS support
-
----
-
-## License
-
-MIT
+| Practice                             | Benefit                                |
+| ------------------------------------ | -------------------------------------- |
+| Cache entity lists in `m_user_data`  | Avoid rebuilding lists every frame     |
+| Share `TimelineData` across entities | Reduce memory, maintain consistency    |
+| Optimize `FindEntityOfUID`           | Called frequently during playback      |
+| Limit animated entities              | Only animate visible/relevant entities |
+| Use simpler types when possible      | `float` is faster than `glm::quat`     |
+| Serialize only when saving           | Expensive operation                    |
