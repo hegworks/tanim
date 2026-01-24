@@ -9,11 +9,12 @@
 5. [Reflection System](#reflection-system)
 6. [User Overrides](#user-overrides)
 7. [API Reference](#api-reference)
-8. [Supported Types](#supported-types)
-9. [Editor UI & Shortcuts](#editor-ui--shortcuts)
-10. [Performance](#performance)
-11. [Example Implementation](#example-implementation)
-12. [Future](#future)
+8. [Performance](#performance)
+
+**See Also:**
+- [Supported Types](supported-types.md) - Complete type reference with behaviors
+- [Editor UI & Shortcuts](ui-shortcuts.md) - Editor controls and keyboard shortcuts
+- [Example Implementation](example-implementation.md) - Complete integration example
 
 ---
 
@@ -85,7 +86,7 @@ void OnApplicationStart()
 
 ### Step 3: Implement Required User Overrides
 
-Tanim requires you to implement three functions. See [User Overrides](#user-overrides) for detailed explanations.
+Tanim requires you to implement three functions. See [User Overrides](#user-overrides) for detailed explanations and implementation patterns.
 
 ```cpp
 #include <tanim/tanim.hpp>
@@ -254,7 +255,7 @@ void tanim::LogInfo(const std::string& message)
 | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Editor window doesn't appear     | Ensure `tanim::Init()` and `tanim::Draw()` are called between `ImGui::NewFrame()` and `ImGui::Render()`  |
 | Animations don't play            | Verify `tanim::EnterPlayMode()` and `tanim::StartTimeline()` are called before `tanim::UpdateTimeline()` |
-| Components not showing in editor | Check that `TANIM_REFLECT` is in the global namespace with only supported types                          |
+| Components not showing in editor | Check that `TANIM_REFLECT` is in the global namespace with only [supported types](supported-types.md)    |
 | Entity not found errors          | Verify your `FindEntityOfUID` implementation correctly maps UIDs to entities                             |
 
 ---
@@ -287,11 +288,7 @@ Represents a single animated property on a component. Each sequence targets a sp
 
 ### Curve
 
-A sequence contains one or more curves depending on the field type:
-
-- `float` field → 1 curve
-- `glm::vec3` field → 3 curves (x, y, z)
-- `glm::quat` field → 5 curves (w, x, y, z, spins)
+A sequence contains one or more curves depending on the field type. See [Supported Types](supported-types.md) for the curve count per type.
 
 Each curve contains keyframes that define the animation over time.
 
@@ -302,6 +299,30 @@ A point in time that defines a value on a curve. Keyframes are connected by curv
 ### Handle
 
 Each keyframe has two handles (in and out) that control the shape of the Bezier curve segment, defining the tangent at the keyframe and affecting how smoothly the animation transitions.
+
+### Curve Types and Interpolation
+
+Tanim uses cubic Bezier curves for interpolation between keyframes. This is the same system used by Unity, Unreal, and other professional animation tools.
+
+**Why Bezier Curves?** Bezier curves allow precise control over animation timing and easing. Unlike simple linear interpolation, Bezier curves can create smooth acceleration and deceleration, making animations feel more natural.
+
+### Tangent Modes
+
+Each keyframe can have different tangent modes that control the curve shape:
+
+| Mode         | Description                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| **AUTO**     | Tanim automatically calculates smooth tangents using a monotonic Catmull-Rom algorithm                      |
+| **SMOOTH**   | Both handles move together symmetrically, ensuring smooth C1 continuity at the keyframe                     |
+| **BROKEN**   | Handles can be adjusted independently, allowing sharp changes in curve direction                            |
+| **WEIGHTED** | Handle length affects the influence region; longer handles create gentler curves                            |
+| **FLAT**     | Horizontal tangents at the keyframe, creating ease-in/ease-out effect                                       |
+| **LINEAR**   | Straight line interpolation between keyframes                                                               |
+| **CONSTANT** | No interpolation, immediate value change (required for `bool` types)                                        |
+
+### Curve Constraints
+
+Tanim enforces monotonicity in time—the curve always moves forward in time and never loops back. This prevents invalid animations where a single time value would map to multiple values. Handles are automatically clamped to neighboring keyframes to maintain this constraint.
 
 ### Animation Data Flow
 
@@ -316,8 +337,20 @@ Each keyframe has two handles (in and out) that control the shape of the Bezier 
 
 1. Application calls `EnterPlayMode()`
 2. For each animated entity, call `StartTimeline()`
-3. Each frame, `UpdateTimeline()` samples curves and writes to components
+3. Each frame, `UpdateTimeline()`:
+   - Advances playback time based on delta time
+   - Samples curves at the current time
+   - Writes sampled values directly to component fields via your `FindEntityOfUID` implementation
 4. When stopping, call `StopTimeline()` and `ExitPlayMode()`
+
+### Timeline Sharing and Reusability
+
+One `TimelineData` can be referenced by multiple entities. This is useful for:
+
+- **Reusable animations**: Create one "walk cycle" timeline and use it on multiple characters
+- **Memory efficiency**: Store one copy of animation data instead of duplicating per entity
+
+**Synchronized vs Independent Playback**: Each entity has its own `ComponentData` containing runtime playback state, so entities can play, pause, or stop independently, or be at different times in the same animation.
 
 ---
 
@@ -337,7 +370,7 @@ struct EntityData
 
 **Purpose**: Identifies entities that can be animated in a timeline.
 
-**m_uid considerations:**
+#### m_uid Considerations
 
 | Approach     | Pros                                                        | Cons                                   |
 | ------------ | ----------------------------------------------------------- | -------------------------------------- |
@@ -345,7 +378,14 @@ struct EntityData
 | UUIDs        | Guaranteed unique                                           | Not readable, prevents animation reuse |
 | Custom IDs   | Flexible                                                    | Depends on your implementation         |
 
-**Important**: The UID must persist across application sessions. `entt::entity` IDs are not suitable because they can change when scenes are reloaded.
+**Session Persistence**: The UID must remain the same between application sessions. For example, `entt::entity` IDs are not suitable because they can change when a scene is loaded. The same scene with the same entities might have different `entt::entity` IDs after reloading, which would break animation references.
+
+**Reusability vs Uniqueness**: The UID scheme affects animation reusability:
+
+- **Universally unique IDs (UUIDs)**: If you use UUIDs that are unique across the entire scene, you lose the ability to reuse the same `TimelineData` on multiple entities with identical hierarchies
+- **Name-based IDs**: Using entity names (like Unity and Godot do) allows animation reuse across similar hierarchies
+
+**Recommended Approach**: Entity names or hierarchical names are common and practical. Ensure proper error handling for cases where names aren't found or are duplicated.
 
 **Example:**
 
@@ -382,7 +422,7 @@ struct TimelineData
 
 **Lifetime**: Persists as long as you want to keep the animation data. Can be serialized and shared across multiple entities.
 
-**Sharing**: Multiple entities can reference the same `TimelineData`. Implementation approaches include resource management systems, `std::shared_ptr`, or your existing asset system.
+**Sharing**: Multiple entities can reference the same `TimelineData`. Implementation approaches include resource management systems, `std::shared_ptr`, or your existing asset system. See [Example Implementation](example-implementation.md) for a complete resource management example.
 
 **Serialization:**
 
@@ -395,6 +435,8 @@ SaveToFile("animation.tanim", serialized);
 std::string loaded = LoadFromFile("animation.tanim");
 tanim::Deserialize(timeline_data, loaded);
 ```
+
+**Internal Format**: Tanim uses JSON for serialization. Always use `Serialize()` and `Deserialize()` rather than parsing the string directly. Tanim handles versioning internally.
 
 **Warning**: Do not directly access or modify `TimelineData` fields. All data is managed internally through the editor UI and API functions.
 
@@ -411,7 +453,7 @@ private:
 
 **Purpose**: Holds runtime playback state for a specific entity's timeline. Each entity playing a timeline needs its own `ComponentData`, even when sharing `TimelineData`.
 
-**Lifetime**: Exists as long as the entity exists. Does not need to be serialized.
+**Lifetime**: Exists as long as the entity exists. Does not need to be serialized (runtime state only).
 
 **m_user_data**: Store data to help your `FindEntityOfUID` implementation run efficiently:
 
@@ -428,7 +470,26 @@ anim.component_data.m_user_data = TanimUserData{
 };
 ```
 
-**Independent Playback**: Each entity has its own `ComponentData`, so entities can be playing, paused, or stopped independently, or be at different times in the same animation.
+**Independent Playback**: Each entity has its own `ComponentData`, so entities can be playing, paused, or stopped independently:
+
+```cpp
+tanim::Play(entity1_cdata);   // Entity 1 is playing
+tanim::Pause(entity2_cdata);  // Entity 2 is paused
+tanim::Stop(entity3_cdata);   // Entity 3 is stopped
+```
+
+### Data Flow Summary
+
+```
+TimelineData (shared)
+    ├── Entity 1: ComponentData (unique)
+    ├── Entity 2: ComponentData (unique)
+    └── Entity 3: ComponentData (unique)
+
+Each entity has:
+- Reference to shared TimelineData (animation data)
+- Own ComponentData (playback state, user data)
+```
 
 ---
 
@@ -459,15 +520,50 @@ struct Transform
 TANIM_REFLECT(MyEngine::Transform, position, rotation, scale);
 ```
 
+**What Happens Behind the Scenes**: `TANIM_REFLECT` does two things:
+
+1. Calls `VISITABLE_STRUCT_IN_CONTEXT` to make the component's fields accessible via `visit_struct`
+2. Automatically registers the component with Tanim's type system during static initialization
+
+The registration happens before `main()` is called, so by the time you call `tanim::Init()`, the component is already available.
+
 **Important Notes:**
 
 - Always include the full namespace path in `STRUCT_NAME`
-- Only include fields with [supported types](#supported-types)
+- Only include fields with [supported types](supported-types.md)
 - You don't need to reflect all fields—only the ones you want to animate
+
+**Subset of Fields Example:**
+
+```cpp
+struct Camera
+{
+    float fov{45.0f};           // Will be animatable
+    float near_plane{0.1f};     // Will be animatable
+    glm::mat4 projection;       // Not reflected, won't be animatable
+};
+
+TANIM_REFLECT(Camera, fov, near_plane);
+```
+
+**Nested Namespaces Example:**
+
+```cpp
+namespace MyEngine::Components
+{
+struct RigidBody
+{
+    glm::vec3 velocity{0.0f};
+    float mass{1.0f};
+};
+}
+
+TANIM_REFLECT(MyEngine::Components::RigidBody, velocity, mass);
+```
 
 ### TANIM_REFLECT_NO_REGISTER
 
-Use only if `TANIM_REFLECT` causes initialization order issues for a specific component:
+Use only if `TANIM_REFLECT` causes initialization order issues for a specific component (e.g., if the component's constructor accesses global variables that aren't initialized yet):
 
 ```cpp
 TANIM_REFLECT_NO_REGISTER(MyEngine::ProblematicComponent, value);
@@ -498,9 +594,9 @@ TANIM_REFLECT(CTransform, m_pos, m_rot);
 
 ### Reflection Requirements
 
-- **Supported types only**: See [Supported Types](#supported-types)
-- **No static fields**: Animation is per-entity; static fields would affect all entities
-- **No functions**: Animation requires data storage to write values to
+- **Supported types only**: See [Supported Types](supported-types.md)
+- **No static fields**: Animation is per-entity; static fields would affect all entities simultaneously
+- **No functions**: Animation requires data storage to write values to; functions are executable code, not data
 
 ### Troubleshooting
 
@@ -508,13 +604,14 @@ TANIM_REFLECT(CTransform, m_pos, m_rot);
 | ---------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
 | "No matching function for call to 'visit_struct::apply_visitor'" | Missing or incorrect reflection macro          | Ensure `TANIM_REFLECT` is in global namespace with correct struct name and fields |
 | Component not appearing in editor                                | Not registered or unsupported types            | Verify macro usage and field types                                                |
-| Multiple definition errors                                       | Macro called more than once for same component | Use include guards; keep macro in header file                                     |
+| Multiple definition errors (C2766)                               | Macro called more than once for same component | Use include guards; keep macro in header file only                                |
+| Initialization order crash                                       | Constructor accesses uninitialized globals     | Use `TANIM_REFLECT_NO_REGISTER` and manually register after globals are ready     |
 
 ---
 
 ## User Overrides
 
-Three functions you must implement in your project for Tanim to integrate with your engine.
+Three functions you must implement in your project for Tanim to integrate with your engine. Implement these in a `.cpp` file in your project, not in Tanim's code.
 
 ### FindEntityOfUID
 
@@ -526,9 +623,36 @@ Converts a UID string back to an `entt::entity`. Called frequently during playba
 
 **Return**: The matching `entt::entity`, or `entt::null` if not found.
 
-**Performance**: Use `ComponentData::m_user_data` to cache entity lookups.
+**Performance**: Use `ComponentData::m_user_data` to cache entity lookups. This function is called every frame per sequence during playback.
 
-**Recommended Implementation Pattern:**
+#### Implementation Pattern 1: Simple Name-Based Lookup
+
+```cpp
+entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, const std::string& uid_to_find)
+{
+    if (!cdata.m_user_data.has_value())
+    {
+        LogError("m_user_data is empty when finding uid: " + uid_to_find);
+        return entt::null;
+    }
+
+    entt::entity root = std::any_cast<entt::entity>(cdata.m_user_data);
+
+    if (GetEntityName(root) == uid_to_find)
+        return root;
+
+    for (entt::entity child : GetAllChildrenRecursive(root))
+    {
+        if (GetEntityName(child) == uid_to_find)
+            return child;
+    }
+
+    LogError("Entity not found for uid: " + uid_to_find);
+    return entt::null;
+}
+```
+
+#### Implementation Pattern 2: Cached Entity List (Recommended)
 
 ```cpp
 struct TanimUserData
@@ -566,6 +690,59 @@ entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, const std::strin
 }
 ```
 
+#### Implementation Pattern 3: Hash Map for Large Hierarchies
+
+```cpp
+struct TanimUserData
+{
+    entt::entity root_entity;
+    std::unordered_map<std::string, entt::entity> uid_to_entity;
+};
+
+entt::entity tanim::FindEntityOfUID(const ComponentData& cdata, const std::string& uid_to_find)
+{
+    if (!cdata.m_user_data.has_value())
+    {
+        LogError("m_user_data is empty when finding uid: " + uid_to_find);
+        return entt::null;
+    }
+
+    auto* user_data = std::any_cast<TanimUserData>(&cdata.m_user_data);
+    if (!user_data)
+    {
+        LogError("m_user_data has wrong type when finding uid: " + uid_to_find);
+        return entt::null;
+    }
+
+    auto it = user_data->uid_to_entity.find(uid_to_find);
+    if (it != user_data->uid_to_entity.end())
+        return it->second;
+
+    LogError("Entity not found for uid: " + uid_to_find);
+    return entt::null;
+}
+```
+
+#### Setting Up User Data
+
+Populate `ComponentData::m_user_data` before calling `OpenForEditing` or `UpdateTimeline`:
+
+```cpp
+void PrepareAnimationComponent(entt::entity entity)
+{
+    auto& anim = registry.get<AnimationComponent>(entity);
+
+    TanimUserData user_data;
+    user_data.root_entity = entity;
+    for (entt::entity child : GetAllChildrenRecursive(entity))
+    {
+        user_data.cached_entities.push_back(child);
+    }
+
+    anim.component_data.m_user_data = user_data;
+}
+```
+
 ### LogError / LogInfo
 
 ```cpp
@@ -589,9 +766,12 @@ void tanim::LogInfo(const std::string& message)
 
 **Common Error Messages:**
 
-- `"FindEntityOfUID with the uid of [uid] returned entt::null"` - Entity not found
-- `"entity [id] does not have a component named [ComponentName]"` - Component missing
-- `"Versions prior to 2 are not supported. Can not deserialize."` - Old serialization format
+| Message                                                       | Meaning                        |
+| ------------------------------------------------------------- | ------------------------------ |
+| `"FindEntityOfUID with the uid of [uid] returned entt::null"` | Entity not found during lookup |
+| `"entity [id] does not have a component named [Component]"`   | Component missing on entity    |
+| `"Couldn't find any entity with matching details: [name]"`    | Sequence target not found      |
+| `"Versions prior to 2 are not supported. Can not deserialize."` | Old serialization format     |
 
 ---
 
@@ -605,7 +785,7 @@ void tanim::LogInfo(const std::string& message)
 void Init();
 ```
 
-Initializes the Tanim system. Call once at startup after ImGui initialization.
+Initializes the Tanim system. Call once at startup after ImGui initialization, before any other Tanim functions.
 
 ### Editor Integration
 
@@ -615,7 +795,7 @@ Initializes the Tanim system. Call once at startup after ImGui initialization.
 void Draw();
 ```
 
-Renders the Tanim editor window. Call every frame between `ImGui::NewFrame()` and `ImGui::Render()`.
+Renders the Tanim editor window. Call every frame between `ImGui::NewFrame()` and `ImGui::Render()`. Safe to call even when no timeline is open.
 
 #### tanim::UpdateEditor
 
@@ -636,7 +816,7 @@ void OpenForEditing(entt::registry& registry,
                     ComponentData& cdata);
 ```
 
-Opens the Tanim editor window. Only one timeline can be open at a time.
+Opens the Tanim editor window. Only one timeline can be open at a time; opening a new one closes the previous. Store any necessary data in `cdata.m_user_data` before calling.
 
 #### tanim::CloseEditor
 
@@ -644,7 +824,7 @@ Opens the Tanim editor window. Only one timeline can be open at a time.
 void CloseEditor();
 ```
 
-Closes the editor window. **Must be called before destroying TimelineData or ComponentData.**
+Closes the editor window. **Must be called before destroying TimelineData or ComponentData** to prevent crashes from null pointer access. Safe to call even if no timeline is open.
 
 ### Play Mode Control
 
@@ -655,7 +835,7 @@ void EnterPlayMode();
 void ExitPlayMode();
 ```
 
-Signal play mode transitions. Call once when your application transitions between editor and play modes.
+Signal play mode transitions. Call once when your application transitions between editor and play modes. `EnterPlayMode()` must be called before `StartTimeline()`. `ExitPlayMode()` must be called after `StopTimeline()` for all entities.
 
 ### Timeline Playback
 
@@ -665,7 +845,7 @@ Signal play mode transitions. Call once when your application transitions betwee
 void StartTimeline(const TimelineData& tdata, ComponentData& cdata);
 ```
 
-Prepares a timeline for playback. Call after `EnterPlayMode()`.
+Prepares a timeline for playback. Call after `EnterPlayMode()`, before `UpdateTimeline()`. Does not automatically start playback unless `m_play_immediately` is enabled in TimelineData.
 
 #### tanim::UpdateTimeline
 
@@ -677,7 +857,7 @@ void UpdateTimeline(entt::registry& registry,
                     float delta_time);
 ```
 
-Advances playback, samples curves, and writes values to components. Call every frame during play mode.
+Advances playback, samples curves, and writes values to components. Call every frame during play mode. The `entity_datas` should match what was used in `OpenForEditing()`. Consider caching this vector for performance.
 
 #### tanim::StopTimeline
 
@@ -685,15 +865,15 @@ Advances playback, samples curves, and writes values to components. Call every f
 void StopTimeline(ComponentData& cdata);
 ```
 
-Stops playback and resets time. Call before `ExitPlayMode()`.
+Stops playback and resets time to the beginning. Call before `ExitPlayMode()`.
 
 ### Playback Control
 
 ```cpp
-void Play(ComponentData& cdata);     // Start or resume
-void Pause(ComponentData& cdata);    // Pause at current time
+void Play(ComponentData& cdata);     // Start or resume playback
+void Pause(ComponentData& cdata);    // Pause at current time (Play() resumes from here)
 void Stop(ComponentData& cdata);     // Stop and reset to beginning
-bool IsPlaying(const ComponentData& cdata);  // Check state
+bool IsPlaying(const ComponentData& cdata);  // Check playback state
 ```
 
 ### Serialization
@@ -703,6 +883,8 @@ std::string Serialize(TimelineData& tdata);
 void Deserialize(TimelineData& tdata, const std::string& serialized_string);
 ```
 
+**Note**: These are expensive operations. Only call when actually saving/loading, not every frame.
+
 ### Component Registration
 
 ```cpp
@@ -710,7 +892,7 @@ template <typename T>
 void RegisterComponent();
 ```
 
-Manually registers a component. Only needed for components using `TANIM_REFLECT_NO_REGISTER`.
+Manually registers a component. Only needed for components using `TANIM_REFLECT_NO_REGISTER`. Call after `tanim::Init()`.
 
 ### Function Call Order
 
@@ -746,7 +928,11 @@ tanim::StopTimeline() for each entity → tanim::ExitPlayMode()
 
 ### Threading
 
-Tanim is **not thread-safe**. All API functions must be called from the same thread.
+Tanim is **not thread-safe**. All API functions must be called from the same thread (typically your main thread). This includes all lifecycle functions, user override implementations, and component registration.
+
+### Error Handling
+
+Tanim reports errors through your `LogError` implementation rather than throwing exceptions or crashing. When errors occur (entity not found, component missing, etc.), Tanim logs the error and skips animation for that sequence. Your application continues running.
 
 ---
 
@@ -754,16 +940,33 @@ Tanim is **not thread-safe**. All API functions must be called from the same thr
 
 Tanim has **O(n) linear time complexity** where n is the number of animated entities.
 
+### Scalability Test Results
+
+Tests conducted using Superluminal profiler on release configuration:
+
+| Animated Entity Count | Time Spent (ms) |
+| :-------------------: | :-------------: |
+|          10           |      0.024      |
+|          100          |      0.094      |
+|         1,000         |      0.987      |
+|        10,000         |     10.152      |
+|        100,000        |      107.8      |
+
+**Summary:**
 - **Per entity**: ~1ms per 1000 entities
-- **60 FPS limit**: ~15,000 animated entities
+- **60 FPS budget** (~16.67ms): ~15,000 animated entities maximum
+
+TODOVISUAL Add logarithmic line graph showing scalability
 
 ### Best Practices
 
-| Practice                             | Benefit                                |
-| ------------------------------------ | -------------------------------------- |
-| Cache entity lists in `m_user_data`  | Avoid rebuilding lists every frame     |
-| Share `TimelineData` across entities | Reduce memory, maintain consistency    |
-| Optimize `FindEntityOfUID`           | Called frequently during playback      |
-| Limit animated entities              | Only animate visible/relevant entities |
-| Use simpler types when possible      | `float` is faster than `glm::quat`     |
-| Serialize only when saving           | Expensive operation                    |
+| Practice                             | Benefit                                                             |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| Cache entity lists in `m_user_data`  | Avoid rebuilding lists every frame                                  |
+| Share `TimelineData` across entities | Reduce memory, maintain consistency                                 |
+| Optimize `FindEntityOfUID`           | Called frequently during playback; use cached lookups or hash maps  |
+| Limit animated entities              | Only animate visible/relevant entities                              |
+| Use simpler types when possible      | `float` is faster than `glm::quat` (1 curve vs 5 curves)            |
+| Serialize only when saving           | Expensive operation; don't call every frame                         |
+
+See [Example Implementation](example-implementation.md) for caching patterns and optimal integration.
