@@ -1,4 +1,4 @@
-# UI & Shortcuts
+# Editor UI & Shortcuts
 
 Guide to using the Tanim timeline editor interface, keyboard shortcuts, and mouse interactions.
 

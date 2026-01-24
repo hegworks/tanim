@@ -29,42 +29,23 @@ TODOVISUAL Add showcase video/gif demonstrating timeline editor, curve editing, 
 - **Type Support**: Built-in support for common types (float, int, bool, glm::vec2, glm::vec3, glm::vec4, glm::quat)
 - **Performance**: O(n) time complexity, capable of animating 15,000+ entities at 60 FPS
 
-## Documentation
+# Documentation
 
-**[📖 Full Documentation Wiki](docs/wiki.md)** - Complete documentation index with links to all guides and references.
+## Integration & API Reference
 
-### [Getting Started](docs/getting-started.md)
+**[Integration Reference](integration-reference.md)** - Complete guide covering installation, getting started, architecture, data structures, reflection system, user overrides, API reference, and performance.
 
-Quick start guide with a minimal working example to get your first animation running.
+## Type Reference
 
-### [Core Concepts](docs/core-concepts.md)
+**[Supported Types](supported-types.md)** - List of built-in animatable types and their behaviors.
 
-Understand the architecture and data flow: Components, Timelines, Sequences, Curves, and Keyframes.
+## Editor Guide
 
-### [API Reference](docs/api-reference/overview.md)
+**[UI & Shortcuts](ui-shortcuts.md)** - Editor controls, keyboard shortcuts, and mouse interactions.
 
-Complete API documentation covering:
+## Complete Example
 
-- [Lifecycle Functions](docs/api-reference/lifecycle.md) - Init, Draw, Update, Play/Pause/Stop
-- [Data Structures](docs/api-reference/data-structures.md) - EntityData, TimelineData, ComponentData
-- [User Overrides](docs/api-reference/user-overrides.md) - Required function implementations
-- [Reflection System](docs/api-reference/reflection.md) - Making components animatable
-
-### [Example Implementation](docs/example-implementation.md)
-
-Complete integration example showing component setup, editor integration, and runtime playback.
-
-### [Supported Types](docs/supported-types.md)
-
-List of built-in animatable types and their behaviors.
-
-### [UI & Shortcuts](docs/ui-shortcuts.md)
-
-Editor controls, keyboard shortcuts, and mouse interactions.
-
-### [Performance](docs/performance.md)
-
-Profiling results, scalability data, and optimization opportunities.
+**[Example Implementation](example-implementation.md)** - Complete integration example showing component setup, editor integration, and runtime playback.
 
 ## Quick Example
 
@@ -87,7 +68,7 @@ void OnUpdate() {
 }
 ```
 
-See [Getting Started](docs/getting-started.md) for the complete setup process.
+See [Integration Reference](integration-reference.md) for the complete setup process.
 
 ## Future
 
