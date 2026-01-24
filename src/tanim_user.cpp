@@ -295,12 +295,12 @@ void Draw()
             }
         }
 
-        ImGui::SameLine();
-        ImGui::Text(" | ");
-        ImGui::SameLine();
+        // ImGui::SameLine();
+        // ImGui::Text(" | ");
+        // ImGui::SameLine();
 
-        ImGui::DragInt("MaxFrame", &tdata.m_max_frame, 0.1f, Timeline::GetMinFrame(tdata));
-        tdata.m_max_frame = ImMax(1, tdata.m_max_frame);
+        // ImGui::DragInt("MaxFrame", &tdata.m_max_frame, 0.1f, Timeline::GetMinFrame(tdata));
+        // tdata.m_max_frame = ImMax(1, tdata.m_max_frame);
 
         // ImGui::SameLine();
         // ImGui::Text(" | ");
@@ -411,8 +411,8 @@ void Draw()
 
     ImGui::Checkbox("Play Immediately", &tdata.m_play_immediately);
 
-    ImGui::Text("max frame:            %d", Timeline::GetMinFrame(tdata));
-    ImGui::Text("timeline last frame:  %d", Timeline::GetTimelineLastFrame(tdata));
+    // ImGui::Text("max frame:            %d", Timeline::GetMaxFrame(tdata));
+    // ImGui::Text("timeline last frame:  %d", Timeline::GetTimelineLastFrame(tdata));
 
     ImGui::End();
 
@@ -521,16 +521,16 @@ void Draw()
             }
         }
 
-        ImGui::PushItemWidth(100);
-        ImGui::Text("index:       %d", expanded_seq_idx);
-        ImGui::BeginDisabled();
-        ImGui::DragFloat2("draw min", &seq.m_draw_min.x);
-        ImGui::DragFloat2("draw max", &seq.m_draw_max.x);
-        ImGui::EndDisabled();
-        ImGui::PopItemWidth();
+        // ImGui::PushItemWidth(100);
+        // ImGui::Text("index:       %d", expanded_seq_idx);
+        // ImGui::BeginDisabled();
+        // ImGui::DragFloat2("draw min", &seq.m_draw_min.x);
+        // ImGui::DragFloat2("draw max", &seq.m_draw_max.x);
+        // ImGui::EndDisabled();
+        // ImGui::PopItemWidth();
 
-        ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(tdata, expanded_seq_idx));
-        ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(tdata, expanded_seq_idx));
+        // ImGui::Text("seq first frame: %d", Timeline::GetSequenceFirstFrame(tdata, expanded_seq_idx));
+        // ImGui::Text("seq last frame:  %d", Timeline::GetSequenceLastFrame(tdata, expanded_seq_idx));
 
         ImGui::Text(
             "entity:          %s",
@@ -547,19 +547,19 @@ void Draw()
         ImGui::Text("display:         %s", seq.m_seq_id.GetEntityData().m_display.c_str());
         ImGui::Text("full name:       %s", seq.m_seq_id.FullName().c_str());
 
-        for (int i = 0; i < seq.GetCurveCount(); ++i)
-        {
-            ImGui::PushID(i);
-
-            char curve_name_buf[256];
-            strncpy_s(curve_name_buf, seq.m_curves.at(i).m_name.c_str(), sizeof(curve_name_buf));
-            if (ImGui::InputText("Field", curve_name_buf, sizeof(curve_name_buf)))
-            {
-                seq.m_curves.at(i).m_name = std::string(curve_name_buf);
-            }
-
-            ImGui::PopID();
-        }
+        // for (int i = 0; i < seq.GetCurveCount(); ++i)
+        // {
+        //     ImGui::PushID(i);
+        //
+        //     char curve_name_buf[256];
+        //     strncpy_s(curve_name_buf, seq.m_curves.at(i).m_name.c_str(), sizeof(curve_name_buf));
+        //     if (ImGui::InputText("Field", curve_name_buf, sizeof(curve_name_buf)))
+        //     {
+        //         seq.m_curves.at(i).m_name = std::string(curve_name_buf);
+        //     }
+        //
+        //     ImGui::PopID();
+        // }
     }
 
     ImGui::End();

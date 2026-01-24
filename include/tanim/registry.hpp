@@ -684,15 +684,17 @@ static void Inspect(T& ecs_component, int player_frame, Sequence& seq)
                         if (enabled) ImGui::BeginDisabled();
                     };
 
-                    const bool is_keyframe = curve_0_optional_point_idx.has_value();
-                    ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
-                    nudge_btn(0, is_keyframe);
-                    ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
-                    nudge_btn(1, is_keyframe);
-                    ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
-                    nudge_btn(2, is_keyframe);
-                    ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
-                    nudge_btn(3, is_keyframe);
+                    ImGui::DragFloat4("quat", &field.w);
+
+                    // const bool is_keyframe = curve_0_optional_point_idx.has_value();
+                    // ImGui::InputFloat((field_name_str + ".w").c_str(), &field.w);
+                    // nudge_btn(0, is_keyframe);
+                    // ImGui::InputFloat((field_name_str + ".x").c_str(), &field.x);
+                    // nudge_btn(1, is_keyframe);
+                    // ImGui::InputFloat((field_name_str + ".y").c_str(), &field.y);
+                    // nudge_btn(2, is_keyframe);
+                    // ImGui::InputFloat((field_name_str + ".z").c_str(), &field.z);
+                    // nudge_btn(3, is_keyframe);
 
                     ImGui::DragFloat3("euler", &euler_angles.x);
 
