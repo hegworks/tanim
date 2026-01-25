@@ -1019,8 +1019,6 @@ Tests conducted using Superluminal profiler on release configuration:
 - **Per entity**: ~1ms per 1000 entities
 - **60 FPS budget** (~16.67ms): ~15,000 animated entities maximum
 
-TODOVISUAL Add logarithmic line graph showing scalability
-
 ### Best Practices
 
 | Practice                             | Benefit                                                                                             |
