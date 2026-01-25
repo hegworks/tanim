@@ -146,12 +146,16 @@ This is the workflow:
 The video below shows an example of this process:
 
 <p align="center">
-  <video src="https://github.com/hegworks/tanim/raw/refs/heads/main/docs/media/record_wiki.mp4" width="700" height="400" controls></video>
+  <video src="https://github.com/user-attachments/assets/aa80a157-a92d-4a0c-b2ad-8716d5677bd4" width="700" height="400" controls></video>
   <br>
   <em>Note that the top-left window titled "Gizmo Controls" is from my custom engine and is not included in Tanim.</em>
 </p>
 
-## Modifying keyframe handles
+## Modifying keyframe handl
+
+
+
+es
 
 Tanim uses a Piece-Wise Cubic Bezier Curve. Each keyframe has 2 handles, In & Out. Changing the position and properties of these handles is needed for fine-tuning the curves to reach the exact results you want from the animations flow.
 
