@@ -151,11 +151,7 @@ The video below shows an example of this process:
   <em>Note that the top-left window titled "Gizmo Controls" is from my custom engine and is not included in Tanim.</em>
 </p>
 
-## Modifying keyframe handl
-
-
-
-es
+## Modifying keyframe handles
 
 Tanim uses a Piece-Wise Cubic Bezier Curve. Each keyframe has 2 handles, In & Out. Changing the position and properties of these handles is needed for fine-tuning the curves to reach the exact results you want from the animations flow.
 
