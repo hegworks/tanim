@@ -207,8 +207,6 @@ void OpenTimelineEditor(entt::registry& registry,
 }
 ```
 
-TODOVISUAL Add screenshot of Tanim editor window
-
 ### Step 8: Play Animations at Runtime
 
 ```cpp
@@ -350,16 +348,6 @@ Tanim uses cubic Bezier curves for interpolation between keyframes. This is the 
 ### Tangent Modes
 
 Each keyframe can have different tangent modes that control the curve shape. See [Editor UI & Shortcuts](ui-shortcuts.md) for how to change tangent modes in the editor.
-
-| Mode         | Description                                                                             |
-| ------------ | --------------------------------------------------------------------------------------- |
-| **AUTO**     | Tanim automatically calculates smooth tangents using a monotonic Catmull-Rom algorithm  |
-| **SMOOTH**   | Both handles move together symmetrically, ensuring smooth C1 continuity at the keyframe |
-| **BROKEN**   | Handles can be adjusted independently, allowing sharp changes in curve direction        |
-| **WEIGHTED** | Handle length affects the influence region; longer handles create gentler curves        |
-| **FLAT**     | Horizontal tangents at the keyframe, creating ease-in/ease-out effect                   |
-| **LINEAR**   | Straight line interpolation between keyframes                                           |
-| **CONSTANT** | No interpolation, immediate value change (required for `bool` types)                    |
 
 ### Curve Constraints
 
