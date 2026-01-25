@@ -2,12 +2,9 @@
 
 Guide to using the Tanim timeline editor interface, keyboard shortcuts, and mouse interactions.
 
-> [!CAUTION]
-> This file is a WIP & and will be completed soon.
-
 ## Overview
 
-The Tanim editor provides a timeline-based interface for creating and editing animations. This guide covers the UI layout, controls, and shortcuts for efficient workflow.
+The Tanim editor provides a timeline-based interface for creating and editing animations.
 
 ![](media/20260125135208.png)
 
@@ -149,11 +146,9 @@ This is the workflow:
 The video below shows an example of this process:
 
 <p align="center">
-	<video width="700" height="400" controls>
-	  <source src="media/record_wiki.mp4" type="video/mp4">
-	</video>
-	<br>
-	  <em>Note that the top-left window titled "Gizmo Controls" is from my custom engine and is not included in Tanim.</em>
+  <video src="https://github.com/hegworks/tanim/raw/refs/heads/main/docs/media/record_wiki.mp4" width="700" height="400" controls></video>
+  <br>
+  <em>Note that the top-left window titled "Gizmo Controls" is from my custom engine and is not included in Tanim.</em>
 </p>
 
 ## Modifying keyframe handles
